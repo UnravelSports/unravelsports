@@ -48,11 +48,11 @@ An overview on how to contribute can be found in the [**contributing guide**](CO
 
 🌀 Citation
 ----
-If you use this repository for any research or project, please reference:
+If you use this repository for any educational purposes, research, project etc., please reference:
 
 📎 [Bekkers, J., & Dabadghao, S. (2019). Flow motifs in soccer: What can passing behavior tell us?. Journal of Sports Analytics, 5(4), 299-311.](https://content.iospress.com/download/journal-of-sports-analytics/jsa190290?id=journal-of-sports-analytics%2Fjsa190290)
 
-```bash
+```
 @article{bekkers2019flow,
   title={Flow motifs in soccer: What can passing behavior tell us?},
   author={Bekkers, Joris and Dabadghao, Shaunak},
@@ -69,7 +69,7 @@ and / or
 
 📎 [Sahasrabudhe, A., & Bekkers, J. (2023). A graph neural network deep-dive into successful counterattacks. MIT Sloan Sports Analytics Conference.](https://ussf-ssac-23-soccer-gnn.s3.us-east-2.amazonaws.com/public/Sahasrabudhe_Bekkers_SSAC23.pdf)
 
-```bash
+```
 @inproceedings{sahasrabudhe2023graph,
   title={A Graph Neural Network deep-dive into successful counterattacks},
   author={Sahasrabudhe, Amod and Bekkers, Joris},
