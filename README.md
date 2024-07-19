@@ -88,5 +88,6 @@ and let me know on
 ----
 - For **commercial** use this repository falls under the [AGPL-3.0 License](LICENSE-COMMERCIAL)
 - For **non-commerical** use this repository falls under the [BSD 3-Clause](LICENSE-NON-COMMERICIAL)
+- Any **contributions** made to this repository fall under the [Apache License Version 2.0](LICENSE-3-CONTRIBUTING)
 
 Because sports organizations (teams, clubs, federations) are a bit weird, I want to explicitely state that any (reseach) projects - that are not sold to third parties - within sports organizations explicitely fall under the **non-commerical** license.
