@@ -148,7 +148,9 @@ class CustomSpektralDataset(Dataset, Sequence):
             num_test = dataset_length - num_train
             num_validation = 0
 
-        unique_graph_ids = set([g.get("id") if hasattr(g, "id") else None for g in self])
+        unique_graph_ids = set(
+            [g.get("id") if hasattr(g, "id") else None for g in self]
+        )
         if unique_graph_ids == {None}:
             by_graph_id = False
 
