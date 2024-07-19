@@ -48,7 +48,7 @@ An overview on how to contribute can be found in the [**contributing guide**](CO
 
 🌀 Citation
 ----
-If you use this repository for any research or public project, please reference:
+If you use this repository for any research or project, please reference:
 
 📎 [Bekkers, J., & Dabadghao, S. (2019). Flow motifs in soccer: What can passing behavior tell us?. Journal of Sports Analytics, 5(4), 299-311.](https://content.iospress.com/download/journal-of-sports-analytics/jsa190290?id=journal-of-sports-analytics%2Fjsa190290)
 
@@ -79,6 +79,14 @@ and / or
 }
 ```
 
+and let me know on 
+
+[<img alt="alt_text" width="40px" src="https://github.com/USSoccerFederation/ussf_ssac_23_soccer_gnn/blob/main/img/linkedin.png?raw=true"/>](https://www.linkedin.com/in/joris-bekkers-33138288/)
+[<img alt="alt_text" width="40px" src="https://github.com/USSoccerFederation/ussf_ssac_23_soccer_gnn/blob/main/img/twitter.png?raw=true"/>](https://twitter.com/unravelsports)
+
 🌀 License
 ----
-[AGPL-3.0 License](LICENSE)
+- For commercial use this repository falls under the [AGPL-3.0 License](LICENSE-COMMERCIAL)
+- For non-commerical use this repository falls under the [BSD 3-Clause](LICENSE-NON-COMMERICIAL)
+
+Because sports organizations (teams, clubs, federations) are a bit weird, I want to explicitely state that reseach projects within sports organizations explicitely fall under the **non-commerical** license.
