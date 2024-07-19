@@ -25,7 +25,7 @@ setup(
     extras_require={
         "test": [
             "pytest==8.2.2",
-            "black==24.4.2",
+            "black[jupyter]==24.4.2",
         ]
     },
 )
