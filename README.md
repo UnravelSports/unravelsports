@@ -84,9 +84,9 @@ and let me know on
 [<img alt="alt_text" width="40px" src="https://github.com/USSoccerFederation/ussf_ssac_23_soccer_gnn/blob/main/img/linkedin.png?raw=true"/>](https://www.linkedin.com/in/joris-bekkers-33138288/)
 [<img alt="alt_text" width="40px" src="https://github.com/USSoccerFederation/ussf_ssac_23_soccer_gnn/blob/main/img/twitter.png?raw=true"/>](https://twitter.com/unravelsports)
 
-🌀 License
+🌀 Licenses
 ----
-- For commercial use this repository falls under the [AGPL-3.0 License](LICENSE-COMMERCIAL)
-- For non-commerical use this repository falls under the [BSD 3-Clause](LICENSE-NON-COMMERICIAL)
+- For **commercial** use this repository falls under the [AGPL-3.0 License](LICENSE-COMMERCIAL)
+- For **non-commerical** use this repository falls under the [BSD 3-Clause](LICENSE-NON-COMMERICIAL)
 
 Because sports organizations (teams, clubs, federations) are a bit weird, I want to explicitely state that reseach projects within sports organizations explicitely fall under the **non-commerical** license.

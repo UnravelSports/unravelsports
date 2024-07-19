@@ -44,4 +44,4 @@ pip install -r requirements.txt
 
 Contributing License
 ----
-Any contributions fall under the [Apache License Version 2.0](https://www.apache.org/licenses/LICENSE-2.0.txt)
+Any contributions fall under the [Apache License Version 2.0](LICENSE-3-CONTRIBUTING)
