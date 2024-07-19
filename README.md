@@ -10,17 +10,18 @@
 🌀 What is it?
 -----
 
-The **unravelsports** package aims to aid researchers, analysts and enthusiasts by converting sports data into meaningful information and actionable insights.
+The **unravelsports** package aims to aid researchers, analysts and enthusiasts by providing intermediary steps in the complex process of turning raw sports data into meaningful information and actionable insights.
 
 🌀 Features
 -----
 
 - ⚽ Converting **positional soccer data** into graphs to train **graph neural networks** by leveraging the powerful [**Kloppy**](https://github.com/PySport/kloppy/tree/master) data conversion standard and [**Spektral**](https://github.com/danielegrattarola/spektral) - a flexible framework for creating graph neural networks. 
-- ⚽ Randomizing and splitting data into **train, test and validation sets** along matches, sequences or possessions to avoid leakage.
+- ⚽ Randomizing and splitting data into **train, test and validation sets** along matches, sequences or possessions to avoid leakage and improve model quality.
+- ⚽ Due to the power of **Kloppy**, **unravelsports** supports these actions for _Metrica_, _Sportec_, _Tracab (CyronHego)_, _SecondSpectrum_, _SkillCorner_ and _StatsPerform_ tracking data.
 
 🌀 Getting Started
 -----
-This [**Getting Started Jupyter Notebook**](examples/getting_started.ipynb) shows you how to convert any positional tracking data from **Kloppy** to **Spektral GNN** in a few easy steps while walking you through the most important features and documentation.
+This [**Getting Started Jupyter Notebook**](examples/getting_started.ipynb) explains how to convert any positional tracking data from **Kloppy** to **Spektral GNN** in a few easy steps while walking you through the most important features and documentation.
 
 🌀 Documentation
 -----
