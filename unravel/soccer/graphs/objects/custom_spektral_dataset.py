@@ -21,9 +21,9 @@ stdout_handler = logging.StreamHandler(sys.stdout)
 logger.addHandler(stdout_handler)
 
 
-class CustomGraphDataset(Dataset, Sequence):
+class CustomSpektralDataset(Dataset, Sequence):
     """
-    A CustomGraphDataset is required to use all Spektral funcitonality, see 'spektral.data -> Dataset'
+    A CustomSpektralDataset is required to use all Spektral funcitonality, see 'spektral.data -> Dataset'
     """
 
     def __init__(self, **kwargs):
@@ -61,7 +61,7 @@ class CustomGraphDataset(Dataset, Sequence):
         """
         data = self.__convert(self.data)
 
-        logger.info(f"Loading {len(data)} graphs into CustomGraphDataset...")
+        logger.info(f"Loading {len(data)} graphs into CustomSpektralDataset...")
 
         return data
 
@@ -69,7 +69,7 @@ class CustomGraphDataset(Dataset, Sequence):
         other = self.__convert(other)
 
         if verbose:
-            logger.info(f"Adding {len(other)} graphs to CustomGraphDataset...")
+            logger.info(f"Adding {len(other)} graphs to CustomSpektralDataset...")
 
         self.graphs = self.graphs + other
 
@@ -148,7 +148,7 @@ class CustomGraphDataset(Dataset, Sequence):
             num_test = dataset_length - num_train
             num_validation = 0
 
-        unique_graph_ids = set([g.get("id")[0] for g in self])
+        unique_graph_ids = set([g.get("id") if hasattr(g, "id") else None for g in self])
         if unique_graph_ids == {None}:
             by_graph_id = False
 

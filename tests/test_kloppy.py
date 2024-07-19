@@ -1,5 +1,5 @@
 from pathlib import Path
-from unravel.soccer import GraphConverter, CustomGraphDataset, GraphFrame
+from unravel.soccer import GraphConverter, CustomSpektralDataset, GraphFrame
 from unravel.utils import DefaultTrackingModel, dummy_labels, dummy_graph_ids
 
 from kloppy import skillcorner
@@ -176,7 +176,7 @@ class TestKloppyData:
         assert 1.0 == pytest.approx(a[0, 4], abs=1e-5)
         assert 0.0 == pytest.approx(a[8, 2], abs=1e-5)
 
-        dataset = CustomGraphDataset(data=spektral_graphs)
+        dataset = CustomSpektralDataset(data=spektral_graphs)
         N, F, S, n_out, n = dataset.dimensions()
         assert N == 21
         assert F == 12

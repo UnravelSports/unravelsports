@@ -29,7 +29,7 @@ from .exceptions import (
     KeyMismatchError,
 )
 
-from .objects import GraphSettings, GraphFrame, CustomGraphDataset
+from .objects import GraphSettings, GraphFrame, CustomSpektralDataset
 
 from ...utils import DefaultTrackingModel, NoLabelWarning
 
@@ -51,7 +51,7 @@ class GraphConverter:
         graph_id (str, int): Set a single id for the whole Kloppy dataset.
         graph_ids (dict): Frame level control over graph ids.
 
-        The graph_ids will be used to assign each graph an identifier. This identifier allows us to split the CustomGraphDataset such that
+        The graph_ids will be used to assign each graph an identifier. This identifier allows us to split the CustomSpektralDataset such that
             all graphs with the same id are either all in the test, train or validation set to avoid leakage. It is recommended to either set graph_id (int, str) as
             a match_id, or pass a dictionary into 'graph_ids' with exactly the same keys as 'labels' for more granualar control over the graph ids.
         The latter can be useful when splitting graphs by possession or sequence id. In this case the dict would be {frame_id: sequence_id/possession_id}.
@@ -270,12 +270,12 @@ class GraphConverter:
             spektral_graphs = [g.to_spektral_graph() for g in self.graph_frames]
         return spektral_graphs
 
-    def to_custom_dataset(self) -> CustomGraphDataset:
+    def to_custom_dataset(self) -> CustomSpektralDataset:
         """
         Spektral requires a spektral Dataset to load the data
         for docs see https://graphneural.network/creating-dataset/
         """
-        return CustomGraphDataset(data=self.to_spektral_graphs())
+        return CustomSpektralDataset(data=self.to_spektral_graphs())
 
     def to_pickle(self, file_path: str) -> None:
         """

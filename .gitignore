@@ -172,6 +172,8 @@ dev.py
 bug.py
 scratch.py
 TODO.md
+BUILD.md
+build.py
 
 /.data
 /pickle_files
