@@ -19,7 +19,7 @@ class TestKloppyData:
 
     @pytest.fixture
     def structured_data(self, base_dir: Path) -> str:
-        return base_dir / "files" / "skillcorner_structured_data.json"
+        return base_dir / "files" / "skillcorner_structured_data.json.gz"
 
     @pytest.fixture()
     def dataset(self, match_data: str, structured_data: str) -> TrackingDataset:
