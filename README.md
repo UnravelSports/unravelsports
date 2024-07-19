@@ -21,11 +21,13 @@ The **unravelsports** package aims to aid researchers, analysts and enthusiasts 
 
 🌀 Getting Started
 -----
-This [**Getting Started Jupyter Notebook**](examples/getting_started.ipynb) explains how to convert any positional tracking data from **Kloppy** to **Spektral GNN** in a few easy steps while walking you through the most important features and documentation.
+📖 The [**Getting Started Jupyter Notebook**](examples/0_getting_started.ipynb) explains how to convert any positional tracking data from **Kloppy** to **Spektral GNN** in a few easy steps while walking you through the most important features and documentation.
+
+📖 The [**Graph Converter Tutorial Jupyter Notebook**](examples/1_tutorial_graph_converter.ipynb) gives an in-depth walkthrough.
 
 🌀 Documentation
 -----
-For now, follow the Getting Started, more documentation will follow!
+For now, follow the [**Graph Converter Tutorial**](examples/1_tutorial_graph_converter.ipynb), more documentation will follow!
 
 Additional reading:
 - 📖 [A Graph Neural Network Deep-dive into Successful Counterattacks {A. Sahasrabudhe & J. Bekkers, 2023}](https://github.com/USSoccerFederation/ussf_ssac_23_soccer_gnn/tree/main)
@@ -48,10 +50,11 @@ An overview on how to contribute can be found in the [**contributing guide**](CO
 
 🌀 Citation
 ----
-If you use this repository for any educational purposes, research, project etc., please reference:
+If you use this repository for any educational purposes, research, project etc., please reference either/or:
 
 📎 [Bekkers, J., & Dabadghao, S. (2019). Flow motifs in soccer: What can passing behavior tell us?. Journal of Sports Analytics, 5(4), 299-311.](https://content.iospress.com/download/journal-of-sports-analytics/jsa190290?id=journal-of-sports-analytics%2Fjsa190290)
-
+<details>
+<summary>BibTex</summary>
 ```
 @article{bekkers2019flow,
   title={Flow motifs in soccer: What can passing behavior tell us?},
@@ -64,11 +67,13 @@ If you use this repository for any educational purposes, research, project etc.,
   publisher={IOS Press}
 }
 ```
+</details>
 
-and / or
+<br>
 
 📎 [Sahasrabudhe, A., & Bekkers, J. (2023). A graph neural network deep-dive into successful counterattacks. MIT Sloan Sports Analytics Conference.](https://ussf-ssac-23-soccer-gnn.s3.us-east-2.amazonaws.com/public/Sahasrabudhe_Bekkers_SSAC23.pdf)
-
+<details>
+<summary>BibTex</summary>
 ```
 @inproceedings{sahasrabudhe2023graph,
   title={A Graph Neural Network deep-dive into successful counterattacks},
@@ -78,8 +83,9 @@ and / or
   year={2023}
 }
 ```
-
-and let me know on 
+</details>
+<br>
+and let me know on
 
 [<img alt="alt_text" width="40px" src="https://github.com/USSoccerFederation/ussf_ssac_23_soccer_gnn/blob/main/img/linkedin.png?raw=true"/>](https://www.linkedin.com/in/joris-bekkers-33138288/)
 [<img alt="alt_text" width="40px" src="https://github.com/USSoccerFederation/ussf_ssac_23_soccer_gnn/blob/main/img/twitter.png?raw=true"/>](https://twitter.com/unravelsports)
