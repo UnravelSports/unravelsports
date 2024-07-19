@@ -1,4 +1,4 @@
-![unravelsports logo](https://github.com/UnravelSports/unravelsports.github.io/blob/main/imgs/unravelsports-5500x800-3.png?raw=true)
+![unravelsports logo](https://github.com/UnravelSports/unravelsports.github.io/blob/main/imgs/unravelsports-5500x800-4.png?raw=true)
 <div align="right">
 
 [![Powered by PySport](https://img.shields.io/badge/powered%20by-PySport-orange.svg?style=flat&colorA=104467&colorB=007D8A)](https://pysport.org)
@@ -89,4 +89,4 @@ and let me know on
 - For **commercial** use this repository falls under the [AGPL-3.0 License](LICENSE-COMMERCIAL)
 - For **non-commerical** use this repository falls under the [BSD 3-Clause](LICENSE-NON-COMMERICIAL)
 
-Because sports organizations (teams, clubs, federations) are a bit weird, I want to explicitely state that reseach projects within sports organizations explicitely fall under the **non-commerical** license.
+Because sports organizations (teams, clubs, federations) are a bit weird, I want to explicitely state that any (reseach) projects - that are not sold to third parties - within sports organizations explicitely fall under the **non-commerical** license.
