@@ -23,7 +23,7 @@ def dummy_graph_ids(dataset: TrackingDataset) -> Dict:
     """
     if not isinstance(dataset, TrackingDataset):
         raise TypeError("dataset should be of type TrackingDataset (from kloppy)")
-    
+
     from uuid import uuid4
 
     graph_ids = dict()

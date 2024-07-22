@@ -24,8 +24,10 @@ class DefaultBall(object):
 
     def set_velocity(self):
         delta_time = 1.0 / self.fps
-        
-        if not (np.any(np.isnan(self.next_position3D)) or np.any(np.isnan(self.position3D))):
+
+        if not (
+            np.any(np.isnan(self.next_position3D)) or np.any(np.isnan(self.position3D))
+        ):
             vx = (self.next_position3D[0] - self.position3D[0]) / delta_time
             vy = (self.next_position3D[1] - self.position3D[1]) / delta_time
             vz = (self.next_position3D[2] - self.position3D[2]) / delta_time
@@ -42,7 +44,6 @@ class DefaultBall(object):
             self.velocity3D = np.asarray([0.0, 0.0, 0.0], dtype=float)
 
         self.speed = np.sqrt(vx**2 + vy**2 + vz**2)
-
 
     def invert_position(self):
         self.next_position = self.next_position * -1.0

@@ -117,17 +117,19 @@ class TestKloppyData:
         assert data.orientation == Orientation.STATIC_HOME_AWAY
         assert data.attacking_players == data.home_players
         assert data.defending_players == data.away_players
-        
+
         hp = data.home_players[3]
-        assert -19.582426479899993 == pytest.approx(hp.x1, abs=1e-5) 
-        assert 24.3039460863 == pytest.approx(hp.y1, abs=1e-5) 
-        assert -19.6022318885 == pytest.approx(hp.x2, abs=1e-5) 
-        assert 24.1632567814 == pytest.approx(hp.y2, abs=1e-5) 
-        assert hp.position.shape == (2, )
-        np.testing.assert_allclose(hp.position, np.asarray([hp.x1, hp.y1]), rtol=1e-4, atol=1e-4)
+        assert -19.582426479899993 == pytest.approx(hp.x1, abs=1e-5)
+        assert 24.3039460863 == pytest.approx(hp.y1, abs=1e-5)
+        assert -19.6022318885 == pytest.approx(hp.x2, abs=1e-5)
+        assert 24.1632567814 == pytest.approx(hp.y2, abs=1e-5)
+        assert hp.position.shape == (2,)
+        np.testing.assert_allclose(
+            hp.position, np.asarray([hp.x1, hp.y1]), rtol=1e-4, atol=1e-4
+        )
         assert hp.is_gk == False
         assert hp.next_position[0] - hp.position[0]
-                
+
         assert data.ball_carrier_idx == 1
         assert len(data.home_players) == 6
         assert len(data.away_players) == 4

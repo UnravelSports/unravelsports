@@ -35,7 +35,6 @@ class DefaultTrackingModel:
     ball_carrier_treshold: bool = 25.0
     verbose: bool = False
     pad_n_players: bool = None
-    
 
     def __post_init__(self):
         self.home_players: List[DefaultPlayer] = list()
@@ -207,7 +206,7 @@ class DefaultTrackingModel:
                         y1=coords.y,
                         y2=next_coords.y,
                         is_visible=True,
-                        fps=self.fps
+                        fps=self.fps,
                     )
 
                     if pid.team.ground == Ground.HOME:
