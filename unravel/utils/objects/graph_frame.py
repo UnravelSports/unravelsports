@@ -5,7 +5,6 @@ import warnings
 from typing import Union
 
 from dataclasses import dataclass, field
-from spektral.data import Graph
 
 from warnings import *
 from ..exceptions import AdjcacenyMatrixTypeNotSet

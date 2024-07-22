@@ -17,8 +17,6 @@ from kloppy.domain import (
     SecondSpectrumCoordinateSystem,
 )
 
-from spektral.data import Graph
-
 from .exceptions import (
     MissingLabelsError,
     MissingDatasetError,

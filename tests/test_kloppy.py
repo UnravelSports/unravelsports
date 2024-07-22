@@ -5,14 +5,13 @@ from unravel.utils import (
     dummy_labels,
     dummy_graph_ids,
     CustomSpektralDataset,
+    SpektralGraph,
     GraphFrame,
 )
 
 from kloppy import skillcorner
 from kloppy.domain import Ground, TrackingDataset
 from typing import List, Dict
-
-from spektral.data import Graph
 
 import pytest
 
@@ -161,7 +160,7 @@ class TestKloppyData:
 
         data = spektral_graphs
         assert len(data) == 387
-        assert isinstance(data[0], Graph)
+        assert isinstance(data[0], SpektralGraph)
         # note: these shape tests fail if we add more features (ie. acceleration)
 
         x = data[0].x
@@ -250,7 +249,7 @@ class TestKloppyData:
 
         data = spektral_graphs
         assert len(data) == 387
-        assert isinstance(data[0], Graph)
+        assert isinstance(data[0], SpektralGraph)
         # note: these shape tests fail if we add more features (ie. acceleration)
 
         x = data[0].x
