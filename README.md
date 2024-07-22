@@ -15,49 +15,22 @@ The **unravelsports** package aims to aid researchers, analysts and enthusiasts 
 🌀 Features
 -----
 
-<ul style="list-style: none; padding: 0; margin-left: 1.2em;">
-  <li style="margin-bottom: 8px;">
-    <span style="display: inline-block; width: 1.2em; margin-right: 0.5em;">⚽</span>
-    Convert <strong>positional soccer data</strong> into graphs to train <strong>graph neural networks</strong> by leveraging the powerful <a href="https://github.com/PySport/kloppy/tree/master"><strong>Kloppy</strong></a> data conversion standard and <a href="https://github.com/danielegrattarola/spektral"><strong>Spektral</strong></a> - a flexible framework for creating GNNs.
-  </li>
-  <li style="margin-bottom: 8px;">
-    <span style="display: inline-block; width: 1.2em; margin-right: 0.5em;">⚽</span>
-    Randomize and split data into <strong>train, test and validation sets</strong> along matches, sequences or possessions to avoid leakage and improve model quality.
-  </li>
-  <li style="margin-bottom: 8px;">
-    <span style="display: inline-block; width: 1.2em; margin-right: 0.5em;">⚽</span>
-    Due to the power of <strong>Kloppy</strong>, <strong>unravelsports</strong> supports these actions for <em>Metrica</em>, <em>Sportec</em>, <em>Tracab (CyronHego)</em>, <em>SecondSpectrum</em>, <em>SkillCorner</em> and <em>StatsPerform</em> tracking data.
-  </li>
-  <li style="margin-bottom: 8px;">
-    <span style="display: inline-block; width: 1.2em; margin-right: 0.5em;">⏳</span>
-    <strong>More to come...</strong>
-  </li>
-</ul>
+- ⚽ Converting **positional soccer data** into graphs to train **graph neural networks** by leveraging the powerful [**Kloppy**](https://github.com/PySport/kloppy/tree/master) data conversion standard and [**Spektral**](https://github.com/danielegrattarola/spektral) - a flexible framework for creating graph neural networks. 
+- ⚽ Randomizing and splitting data into **train, test and validation sets** along matches, sequences or possessions to avoid leakage and improve model quality.
+- ⚽ Due to the power of **Kloppy**, **unravelsports** supports these actions for _Metrica_, _Sportec_, _Tracab (CyronHego)_, _SecondSpectrum_, _SkillCorner_ and _StatsPerform_ tracking data.
 
 🌀 Getting Started
 -----
-<ul style="list-style: none; padding: 0; margin-left: 1.2em;">
-  <li style="margin-bottom: 8px;">
-    <span style="display: inline-block; width: 1.2em; margin-right: 0.5em;">📖</span>
-    The <a href="examples/0_getting_started.ipynb"><strong>Getting Started Jupyter Notebook</strong></a> explains how to convert any positional tracking data from <strong>Kloppy</strong> to <strong>Spektral GNN</strong> in a few easy steps while walking you through the most important functionality.
-  </li>
-  <li style="margin-bottom: 8px;">
-    <span style="display: inline-block; width: 1.2em; margin-right: 0.5em;">📖</span>
-    The <a href="examples/1_tutorial_graph_converter.ipynb"><strong>Graph Converter Tutorial Jupyter Notebook</strong></a> gives an in-depth walkthrough.
-  </li>
-</ul>
+📖 The [**Getting Started Jupyter Notebook**](examples/0_getting_started.ipynb) explains how to convert any positional tracking data from **Kloppy** to **Spektral GNN** in a few easy steps while walking you through the most important features and documentation.
+
+📖 The [**Graph Converter Tutorial Jupyter Notebook**](examples/1_tutorial_graph_converter.ipynb) gives an in-depth walkthrough.
 
 🌀 Documentation
 -----
 For now, follow the [**Graph Converter Tutorial**](examples/1_tutorial_graph_converter.ipynb), more documentation will follow!
 
 Additional reading:
-<ul style="list-style: none; padding: 0; margin-left: 1.2em;">
-  <li style="margin-bottom: 8px;">
-    <span style="display: inline-block; width: 1.2em; margin-right: 0.5em;">📖</span>
-    <a href="https://github.com/USSoccerFederation/ussf_ssac_23_soccer_gnn/tree/main"><strong>A Graph Neural Network Deep-dive into Successful Counterattacks {A. Sahasrabudhe & J. Bekkers, 2023}</strong></a>
-  </li>
-</ul>
+- 📖 [A Graph Neural Network Deep-dive into Successful Counterattacks {A. Sahasrabudhe & J. Bekkers, 2023}](https://github.com/USSoccerFederation/ussf_ssac_23_soccer_gnn/tree/main)
 
 🌀 Installation
 ----
@@ -71,7 +44,7 @@ pip install unravelsports
 
 🌀 Contributing
 ----
-All contributions, bug reports, bug fixes, documentation improvements, enhancements, and ideas are welcome. Feel free to create a Pull Request for any improvements you make that do not contribute to winning more games!
+All contributions, bug reports, bug fixes, documentation improvements, enhancements, and ideas are welcome.
 
 An overview on how to contribute can be found in the [**contributing guide**](CONTRIBUTING.md).
 
