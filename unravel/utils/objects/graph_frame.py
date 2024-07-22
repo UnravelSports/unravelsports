@@ -7,6 +7,9 @@ from typing import Union
 from dataclasses import dataclass, field
 
 from warnings import *
+
+from spektral.data import Graph
+
 from ..exceptions import AdjcacenyMatrixTypeNotSet
 from ..features import (
     AdjacencyMatrixType,
@@ -18,7 +21,6 @@ from ..features import (
     make_sparse,
 )
 from .graph_settings import GraphSettings
-from .spektral_graph import SpektralGraph
 from .default_tracking import DefaultTrackingModel
 
 
@@ -52,9 +54,9 @@ class GraphFrame:
         if self._quality_check(X, E):
             self.graph_data = dict(x=X, a=sparse_A, e=E, y=Y, id=self.graph_id)
 
-    def to_spektral_graph(self) -> SpektralGraph:
+    def to_spektral_graph(self) -> Graph:
         if self.graph_data:
-            return SpektralGraph(
+            return Graph(
                 x=self.graph_data["x"],
                 a=self.graph_data["a"],
                 e=self.graph_data["e"],

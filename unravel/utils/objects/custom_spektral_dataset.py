@@ -12,9 +12,9 @@ import tensorflow as tf
 
 from collections.abc import Sequence
 
-from spektral.data import Dataset
+from spektral.data import Dataset, Graph
 
-from .graph_frame import GraphFrame, SpektralGraph
+from .graph_frame import GraphFrame
 
 from ..exceptions import NoGraphIdsWarning
 
@@ -45,11 +45,11 @@ class CustomSpektralDataset(Dataset, Sequence):
 
         super().__init__(**kwargs)
 
-    def __convert(self, data) -> List[SpektralGraph]:
+    def __convert(self, data) -> List[Graph]:
         """
         Convert incoming data to correct List[Graph] format
         """
-        if isinstance(data[0], SpektralGraph):
+        if isinstance(data[0], Graph):
             return data
         elif isinstance(data[0], GraphFrame):
             return [g.to_spektral_graph() for g in self.data]
@@ -61,7 +61,7 @@ class CustomSpektralDataset(Dataset, Sequence):
         else:
             raise NotImplementedError()
 
-    def read(self) -> List[SpektralGraph]:
+    def read(self) -> List[Graph]:
         """
         Overriding the read function - to return a list of Graph objects
         """

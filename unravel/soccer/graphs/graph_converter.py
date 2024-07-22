@@ -17,6 +17,8 @@ from kloppy.domain import (
     SecondSpectrumCoordinateSystem,
 )
 
+from spektral.data import Graph
+
 from .exceptions import (
     MissingLabelsError,
     MissingDatasetError,
@@ -256,7 +258,7 @@ class GraphConverter:
 
         return self.graph_frames
 
-    def to_spektral_graphs(self) -> List[SpektralGraph]:
+    def to_spektral_graphs(self) -> List[Graph]:
         if not self.graph_frames:
             self.to_graph_frames()
 
