@@ -15,11 +15,13 @@ The **unravelsports** package aims to aid researchers, analysts and enthusiasts 
 🌀 Features
 -----
 
-⚽ Converting **positional soccer data** into graphs to train **graph neural networks** by leveraging the powerful [**Kloppy**](https://github.com/PySport/kloppy/tree/master) data conversion standard and [**Spektral**](https://github.com/danielegrattarola/spektral) - a flexible framework for creating graph neural networks. 
+⚽ Convert **positional soccer data** into graphs to train **graph neural networks** by leveraging the powerful [**Kloppy**](https://github.com/PySport/kloppy/tree/master) data conversion standard and [**Spektral**](https://github.com/danielegrattarola/spektral) - a flexible framework for creating graph neural networks. 
 
-⚽ Randomizing and splitting data into **train, test and validation sets** along matches, sequences or possessions to avoid leakage and improve model quality.
+⚽ Randomize and split data into **train, test and validation sets** along matches, sequences or possessions to avoid leakage and improve model quality.
 
 ⚽ Due to the power of **Kloppy**, **unravelsports** supports these actions for _Metrica_, _Sportec_, _Tracab (CyronHego)_, _SecondSpectrum_, _SkillCorner_ and _StatsPerform_ tracking data.
+
+⌛ ***More to come soon...!***
 
 🌀 Getting Started
 -----
