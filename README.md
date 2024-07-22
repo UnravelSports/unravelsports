@@ -15,9 +15,9 @@ The **unravelsports** package aims to aid researchers, analysts and enthusiasts 
 🌀 Features
 -----
 
-- ⚽ Converting **positional soccer data** into graphs to train **graph neural networks** by leveraging the powerful [**Kloppy**](https://github.com/PySport/kloppy/tree/master) data conversion standard and [**Spektral**](https://github.com/danielegrattarola/spektral) - a flexible framework for creating graph neural networks. 
-- ⚽ Randomizing and splitting data into **train, test and validation sets** along matches, sequences or possessions to avoid leakage and improve model quality.
-- ⚽ Due to the power of **Kloppy**, **unravelsports** supports these actions for _Metrica_, _Sportec_, _Tracab (CyronHego)_, _SecondSpectrum_, _SkillCorner_ and _StatsPerform_ tracking data.
+⚽ Converting **positional soccer data** into graphs to train **graph neural networks** by leveraging the powerful [**Kloppy**](https://github.com/PySport/kloppy/tree/master) data conversion standard and [**Spektral**](https://github.com/danielegrattarola/spektral) - a flexible framework for creating graph neural networks. 
+⚽ Randomizing and splitting data into **train, test and validation sets** along matches, sequences or possessions to avoid leakage and improve model quality.
+⚽ Due to the power of **Kloppy**, **unravelsports** supports these actions for _Metrica_, _Sportec_, _Tracab (CyronHego)_, _SecondSpectrum_, _SkillCorner_ and _StatsPerform_ tracking data.
 
 🌀 Getting Started
 -----
@@ -30,7 +30,7 @@ The **unravelsports** package aims to aid researchers, analysts and enthusiasts 
 For now, follow the [**Graph Converter Tutorial**](examples/1_tutorial_graph_converter.ipynb), more documentation will follow!
 
 Additional reading:
-- 📖 [A Graph Neural Network Deep-dive into Successful Counterattacks {A. Sahasrabudhe & J. Bekkers, 2023}](https://github.com/USSoccerFederation/ussf_ssac_23_soccer_gnn/tree/main)
+📖 [A Graph Neural Network Deep-dive into Successful Counterattacks {A. Sahasrabudhe & J. Bekkers, 2023}](https://github.com/USSoccerFederation/ussf_ssac_23_soccer_gnn/tree/main)
 
 🌀 Installation
 ----
