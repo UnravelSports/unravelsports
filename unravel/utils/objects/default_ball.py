@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 @dataclass
 class DefaultBall(object):
+    fps: int
     x1: float = np.nan
     y1: float = np.nan
     z1: float = 0.0
@@ -22,34 +23,26 @@ class DefaultBall(object):
         self.set_velocity()
 
     def set_velocity(self):
-        # Calculate vx, vy, and vz considering the possibility of NaN values in next_position
-        vx = (
-            (self.next_position3D[0] - self.position3D[0]) / 1.0
-            if not (np.any(np.isnan(self.next_position)))
-            else 0
-        )
-        vy = (
-            (self.next_position3D[1] - self.position3D[1]) / 1.0
-            if not (np.any(np.isnan(self.next_position)))
-            else 0
-        )
-        vz = (
-            (self.next_position3D[2] - self.position3D[2]) / 1.0
-            if not (np.any(np.isnan(self.next_position)))
-            else 0
-        )
+        delta_time = 1.0 / self.fps
+        
+        if not (np.any(np.isnan(self.next_position3D)) or np.any(np.isnan(self.position3D))):
+            vx = (self.next_position3D[0] - self.position3D[0]) / delta_time
+            vy = (self.next_position3D[1] - self.position3D[1]) / delta_time
+            vz = (self.next_position3D[2] - self.position3D[2]) / delta_time
+        else:
+            vx = 0
+            vy = 0
+            vz = 0
 
-        # Update the velocity to include the z component
         self.velocity = np.asarray([vx, vy], dtype=float)
         self.velocity3D = np.asarray([vx, vy, vz], dtype=float)
 
-        # Check if the velocity array has any NaN values, and if so, set velocity to zero in all dimensions
         if np.any(np.isnan(self.velocity)):
             self.velocity = np.asarray([0.0, 0.0], dtype=float)
             self.velocity3D = np.asarray([0.0, 0.0, 0.0], dtype=float)
 
-        # Update the speed calculation to include the z component
         self.speed = np.sqrt(vx**2 + vy**2 + vz**2)
+
 
     def invert_position(self):
         self.next_position = self.next_position * -1.0

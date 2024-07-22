@@ -10,10 +10,12 @@ from unravel.utils import (
 )
 
 from kloppy import skillcorner
-from kloppy.domain import Ground, TrackingDataset
+from kloppy.domain import Ground, TrackingDataset, Orientation
 from typing import List, Dict
 
 import pytest
+
+import numpy as np
 
 
 class TestKloppyData:
@@ -112,8 +114,20 @@ class TestKloppyData:
         assert frame_id == 1525
 
         assert data.attacking_team == Ground.HOME
+        assert data.orientation == Orientation.STATIC_HOME_AWAY
         assert data.attacking_players == data.home_players
         assert data.defending_players == data.away_players
+        
+        hp = data.home_players[3]
+        assert -19.582426479899993 == pytest.approx(hp.x1, abs=1e-5) 
+        assert 24.3039460863 == pytest.approx(hp.y1, abs=1e-5) 
+        assert -19.6022318885 == pytest.approx(hp.x2, abs=1e-5) 
+        assert 24.1632567814 == pytest.approx(hp.y2, abs=1e-5) 
+        assert hp.position.shape == (2, )
+        np.testing.assert_allclose(hp.position, np.asarray([hp.x1, hp.y1]), rtol=1e-4, atol=1e-4)
+        assert hp.is_gk == False
+        assert hp.next_position[0] - hp.position[0]
+                
         assert data.ball_carrier_idx == 1
         assert len(data.home_players) == 6
         assert len(data.away_players) == 4
@@ -166,7 +180,7 @@ class TestKloppyData:
         x = data[0].x
         assert x.shape == (10, 12)
         assert -0.42531483968190475 == pytest.approx(x[0, 0], abs=1e-5)
-        assert 0.019 == pytest.approx(x[0, 4], abs=1e-5)
+        assert 0.188 == pytest.approx(x[0, 4], abs=1e-5)
         assert 0.5614587302341536 == pytest.approx(x[8, 2], abs=1e-5)
 
         e = data[0].e
@@ -255,7 +269,7 @@ class TestKloppyData:
         x = data[0].x
         assert x.shape == (23, 12)
         assert -0.42531483968190475 == pytest.approx(x[2, 0], abs=1e-5)
-        assert 0.019 == pytest.approx(x[2, 4], abs=1e-5)
+        assert 0.188 == pytest.approx(x[2, 4], abs=1e-5)
         assert 0.5614587302341536 == pytest.approx(x[20, 2], abs=1e-5)
 
         e = data[0].e

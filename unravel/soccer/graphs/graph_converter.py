@@ -180,6 +180,7 @@ class GraphConverter:
     def _convert(self, frame: Frame):
         data = DefaultTrackingModel(
             frame,
+            fps=self.dataset.metadata.frame_rate,
             infer_ball_ownership=self.settings.infer_ball_ownership,
             infer_goalkeepers=self.settings.infer_goalkeepers,
             ball_carrier_treshold=self.settings.ball_carrier_treshold,

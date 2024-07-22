@@ -29,16 +29,18 @@ class DefaultTrackingModel:
     frame: TrackingDataset
 
     orientation: Orientation
+    fps: int
     infer_ball_ownership: bool = False
     infer_goalkeepers: bool = False
     ball_carrier_treshold: bool = 25.0
     verbose: bool = False
     pad_n_players: bool = None
+    
 
     def __post_init__(self):
         self.home_players: List[DefaultPlayer] = list()
         self.away_players: List[DefaultPlayer] = list()
-        self.ball: DefaultBall = DefaultBall()
+        self.ball: DefaultBall = None
         self.attacking_team: str = None
         self.ball_carrier_idx: int = None
 
@@ -205,6 +207,7 @@ class DefaultTrackingModel:
                         y1=coords.y,
                         y2=next_coords.y,
                         is_visible=True,
+                        fps=self.fps
                     )
 
                     if pid.team.ground == Ground.HOME:
@@ -219,9 +222,9 @@ class DefaultTrackingModel:
 
             if pad_n_players:
                 for _ in range(0, pad_n_players - len(self.home_players)):
-                    self.home_players.append(DefaultPlayer())
+                    self.home_players.append(DefaultPlayer(fps=self.fps))
                 for _ in range(0, pad_n_players - len(self.away_players)):
-                    self.away_players.append(DefaultPlayer())
+                    self.away_players.append(DefaultPlayer(fps=self.fps))
 
             if isinstance(frame.ball_coordinates, Point):
                 z1, z2 = 0.0, 0.0
@@ -229,6 +232,7 @@ class DefaultTrackingModel:
                 z1, z2 = frame.ball_coordinates.z, next_frame.ball_coordinates.z
 
             self.ball = DefaultBall(
+                fps=self.fps,
                 x1=frame.ball_coordinates.x,
                 y1=frame.ball_coordinates.y,
                 z1=z1,
