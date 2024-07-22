@@ -55,7 +55,7 @@ class CustomSpektralDataset(Dataset, Sequence):
             return [g.to_spektral_graph() for g in self.data]
         elif isinstance(data[0], dict):
             return [
-                SpektralGraph(x=g["x"], a=g["a"], e=g["e"], y=g["y"], id=g["id"])
+                Graph(x=g["x"], a=g["a"], e=g["e"], y=g["y"], id=g["id"])
                 for g in data
             ]
         else:
