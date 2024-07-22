@@ -1,7 +1,3 @@
-class AdjcacenyMatrixTypeNotSet(Exception):
-    pass
-
-
 class MissingDatasetError(Exception):
     pass
 

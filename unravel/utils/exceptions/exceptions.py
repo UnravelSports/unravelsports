@@ -20,3 +20,7 @@ class ModelParametersNotSet(Exception):
 
 class InvalidAttackingTeamType(Exception):
     pass
+
+
+class AdjcacenyMatrixTypeNotSet(Exception):
+    pass

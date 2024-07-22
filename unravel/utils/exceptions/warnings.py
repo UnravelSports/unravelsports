@@ -20,3 +20,7 @@ class NoLabelWarning(Warning):
 
 class QualityCheckWarning(Warning):
     pass
+
+
+class NoGraphIdsWarning(Warning):
+    pass

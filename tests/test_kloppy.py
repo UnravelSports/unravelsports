@@ -1,6 +1,12 @@
 from pathlib import Path
-from unravel.soccer import GraphConverter, CustomSpektralDataset, GraphFrame
-from unravel.utils import DefaultTrackingModel, dummy_labels, dummy_graph_ids
+from unravel.soccer import GraphConverter
+from unravel.utils import (
+    DefaultTrackingModel,
+    dummy_labels,
+    dummy_graph_ids,
+    CustomSpektralDataset,
+    GraphFrame,
+)
 
 from kloppy import skillcorner
 from kloppy.domain import Ground, TrackingDataset

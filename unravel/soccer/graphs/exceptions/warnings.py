@@ -1,2 +1,0 @@
-class NoGraphIdsWarning(Warning):
-    pass

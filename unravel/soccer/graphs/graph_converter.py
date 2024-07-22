@@ -19,9 +19,6 @@ from kloppy.domain import (
 
 from spektral.data import Graph
 
-from .features import adjacency_matrix, edge_features, node_features
-from .features.utils import *
-
 from .exceptions import (
     MissingLabelsError,
     MissingDatasetError,
@@ -29,10 +26,7 @@ from .exceptions import (
     KeyMismatchError,
 )
 
-from .objects import GraphSettings, GraphFrame, CustomSpektralDataset
-
-from ...utils import DefaultTrackingModel, NoLabelWarning
-
+from ...utils import *
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -185,7 +179,7 @@ class GraphConverter:
 
         self.settings.pitch_dimensions = self.dataset.metadata.pitch_dimensions
 
-    def _convert(self, frame: Frame) -> Graph:
+    def _convert(self, frame: Frame):
         data = DefaultTrackingModel(
             frame,
             infer_ball_ownership=self.settings.infer_ball_ownership,
@@ -263,7 +257,7 @@ class GraphConverter:
 
         return self.graph_frames
 
-    def to_spektral_graphs(self) -> List[Graph]:
+    def to_spektral_graphs(self) -> List[SpektralGraph]:
         if not self.graph_frames:
             self.to_graph_frames()
 
