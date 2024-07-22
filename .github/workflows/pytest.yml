@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - bug/crystal_conv_saving
   pull_request:
     branches:
       - main
@@ -13,7 +14,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ['3.10', '3.11', '3.12']
+        python-version: ['3.11']
 
     runs-on: ${{ matrix.os }}
 

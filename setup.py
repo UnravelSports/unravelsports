@@ -11,16 +11,17 @@ setup(
     url="https://github.com/unravelsports/unravelsports",
     packages=["unravel"] + ["unravel." + pkg for pkg in find_packages("unravel")],
     classifiers=[
-        "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
-        "Programming Language :: Python :: 3.12",
         "License :: OSI Approved :: GNU Affero General Public License version 3",
         "Operating System :: OS Independent",
     ],
-    python_requires=">=3.10",
+    python_requires="~=3.11",
     install_requires=[
-        "spektral==1.3.1",
+        "spektral==1.2.0",
         "kloppy @ git+https://github.com/PySport/kloppy.git@9ccbc77c57c2caafaaf04f5aaf090deea8f03b7d",
+        "tensorflow>=2.14.0;platform_machine != 'arm64' or platform_system != 'Darwin'",
+        "tensorflow-macos>=2.14.0;platform_machine == 'arm64' and platform_system == 'Darwin'",
+        "keras==2.14.0",
     ],
     extras_require={
         "test": [

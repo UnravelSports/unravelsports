@@ -223,11 +223,3 @@ class CustomSpektralDataset(Dataset, Sequence):
                 return self[train_idxs], self[test_idxs], self[validation_idxs]
             else:
                 return self[train_idxs], self[test_idxs]
-
-    def get_config(self):
-        config = {"kwargs": self._kwargs}
-        return config
-
-    @classmethod
-    def from_config(cls, config):
-        return cls(**config["kwargs"])

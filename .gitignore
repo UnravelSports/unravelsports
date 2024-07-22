@@ -167,6 +167,7 @@ cython_debug/
 /.venv
 /.pytest_cache
 .DS_Store
+.venv*
 
 dev.py
 bug.py
@@ -179,5 +180,9 @@ build.py
 /pickle_files
 **/pickle_files
 
-tut.ipynb
+*.ipynb
+*.keras
+*.pkl
+*.txt
 
+/models

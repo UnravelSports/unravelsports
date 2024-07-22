@@ -1,4 +1,5 @@
-spektral==1.3.1
-kloppy @ git+https://github.com/PySport/kloppy.git@9ccbc77c57c2caafaaf04f5aaf090deea8f03b7d
-pytest==8.2.2
-"black[jupyter]==24.4.2"
+spektral==1.2.0
+git+https://github.com/PySport/kloppy.git@9ccbc77c57c2caafaaf04f5aaf090deea8f03b7d
+tensorflow>=2.14.0; platform_machine != 'arm64' or platform_system != 'Darwin'
+tensorflow-macos>=2.14.0; platform_machine == 'arm64' and platform_system == 'Darwin'
+keras==2.14.0
