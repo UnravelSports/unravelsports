@@ -1,8 +1,9 @@
 ![unravelsports logo](https://github.com/UnravelSports/unravelsports.github.io/blob/main/imgs/unravelsports-5500x800-4.png?raw=true)
 <div align="right">
 
-[![Powered by PySport](https://img.shields.io/badge/powered%20by-PySport-orange.svg?style=flat&colorA=104467&colorB=007D8A)](https://pysport.org) 
-[![Powered by PySport](https://img.shields.io/badge/powered%20by-UnravelSports-orange.svg?style=flat&colorA=C3C3C3&colorB=E6B611)](https://unravelsports.github.io/)
+[![Powered by PySport](https://img.shields.io/badge/powered%20by-PySport-orange.svg?style=flat&colorA=C3C3C3&colorB=4B99CC)](https://pysport.org) 
+[![Powered by PySport](https://img.shields.io/badge/powered%20by-UnravelSports-orange.svg?style=flat&colorB=E6B611&colorA=C3C3C3)](https://unravelsports.github.io/)
+[![tl;dr legal](https://img.shields.io/badge/license-Mozilla%20Public%20License%20v2.0-orange.svg?style=flat&colorA=C3C3C3&colorB=E20E6A)](https://www.tldrlegal.com/license/mozilla-public-license-2-0-mpl-2) 
 </div>
 
 🌀 `pip install unravelsports`
@@ -26,9 +27,9 @@ The **unravelsports** package aims to aid researchers, analysts and enthusiasts 
 
 ⌛ ***More to come soon...!***
 
-🌀 Getting Started
+🌀 Quick Start
 -----
-📖 The [**Getting Started Jupyter Notebook**](examples/0_quick_start_guide.ipynb) explains how to convert any positional tracking data from **Kloppy** to **Spektral GNN** in a few easy steps while walking you through the most important features and documentation.
+📖 The [**Quick Start Jupyter Notebook**](examples/0_quick_start_guide.ipynb) explains how to convert any positional tracking data from **Kloppy** to **Spektral GNN** in a few easy steps while walking you through the most important features and documentation.
 
 📖 The [**Graph Converter Tutorial Jupyter Notebook**](examples/1_kloppy_gnn_train.ipynb) gives an in-depth walkthrough.
 
@@ -42,19 +43,25 @@ Additional reading:
 
 🌀 Installation
 ----
-Due to compatibility issue **unravelsports** currently only works on Python 3.11 with spektral==1.20.0 tensorflow==2.14.0 and keras==2.14.0. These dependencies come pre-installed with the package!
-
-This package is tested on the latest versions of Ubuntu, MacOS and Windows. 
-
-The easiest way to get started is by running:
+The easiest way to get started is:
 
 ```bash
 pip install unravelsports
 ```
 
+Due to compatibility issues **unravelsports** currently only works on Python 3.11 with:
+```
+spektral==1.20.0 
+tensorflow==2.14.0 
+keras==2.14.0
+```
+These dependencies come pre-installed with the package. It is advised to create a [virtual environment](https://virtualenv.pypa.io/en/latest/).
+
+This package is tested on the latest versions of Ubuntu, MacOS and Windows. 
+
 🌀 Contributing
 ----
-All contributions, bug reports, bug fixes, documentation improvements, enhancements, and ideas are welcome. Please don't hesitate to create a Pull Request for any non-game winning features you have implemented!
+All contributions, bug reports, bug fixes, documentation improvements, enhancements, and ideas are welcome. 
 
 An overview on how to contribute can be found in the [**contributing guide**](CONTRIBUTING.md).
 
@@ -104,7 +111,3 @@ and let me know on
 ----
 This project is licensed under the [Mozilla Public License Version 2.0 (MPL)](LICENSE), which requires that you include a copy of the license and provide attribution to the original authors. Any modifications you make to the MPL-licensed files must be documented, and the source code for those modifications must be made open-source under the same license.
 
-<div align="right">
-
-[![tl;dr legal](https://img.shields.io/badge/license-Mozilla%20Public%20License%20v2.0-orange.svg?style=flat&colorA=104467&colorB=007D8A)](https://www.tldrlegal.com/license/mozilla-public-license-2-0-mpl-2) 
-</div>
