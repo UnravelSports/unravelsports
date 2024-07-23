@@ -41,7 +41,3 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
-
-Contributing License
-----
-Any contributions fall under the [Apache License Version 2.0](LICENSE-3-CONTRIBUTING)
