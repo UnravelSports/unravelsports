@@ -4,7 +4,7 @@ from copy import deepcopy
 
 import warnings
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 
 from typing import List, Union, Dict, Literal
 
@@ -73,7 +73,8 @@ class GraphConverter:
     """
 
     dataset: TrackingDataset
-    labels: dict
+    labels: dict = None
+    prediction: bool = False
     graph_id: Union[str, int, dict] = None
     graph_ids: dict = None
 
@@ -107,14 +108,24 @@ class GraphConverter:
     )
 
     def __post_init__(self):
+        if not self.labels and not self.prediction:
+            raise Exception(
+                "Please specify 'labels' or set 'prediction=True' if you want to use the converted dataset to make predictions on."
+            )
+
         if self.graph_id is not None and self.graph_ids:
             raise Exception("Please set either 'graph_id' or 'graph_ids', not both...")
 
         if self.graph_ids:
-            if not set(list(self.labels.keys())) == set(list(self.graph_ids.keys())):
-                raise KeyMismatchError(
-                    "When 'graph_id' is of type dict it needs to have the exact same keys as 'labels'..."
-                )
+            if not self.prediction:
+                if not set(list(self.labels.keys())) == set(
+                    list(self.graph_ids.keys())
+                ):
+                    raise KeyMismatchError(
+                        "When 'graph_id' is of type dict it needs to have the exact same keys as 'labels'..."
+                    )
+        if not self.graph_ids and self.prediction:
+            self.graph_ids = {x.frame_id: x.frame_id for x in self.dataset}
 
         if hasattr(
             AdjacenyMatrixConnectType, self.adjacency_matrix_connect_type.upper()
@@ -194,7 +205,10 @@ class GraphConverter:
         )
 
         if isinstance(frame, Frame):
-            label = self.labels.get(frame.frame_id, None)
+            if not self.prediction:
+                label = self.labels.get(frame.frame_id, None)
+            else:
+                label = -1
 
             graph_id = None
             if (
@@ -208,7 +222,7 @@ class GraphConverter:
             else:
                 raise NotImplementedError()
 
-            if label is None:
+            if not self.prediction and label is None:
                 if self.settings.verbose:
                     warnings.warn(
                         f"""No label for frame={frame.frame_id} in 'labels'...""",
@@ -232,7 +246,7 @@ class GraphConverter:
                 )
 
             if isinstance(self.dataset, TrackingDataset):
-                if not self.labels:
+                if not self.labels and not self.prediction:
                     raise MissingLabelsError(
                         "Please specificy 'labels' of type Dict when using Kloppy"
                     )
@@ -262,25 +276,29 @@ class GraphConverter:
         if not self.graph_frames:
             self.to_graph_frames()
 
-            spektral_graphs = [g.to_spektral_graph() for g in self.graph_frames]
-        return spektral_graphs
+        return [g.to_spektral_graph() for g in self.graph_frames]
+        
 
     def to_custom_dataset(self) -> CustomSpektralDataset:
         """
         Spektral requires a spektral Dataset to load the data
         for docs see https://graphneural.network/creating-dataset/
         """
-        return CustomSpektralDataset(data=self.to_spektral_graphs())
+        return CustomSpektralDataset(graphs=self.to_spektral_graphs())
 
     def to_pickle(self, file_path: str) -> None:
         """
         We store the 'dict' version of the Graphs to pickle each graph is now a dict with keys x, a, e, and y
         To use for training with Spektral feed the loaded pickle data to CustomDataset(data=pickled_data)
         """
+        if not file_path.endswith('pickle.gz'):
+            raise ValueError("Only compressed pickle files of type 'some_file_name.pickle.gz' are supported...")
+        
         if not self.graph_frames:
             self.to_graph_frames()
 
         import pickle
+        import gzip
         from pathlib import Path
 
         path = Path(file_path)
@@ -288,6 +306,6 @@ class GraphConverter:
         directories = path.parent
         directories.mkdir(parents=True, exist_ok=True)
 
-        with open(file_path, "wb") as file:
+        with gzip.open(file_path, "wb") as file:
             data = [x.graph_data for x in self.graph_frames]
             pickle.dump(data, file)

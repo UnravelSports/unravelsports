@@ -15,23 +15,25 @@ The **unravelsports** package aims to aid researchers, analysts and enthusiasts 
 🌀 Features
 -----
 
-⚽ Convert **positional soccer data** into graphs to train **graph neural networks** by leveraging the powerful [**Kloppy**](https://github.com/PySport/kloppy/tree/master) data conversion standard and [**Spektral**](https://github.com/danielegrattarola/spektral) - a flexible framework for creating graph neural networks. 
+⚽ Convert **positional soccer data** into graphs to train **graph neural networks** by leveraging the powerful [**Kloppy**](https://github.com/PySport/kloppy/tree/master) data conversion standard and [**Spektral**](https://github.com/danielegrattarola/spektral) - a flexible framework for training graph neural networks. 
 
 ⚽ Randomize and split data into **train, test and validation sets** along matches, sequences or possessions to avoid leakage and improve model quality.
 
-⚽ Due to the power of **Kloppy**, **unravelsports** supports these actions for _Metrica_, _Sportec_, _Tracab (CyronHego)_, _SecondSpectrum_, _SkillCorner_ and _StatsPerform_ tracking data.
+⚽ Train, validate and test your (custom) Graph model(s) and easily predict on new data.
+
+⚽ Leverage the power of **Kloppy** standardization and use **unravelsports** to execute the above for _Metrica_, _Sportec_, _Tracab (CyronHego)_, _SecondSpectrum_, _SkillCorner_ and _StatsPerform_ tracking data.
 
 ⌛ ***More to come soon...!***
 
 🌀 Getting Started
 -----
-📖 The [**Getting Started Jupyter Notebook**](examples/0_getting_started.ipynb) explains how to convert any positional tracking data from **Kloppy** to **Spektral GNN** in a few easy steps while walking you through the most important features and documentation.
+📖 The [**Getting Started Jupyter Notebook**](examples/0_quick_start_guide.ipynb) explains how to convert any positional tracking data from **Kloppy** to **Spektral GNN** in a few easy steps while walking you through the most important features and documentation.
 
-📖 The [**Graph Converter Tutorial Jupyter Notebook**](examples/1_tutorial_graph_converter.ipynb) gives an in-depth walkthrough.
+📖 The [**Graph Converter Tutorial Jupyter Notebook**](examples/1_kloppy_gnn_train.ipynb) gives an in-depth walkthrough.
 
 🌀 Documentation
 -----
-For now, follow the [**Graph Converter Tutorial**](examples/1_tutorial_graph_converter.ipynb), more documentation will follow!
+For now, follow the [**Graph Converter Tutorial**](examples/1_kloppy_gnn_train.ipynb), more documentation will follow!
 
 Additional reading:
 
@@ -39,7 +41,7 @@ Additional reading:
 
 🌀 Installation
 ----
-**unravelsports** is compatible with Python 3.10+ and it is tested on the latest versions of Ubuntu, MacOS and Windows.
+Due to compatibility issue **unravelsports** currently only works on Python 3.11 with spektral==1.20.0 tensorflow==2.14.0 and keras==2.14.0. It is tested on the latest versions of Ubuntu, MacOS and Windows.
 
 The easiest way to get started is by running:
 
@@ -49,7 +51,7 @@ pip install unravelsports
 
 🌀 Contributing
 ----
-All contributions, bug reports, bug fixes, documentation improvements, enhancements, and ideas are welcome.
+All contributions, bug reports, bug fixes, documentation improvements, enhancements, and ideas are welcome. Please don't hesitate to create a Pull Request for any non-game winning features you have implemented!
 
 An overview on how to contribute can be found in the [**contributing guide**](CONTRIBUTING.md).
 

@@ -6,6 +6,10 @@ import numpy as np
 
 import random
 
+import gzip
+import pickle
+from pathlib import Path
+
 import warnings
 
 import tensorflow as tf
@@ -18,10 +22,12 @@ from .graph_frame import GraphFrame
 
 from ..exceptions import NoGraphIdsWarning
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-stdout_handler = logging.StreamHandler(sys.stdout)
-logger.addHandler(stdout_handler)
+
+# Function to load data from a .pickle.gz file
+def load_pickle_gz(file_path):
+    with gzip.open(file_path, "rb") as f:
+        data = pickle.load(f)
+    return data
 
 
 class CustomSpektralDataset(Dataset, Sequence):
@@ -33,15 +39,28 @@ class CustomSpektralDataset(Dataset, Sequence):
         """
         Constructor to load parameters.
         """
-        super().__init__(**kwargs)
+        # super().__init__(**kwargs)
         self._kwargs = kwargs  # Store kwargs for serialization
 
-        if kwargs.get("data", None):
-
-            if not isinstance(kwargs["data"], list):
+        if kwargs.get("pickle_folder", None):
+            pickle_folder = Path(kwargs["pickle_folder"])
+            self.graphs = None
+            # Loop over all .pickle.gz files in the folder
+            for pickle_file in pickle_folder.glob("*.pickle.gz"):
+                data = load_pickle_gz(pickle_file)
+                if not self.graphs:
+                    self.graphs = self.__convert(data)
+                else:
+                    self.add(data)
+        elif kwargs.get("graphs", None):
+            if not isinstance(kwargs["graphs"], list):
                 raise NotImplementedError("""data should be of type list""")
 
-            self.data = kwargs["data"]
+            self.graphs = kwargs["graphs"]
+        else:
+            raise NotImplementedError(
+                "Please provide either 'pickle_folder' or 'graphs' as parameter to CustomSpektralDataset"
+            )
 
         super().__init__(**kwargs)
 
@@ -64,17 +83,17 @@ class CustomSpektralDataset(Dataset, Sequence):
         """
         Overriding the read function - to return a list of Graph objects
         """
-        data = self.__convert(self.data)
+        graphs = self.__convert(self.graphs)
 
-        logger.info(f"Loading {len(data)} graphs into CustomSpektralDataset...")
+        logging.info(f"Loading {len(graphs)} graphs into CustomSpektralDataset...")
 
-        return data
+        return graphs
 
     def add(self, other, verbose: bool = False):
         other = self.__convert(other)
 
         if verbose:
-            logger.info(f"Adding {len(other)} graphs to CustomSpektralDataset...")
+            logging.info(f"Adding {len(other)} graphs to CustomSpektralDataset...")
 
         self.graphs = self.graphs + other
 

@@ -178,6 +178,7 @@ build.py
 
 /.data
 /pickle_files
+**/pickles
 **/pickle_files
 
 *.ipynb

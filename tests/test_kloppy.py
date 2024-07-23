@@ -198,7 +198,7 @@ class TestKloppyData:
         assert 1.0 == pytest.approx(a[0, 4], abs=1e-5)
         assert 0.0 == pytest.approx(a[8, 2], abs=1e-5)
 
-        dataset = CustomSpektralDataset(data=spektral_graphs)
+        dataset = CustomSpektralDataset(graphs=spektral_graphs)
         N, F, S, n_out, n = dataset.dimensions()
         assert N == 21
         assert F == 12
@@ -262,7 +262,6 @@ class TestKloppyData:
 
         # with random seed = 42 the permuntation is [15  9  0  8 17 12  1 13  5  2 11 20  3  4 18 16 21 22  7 10 14 19  6]
         assert 1 == 1
-        # assert isinstance(spektral_dataset, CustomDataset)
 
         data = spektral_graphs
         assert len(data) == 387
