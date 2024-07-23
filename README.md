@@ -41,7 +41,7 @@ Additional reading:
 
 🌀 Installation
 ----
-Due to compatibility issue **unravelsports** currently only works on Python 3.11 with spektral==1.20.0 tensorflow==2.14.0 and keras==2.14.0. It is tested on the latest versions of Ubuntu, MacOS and Windows.
+Due to compatibility issue **unravelsports** currently only works on Python 3.11 with spektral==1.20.0 tensorflow==2.14.0 and keras==2.14.0. It is tested on the latest versions of Ubuntu, MacOS and Windows. These dependencies come pre-installed with the package!
 
 The easiest way to get started is by running:
 
