@@ -277,7 +277,6 @@ class GraphConverter:
             self.to_graph_frames()
 
         return [g.to_spektral_graph() for g in self.graph_frames]
-        
 
     def to_custom_dataset(self) -> CustomSpektralDataset:
         """
@@ -291,9 +290,11 @@ class GraphConverter:
         We store the 'dict' version of the Graphs to pickle each graph is now a dict with keys x, a, e, and y
         To use for training with Spektral feed the loaded pickle data to CustomDataset(data=pickled_data)
         """
-        if not file_path.endswith('pickle.gz'):
-            raise ValueError("Only compressed pickle files of type 'some_file_name.pickle.gz' are supported...")
-        
+        if not file_path.endswith("pickle.gz"):
+            raise ValueError(
+                "Only compressed pickle files of type 'some_file_name.pickle.gz' are supported..."
+            )
+
         if not self.graph_frames:
             self.to_graph_frames()
 

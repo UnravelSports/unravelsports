@@ -1,18 +1,12 @@
 from pathlib import Path
 from unravel.soccer import GraphConverter
-from unravel.utils import (
-    dummy_labels,
-    dummy_graph_ids,
-    CustomSpektralDataset
-)
+from unravel.utils import dummy_labels, dummy_graph_ids, CustomSpektralDataset
 from unravel.classifiers import CrystalGraphClassifier
 
 from tensorflow.keras.models import load_model
 from tensorflow.keras.losses import BinaryCrossentropy
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.metrics import (
-    AUC, BinaryAccuracy
-)
+from tensorflow.keras.metrics import AUC, BinaryAccuracy
 
 
 from kloppy import skillcorner
@@ -94,46 +88,43 @@ class TestSpektral:
 
     def test_training(self, converter: GraphConverter):
         train = CustomSpektralDataset(graphs=converter.to_spektral_graphs())
-        
+
         cd = converter.to_custom_dataset()
         assert isinstance(cd, CustomSpektralDataset)
-        
-        converter.to_pickle('tests/files/test.pickle.gz')
-        
+
+        converter.to_pickle("tests/files/test.pickle.gz")
+
         with pytest.raises(
             ValueError,
             match="Only compressed pickle files of type 'some_file_name.pickle.gz' are supported...",
         ):
-            converter.to_pickle('tests/files/test.pickle')
-            
+            converter.to_pickle("tests/files/test.pickle")
+
         model = CrystalGraphClassifier()
-        
+
         assert model.channels == 128
         assert model.drop_out == 0.5
         assert model.n_layers == 3
         assert model.n_out == 1
 
         model.compile(
-            loss=BinaryCrossentropy(), 
+            loss=BinaryCrossentropy(),
             optimizer=Adam(),
-            metrics=[
-                AUC(), 
-                BinaryAccuracy()
-            ]
+            metrics=[AUC(), BinaryAccuracy()],
         )
-        
+
         loader_tr = DisjointLoader(train, batch_size=32)
         model.fit(
-            loader_tr.load(), 
+            loader_tr.load(),
             epochs=1,
-            steps_per_epoch=loader_tr.steps_per_epoch, 
-            verbose=0
+            steps_per_epoch=loader_tr.steps_per_epoch,
+            verbose=0,
         )
-        
-        model_path = 'tests/files/models/my-test-gnn'
+
+        model_path = "tests/files/models/my-test-gnn"
         model.save(model_path)
         loaded_model = load_model(model_path)
-        
+
         loader_te = DisjointLoader(train, batch_size=32, epochs=1, shuffle=False)
         pred = model.predict(loader_te.load())
 
@@ -141,23 +132,25 @@ class TestSpektral:
         loaded_pred = loaded_model.predict(loader_te.load(), use_multiprocessing=True)
 
         assert np.allclose(pred, loaded_pred, atol=1e-8)
-    
+
     def test_prediction(self, converter_preds: GraphConverter):
-        pred_dataset = CustomSpektralDataset(graphs=converter_preds.to_spektral_graphs())
-        loader_pred = DisjointLoader(pred_dataset, batch_size=32, epochs=1, shuffle=False)
-        
-        model_path = 'tests/files/models/my-test-gnn'
+        pred_dataset = CustomSpektralDataset(
+            graphs=converter_preds.to_spektral_graphs()
+        )
+        loader_pred = DisjointLoader(
+            pred_dataset, batch_size=32, epochs=1, shuffle=False
+        )
+
+        model_path = "tests/files/models/my-test-gnn"
         loaded_model = load_model(model_path)
-        
+
         preds = loaded_model.predict(loader_pred.load())
-        
+
         assert not np.any(np.isnan(preds.flatten()))
-                          
-        df = pd.DataFrame({
-            "frame_id": [x.id for x in pred_dataset],
-            "y": preds.flatten()
-        })
-        
-        assert df['frame_id'].iloc[0] == 1524
-        assert df['frame_id'].iloc[-1] == 1621
-    
+
+        df = pd.DataFrame(
+            {"frame_id": [x.id for x in pred_dataset], "y": preds.flatten()}
+        )
+
+        assert df["frame_id"].iloc[0] == 1524
+        assert df["frame_id"].iloc[-1] == 1621
