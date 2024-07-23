@@ -181,9 +181,5 @@ build.py
 **/pickles
 **/pickle_files
 
-*.ipynb
-*.keras
-*.pkl
-*.txt
-
 /models
+/dev
