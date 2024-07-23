@@ -1,7 +1,8 @@
 ![unravelsports logo](https://github.com/UnravelSports/unravelsports.github.io/blob/main/imgs/unravelsports-5500x800-4.png?raw=true)
 <div align="right">
 
-[![Powered by PySport](https://img.shields.io/badge/powered%20by-PySport-orange.svg?style=flat&colorA=104467&colorB=007D8A)](https://pysport.org)
+[![Powered by PySport](https://img.shields.io/badge/powered%20by-PySport-orange.svg?style=flat&colorA=104467&colorB=007D8A)](https://pysport.org) 
+[![Powered by PySport](https://img.shields.io/badge/powered%20by-UnravelSports-orange.svg?style=flat&colorA=C3C3C3&colorB=E6B611)](https://unravelsports.github.io/)
 </div>
 
 🌀 `pip install unravelsports`
@@ -17,11 +18,11 @@ The **unravelsports** package aims to aid researchers, analysts and enthusiasts 
 
 ⚽ Convert **positional soccer data** into graphs to train **graph neural networks** by leveraging the powerful [**Kloppy**](https://github.com/PySport/kloppy/tree/master) data conversion standard and [**Spektral**](https://github.com/danielegrattarola/spektral) - a flexible framework for training graph neural networks. 
 
-⚽ Randomize and split data into **train, test and validation sets** along matches, sequences or possessions to avoid leakage and improve model quality.
+⚽ **Randomize** and **split** data into train, test and validation sets along matches, sequences or possessions to avoid leakage and improve model quality.
 
-⚽ Train, validate and test your (custom) Graph model(s) and easily predict on new data.
+⚽ **Train**, **validate** and **test** your (custom) Graph model(s) and easily **predict** on new data.
 
-⚽ Leverage the power of **Kloppy** standardization and use **unravelsports** to execute the above for _Metrica_, _Sportec_, _Tracab (CyronHego)_, _SecondSpectrum_, _SkillCorner_ and _StatsPerform_ tracking data.
+⚽ Leverage the power of **Kloppy** standardization and **unravelsports** to execute the these features for _Metrica_, _Sportec_, _Tracab (CyronHego)_, _SecondSpectrum_, _SkillCorner_ and _StatsPerform_ tracking data.
 
 ⌛ ***More to come soon...!***
 
@@ -41,7 +42,9 @@ Additional reading:
 
 🌀 Installation
 ----
-Due to compatibility issue **unravelsports** currently only works on Python 3.11 with spektral==1.20.0 tensorflow==2.14.0 and keras==2.14.0. It is tested on the latest versions of Ubuntu, MacOS and Windows. These dependencies come pre-installed with the package!
+Due to compatibility issue **unravelsports** currently only works on Python 3.11 with spektral==1.20.0 tensorflow==2.14.0 and keras==2.14.0. These dependencies come pre-installed with the package!
+
+This package is tested on the latest versions of Ubuntu, MacOS and Windows. 
 
 The easiest way to get started is by running:
 
