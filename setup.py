@@ -12,7 +12,7 @@ setup(
     packages=["unravel"] + ["unravel." + pkg for pkg in find_packages("unravel")],
     classifiers=[
         "Programming Language :: Python :: 3.11",
-        "License :: OSI Approved :: GNU Affero General Public License version 3",
+        "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
         "Operating System :: OS Independent",
     ],
     python_requires="~=3.11",

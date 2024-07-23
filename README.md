@@ -102,8 +102,9 @@ and let me know on
 
 🌀 Licenses
 ----
-- For **commercial** use this repository falls under the [AGPL-3.0 License](LICENSE-COMMERCIAL)
-- For **non-commerical** use this repository falls under the [BSD 3-Clause](LICENSE-NON-COMMERICIAL)
-- Any **contributions** made to this repository fall under the [Apache License Version 2.0](LICENSE-3-CONTRIBUTING)
+This project is licensed under the [Mozilla Public License Version 2.0 (MPL)](LICENSE), which requires that you include a copy of the license and provide attribution to the original authors. Any modifications you make to the MPL-licensed files must be documented, and the source code for those modifications must be made open-source under the same license.
 
-Because sports organizations (teams, clubs, federations) are a bit weird, I want to explicitely state that any (reseach) projects - that are not sold to third parties - within these _sports organizations_ explicitely fall under the **non-commerical** license.
+<div align="right">
+
+[![tl;dr legal](https://img.shields.io/badge/license-Mozilla%20Public%20License%20v2.0-orange.svg?style=flat&colorA=104467&colorB=007D8A)](https://www.tldrlegal.com/license/mozilla-public-license-2-0-mpl-2) 
+</div>
