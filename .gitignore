@@ -183,3 +183,5 @@ build.py
 
 /models
 /dev
+
+*.ipynb

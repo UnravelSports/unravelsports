@@ -54,6 +54,7 @@ Due to compatibility issues **unravelsports** currently only works on Python 3.1
 spektral==1.20.0 
 tensorflow==2.14.0 
 keras==2.14.0
+kloppy==3.15.0
 ```
 These dependencies come pre-installed with the package. It is advised to create a [virtual environment](https://virtualenv.pypa.io/en/latest/).
 
@@ -67,21 +68,19 @@ An overview on how to contribute can be found in the [**contributing guide**](CO
 
 🌀 Citation
 ----
-If you use this repository for any educational purposes, research, project etc., please reference either/or:
+If you use this repository for any educational purposes, research, project etc., please reference both:
 
-📎 [Bekkers, J., & Dabadghao, S. (2019). Flow motifs in soccer: What can passing behavior tell us?. Journal of Sports Analytics, 5(4), 299-311.](https://content.iospress.com/download/journal-of-sports-analytics/jsa190290?id=journal-of-sports-analytics%2Fjsa190290)
+📎 [The `unravelsports` package](https://github.com/unravelsports/unravelsports).
 <details>
 <summary>BibTex</summary>
 <pre>
-@article{bekkers2019flow,
-  title={Flow motifs in soccer: What can passing behavior tell us?},
-  author={Bekkers, Joris and Dabadghao, Shaunak},
-  journal={Journal of Sports Analytics},
-  volume={5},
-  number={4},
-  pages={299--311},
-  year={2019},
-  publisher={IOS Press}
+@software{unravelsports2024repository,
+  author = {Bekkers, Joris},
+  title = {unravelsports},
+  version = {0.1.0},
+  year = {2024},
+  publisher = {GitHub},
+  url = {https://github.com/unravelsports/unravelsports}
 }
 </pre>
 </details>
