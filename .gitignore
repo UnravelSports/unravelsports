@@ -183,9 +183,9 @@ build.py
 tests/files/models/my-test-gnn/*
 tests/files/test.pickle.gz
 
+examples/models/*
 /models
 /dev
-
-*.ipynb
+/*.ipynb
 
 .env
