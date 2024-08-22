@@ -12,7 +12,7 @@
 🌀 What is it?
 -----
 
-The **unravelsports** package aims to aid researchers, analysts and enthusiasts by providing intermediary steps in the complex process of turning raw sports data into meaningful information and actionable insights.
+The **unravelsports** package aims to aid researchers, analysts and enthusiasts by providing intermediary steps in the complex process of converting raw sports data into meaningful information and actionable insights.
 
 🌀 Features
 -----
