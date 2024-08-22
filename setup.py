@@ -2,6 +2,7 @@ from setuptools import setup, find_packages
 import os
 import re
 
+
 # Read the version from the __init__.py file
 def read_version():
     version_file = os.path.join(os.path.dirname(__file__), "unravel", "__init__.py")
@@ -10,6 +11,7 @@ def read_version():
         if version_match:
             return version_match.group(1)
         raise RuntimeError("Unable to find version string.")
+
 
 setup(
     name="unravelsports",
