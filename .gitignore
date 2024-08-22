@@ -180,8 +180,12 @@ build.py
 /pickle_files
 **/pickles
 **/pickle_files
+tests/files/models/my-test-gnn/*
+tests/files/test.pickle.gz
 
 /models
 /dev
 
 *.ipynb
+
+.env
