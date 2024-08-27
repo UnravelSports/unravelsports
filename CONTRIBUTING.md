@@ -23,7 +23,7 @@ black .
 ```
 Make sure you have **black** installed by running:
 ```bash
-pip install bash[jupyter]
+pip install black[jupyter]
 ```
 #### 6. Commit and push the changes to your fork
 ```bash
