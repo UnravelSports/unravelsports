@@ -112,3 +112,7 @@ def reindex(m, non_zero_idxs, len_a):
 def make_sparse(a):
     A = sparse.csr_matrix(a)
     return np.nan_to_num(A)
+
+
+def coord(value):
+    return value

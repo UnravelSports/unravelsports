@@ -33,6 +33,7 @@ logger.setLevel(logging.DEBUG)
 stdout_handler = logging.StreamHandler(sys.stdout)
 logger.addHandler(stdout_handler)
 
+from ...utils.features.node_feature_set import NodeFeatureSet
 
 @dataclass(repr=True)
 class GraphConverter:
@@ -105,6 +106,10 @@ class GraphConverter:
     graph_frames: dict = field(init=False, repr=False, default=None)
     settings: GraphSettings = field(
         init=False, repr=False, default_factory=GraphSettings
+    )
+    
+    node_features: NodeFeatureSet = field(
+        init=False, repr=False, default_factory=NodeFeatureSet
     )
 
     def __post_init__(self):
