@@ -22,7 +22,7 @@ from ..features import (
 )
 from .graph_settings import GraphSettings
 from .default_tracking import DefaultTrackingModel
-
+from ..features.node_feature_set import NodeFeatureSet
 
 @dataclass
 class GraphFrame:
@@ -32,6 +32,7 @@ class GraphFrame:
     graph_id: Union[str, int]
     label: Union[int, bool]
     graph_data: dict = field(init=False, repr=False, default=None)
+    node_features: NodeFeatureSet
 
     def __post_init__(self):
         A, A_delaunay = self._adjaceny_matrix()
@@ -120,6 +121,7 @@ class GraphFrame:
             include_ball_node=True,
             defending_team_node_value=self.settings.defending_team_node_value,
             non_potential_receiver_node_value=self.settings.non_potential_receiver_node_value,
+            function_list=self.node_features.get_features()
         )
 
     def _edge_features(self, A, A_delaunay):

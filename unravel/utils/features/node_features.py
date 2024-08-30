@@ -1,5 +1,6 @@
 import math
 import numpy as np
+import inspect
 
 from .utils import (
     unit_vector,
@@ -21,6 +22,7 @@ def node_features(
     include_ball_node: bool = True,
     defending_team_node_value: float = 0.1,
     non_potential_receiver_node_value: float = 0.1,
+    function_list = None
 ):
     """
     node features matrix is (n_nodes, n_node_features) (<=23, 17)
@@ -138,6 +140,25 @@ def node_features(
         ]
     )
 
+    all_params = {'value': 10.0, 'max_value': 105.0}
+    results = {}
+    for func in function_list:
+        sig = inspect.signature(func)
+        func_args = {}
+        for param_name, _ in sig.parameters.items():
+            if param_name in all_params:
+                func_args[param_name] = all_params[param_name]
+            else:
+                func_args[param_name] = None
+
+        if func_args:
+            try:
+                result = func(**func_args)
+                results[func.__name__] = result
+            except Exception as e:
+                results[func.__name__] = f"Error: {str(e)}"
+    
+    print(results)
     # compute ball features
     b_features = ball_features(ball)
     X = np.append(ap_features, dp_features, axis=0)

@@ -271,6 +271,7 @@ class GraphConverter:
                         label=label,
                         graph_id=graph_id,
                         settings=self.settings,
+                        node_features = self.node_features
                     )
                     if gnn_frame.graph_data:
                         self.graph_frames.append(gnn_frame)
