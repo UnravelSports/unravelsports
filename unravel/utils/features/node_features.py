@@ -140,7 +140,7 @@ def node_features(
         ]
     )
 
-    all_params = {'value': 10.0, 'max_value': 105.0}
+    all_params = {'x': 10.0, 'max_x': 105.0, 'y': 5.0, 'max_y': 90}
     results = {}
     for func in function_list:
         sig = inspect.signature(func)

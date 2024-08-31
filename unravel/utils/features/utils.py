@@ -114,5 +114,15 @@ def make_sparse(a):
     return np.nan_to_num(A)
 
 
-def coord(value):
-    return value
+#Functions for node features
+def normalize_x(x, max_x):
+    return x / max_x
+
+def coord_x(x):
+    return x
+
+def normalize_y(y, max_y):
+    return y / max_y
+
+def coord_y(y):
+    return y
