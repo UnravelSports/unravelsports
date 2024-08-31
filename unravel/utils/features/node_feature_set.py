@@ -44,9 +44,9 @@ class NodeFeatureSet:
             print("Warning: No velocity component added. Please add either x or y components")
             return
         if x:
-            self.node_feature_functions.append(('unit_velocity_x', unit_vector, ['velocity_x']))
+            self.node_feature_functions.append(('unit_velocity_x', lambda velocity: unit_vector(velocity)[0], ['velocity']))
         if y:
-            self.node_feature_functions.append(('unit_velocity_y', unit_vector, ['velocity_y']))
+            self.node_feature_functions.append(('unit_velocity_y', lambda velocity: unit_vector(velocity)[1], ['velocity']))
         return self
     
     def add_speed(self, normed: bool = True):
