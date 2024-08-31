@@ -56,6 +56,9 @@ def node_features(
                   'velocity': p.velocity,
                   'speed': p.speed,
                   'max_speed': max_player_speed,
+                  'position': p.position,
+                  'goal_mouth_position': goal_mouth_position,
+                  'max_dist_to_goal': max_dist_to_goal
                   }
         computed_values = {}
         for func_name, func, reqd_params in function_list:
