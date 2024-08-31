@@ -140,25 +140,33 @@ def node_features(
         ]
     )
 
-    all_params = {'x': 10.0, 'max_x': 105.0, 'y': 5.0, 'max_y': 90}
-    results = {}
-    for func in function_list:
-        sig = inspect.signature(func)
-        func_args = {}
-        for param_name, _ in sig.parameters.items():
-            if param_name in all_params:
-                func_args[param_name] = all_params[param_name]
-            else:
-                func_args[param_name] = None
-
-        if func_args:
-            try:
-                result = func(**func_args)
-                results[func.__name__] = result
-            except Exception as e:
-                results[func.__name__] = f"Error: {str(e)}"
+    all_params = {'x': 10.0, 
+                  'max_x': 105.0, 
+                  'y': 5.0, 
+                  'max_y': 90.0, 
+                  'velocity_x': 20.0,
+                  'velocity_y': 10.0,
+                  'speed': 20.0,
+                  'max_speed': 40.0,
+                  }
     
-    print(results)
+    computed_values = {}
+    for func_name, func, reqd_params in function_list:
+        try:
+            if all(param in all_params for param in reqd_params): #if all the required parameters exist in all_params, then compute
+                params = [all_params[param] for param in reqd_params]
+                value = func(*params)
+                computed_values[func_name] = value
+            else: #else, print out the missing parameters. Maybe you should check if there is a default value. Then it is okay if the parameter is not present
+                missing_params = [param for param in reqd_params if param not in all_params]
+                print(f"Warning: Missing parameters {missing_params} for function '{func_name}'")
+                computed_values[func_name] = None
+        except Exception as e:
+            print(f"Error while executing function '{func_name}': {e}")
+            computed_values[func_name] = None    
+    
+    print(computed_values)
+    
     # compute ball features
     b_features = ball_features(ball)
     X = np.append(ap_features, dp_features, axis=0)

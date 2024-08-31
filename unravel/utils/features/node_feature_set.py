@@ -1,8 +1,9 @@
 from .utils import (
-    normalize_x,
-    coord_x,
-    normalize_y,
-    coord_y,
+    normalize_coords,
+    coord,
+    unit_vector,
+    normalize_speed,
+    normalize_angles
 )
 
 
@@ -20,9 +21,9 @@ class NodeFeatureSet:
         If 'normed=True', the function will normalize the x coordinate
         """
         if normed:
-            self.node_feature_functions.append(normalize_x)
+            self.node_feature_functions.append(('normalize_x', normalize_coords, ['x', 'max_x']))
         else:
-            self.node_feature_functions.append(coord_x)
+            self.node_feature_functions.append(('coord_x', coord, ['x']))
 
         return self
     
@@ -32,10 +33,27 @@ class NodeFeatureSet:
         If 'normed=True', the function will normalize the x coordinate
         """
         if normed:
-            self.node_feature_functions.append(normalize_y)
+            self.node_feature_functions.append(('normalize_y', normalize_coords, ['y', 'max_y']))
         else:
-            self.node_feature_functions.append(coord_y)
+            self.node_feature_functions.append(('coord_y', coord, ['y']))
 
+        return self
+    
+    def add_velocity(self, x: bool = True, y: bool = True):
+        if not (x or y):
+            print("Warning: No velocity component added. Please add either x or y components")
+            return
+        if x:
+            self.node_feature_functions.append(('unit_velocity_x', unit_vector, ['velocity_x']))
+        if y:
+            self.node_feature_functions.append(('unit_velocity_y', unit_vector, ['velocity_y']))
+        return self
+    
+    def add_speed(self, normed: bool = True):
+        if normed:
+            self.node_feature_functions.append(('normalized_speed', normalize_speed, ['speed', 'max_speed']))
+        else:
+            self.node_feature_functions.append(('speed', coord, ['speed']))
         return self
 
     def get_features(self):

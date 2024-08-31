@@ -115,14 +115,17 @@ def make_sparse(a):
 
 
 #Functions for node features
-def normalize_x(x, max_x):
-    return x / max_x
 
-def coord_x(x):
-    return x
+def coord(value):
+    return value
+# def normalize_x(x, max_x):
+#     return x / max_x
 
-def normalize_y(y, max_y):
-    return y / max_y
+# def coord_x(x):
+#     return x
 
-def coord_y(y):
-    return y
+# def normalize_y(y, max_y):
+#     return y / max_y
+
+# def coord_y(y):
+#     return y
