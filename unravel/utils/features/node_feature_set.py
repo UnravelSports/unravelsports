@@ -17,7 +17,7 @@ class NodeFeatureSet:
     def __init__(self):
         self.node_feature_functions = []
 
-    def add_x(self, normed: bool = False):
+    def add_x(self, normed: bool = True):
         """
         Adds a function to calculate the x coordinate to the node feature set.
         If 'normed=True', the function will normalize the x coordinate
@@ -31,7 +31,7 @@ class NodeFeatureSet:
 
         return self
 
-    def add_y(self, normed: bool = False):
+    def add_y(self, normed: bool = True):
         """
         Adds a function to calculate the x coordinate to the node feature set.
         If 'normed=True', the function will normalize the x coordinate
@@ -46,7 +46,7 @@ class NodeFeatureSet:
         return self
 
     def add_velocity(
-        self, x: bool = True, y: bool = True, angle: bool = True, normed: bool = False
+        self, x: bool = True, y: bool = True, angle: bool = True, normed: bool = True
     ):
         """
         Adds a function to return the x and y unit vectors of the velocity as well as the angle.

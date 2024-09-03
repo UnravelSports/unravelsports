@@ -51,7 +51,7 @@ def node_features(
         all_params = {
             "x": p.x1,
             "max_x": pitch_dimensions.x_dim.max,
-            "y": p.x2,
+            "y": p.y1,
             "max_y": pitch_dimensions.y_dim.max,
             "velocity": p.velocity,
             "speed": p.speed,
@@ -153,6 +153,7 @@ def node_features(
 
     # compute ball features
     b_features = ball_features(ball)
+    print(b_features)
     X = np.append(ap_features, dp_features, axis=0)
 
     if include_ball_node:
@@ -160,5 +161,5 @@ def node_features(
 
     # convert np.NaN to 0 (zero)
     X = np.nan_to_num(X)
-    print(X)
+    #print(X)
     return X
