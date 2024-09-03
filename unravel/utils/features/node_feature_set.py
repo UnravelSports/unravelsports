@@ -26,7 +26,7 @@ class NodeFeatureSet:
         if normed:
             self.node_feature_functions.append(('normalize_x', normalize_coords, ['x', 'max_x']))
         else:
-            self.node_feature_functions.append(('coord_x', coord, ['x']))
+            self.node_feature_functions.append(('coord_x', lambda x: x, ['x']))
 
         return self
     
@@ -38,7 +38,7 @@ class NodeFeatureSet:
         if normed:
             self.node_feature_functions.append(('normalize_y', normalize_coords, ['y', 'max_y']))
         else:
-            self.node_feature_functions.append(('coord_y', coord, ['y']))
+            self.node_feature_functions.append(('coord_y', lambda y: y, ['y']))
 
         return self
     
@@ -65,10 +65,10 @@ class NodeFeatureSet:
         if normed:
             self.node_feature_functions.append(('normalized_speed', normalize_speed, ['speed', 'max_speed'])) #Have to round this
         else:
-            self.node_feature_functions.append(('speed', coord, ['speed']))
+            self.node_feature_functions.append(('speed', lambda s: s, ['speed']))
         return self
     
-    def add_goal_metric(self, normed: bool = True):
+    def add_goal_distance(self, normed: bool = True):
         if normed:
             self.node_feature_functions.append(('normalized_goal_distance', 
                                                 lambda position, goal_mouth_position, max_dist_to_goal: normalize_distance(
@@ -77,9 +77,43 @@ class NodeFeatureSet:
                                                 , ['position', 'goal_mouth_position', 'max_dist_to_goal']))
         else:
             self.node_feature_functions.append(('goal_distance', lambda position, goal_mouth_position: np.linalg.norm(position - goal_mouth_position), ['position', 'goal_mouth_position']))
+        return self
         
-            
+    def add_goal_angle(self, normed: bool = True):
+        if normed:
+            self.node_feature_functions.append(('normed_goal_angle', normalize_angles, ['goal_angle'])) 
+        else:
+            self.node_feature_functions.append(('goal_angle', lambda a: a, ['goal_angle']))
+        
+        return self 
+    
+    def add_ball_distance(self, normed: bool = True):
+        if normed:
+            self.node_feature_functions.append(('normalized_ball_distance', 
+                                                lambda position, ball_position, max_dist_to_player: normalize_distance(
+                                                np.linalg.norm(position - ball_position),
+                                                max_dist_to_player)
+                                                , ['position', 'ball_position', 'max_dist_to_player']))
+        else:
+            self.node_feature_functions.append(('ball_distance', lambda position, ball_position: np.linalg.norm(position - ball_position), ['position', 'ball_position']))
+        return self
 
+    def add_ball_angle(self, normed: bool = True):
+        if normed:
+            self.node_feature_functions.append(('normed_ball_angle', normalize_angles, ['ball_angle'])) 
+        else:
+            self.node_feature_functions.append(('ball_angle', lambda a: a, ['ball_angle']))
+        
+        return self 
+    
+    def add_team(self):
+        self.node_feature_functions.append(('team', lambda t: t, ['team'])) 
+        return self
+    
+    def add_potential_reciever(self):
+        self.node_feature_functions.append(('potential_reciever', lambda potential_receiver, non_potential_receiver_node_value : 1.0 if potential_receiver else non_potential_receiver_node_value, ['potential_receiver', 'non_potential_receiver_node_value']))
+        return self
+    
     def get_features(self):
         return self.node_feature_functions
 

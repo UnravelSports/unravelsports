@@ -47,7 +47,6 @@ def node_features(
         goal_angle = math.atan2(
             p.y1 - goal_mouth_position[0], p.x1 - goal_mouth_position[1]
         )
-        #print(p)
         player_node_features = []
         all_params = {'x': p.x1, 
                   'max_x': pitch_dimensions.x_dim.max, 
@@ -58,7 +57,14 @@ def node_features(
                   'max_speed': max_player_speed,
                   'position': p.position,
                   'goal_mouth_position': goal_mouth_position,
-                  'max_dist_to_goal': max_dist_to_goal
+                  'max_dist_to_goal': max_dist_to_goal,
+                  'goal_angle': goal_angle,
+                  'ball_position': ball.position,
+                  'max_dist_to_player': max_dist_to_player,
+                  'ball_angle': ball_angle,
+                  'team': team,
+                  'potential_receiver': potential_receiver,
+                  'non_potential_receiver_node_value': non_potential_receiver_node_value
                   }
         computed_values = {}
         for func_name, func, reqd_params in function_list:
@@ -70,15 +76,14 @@ def node_features(
                     player_node_features.append(value)
                 else: #else, print out the missing parameters. Maybe you should check if there is a default value. Then it is okay if the parameter is not present
                     missing_params = [param for param in reqd_params if param not in all_params]
-                    print(f"Warning: Missing parameters {missing_params} for function '{func_name}'")
-                    computed_values[func_name] = None
-                    player_node_features.append(None)
+                    #print(f"Warning: Missing parameters {missing_params} for function '{func_name}'")
+                    computed_values[func_name] = 0
+                    player_node_features.append(0)
             except Exception as e:
                 print(f"Error while executing function '{func_name}': {e}")
                 computed_values[func_name] = None   
                 player_node_features.append(None) 
         
-        print(computed_values)
         return player_node_features
 
     def ball_features(ball):
@@ -88,11 +93,15 @@ def node_features(
         ball_node_features = []
         all_params = {'x': ball.x1, 
             'max_x': pitch_dimensions.x_dim.max, 
-            'y': ball.x2, 
+            'y': ball.y1, 
             'max_y': pitch_dimensions.y_dim.max, 
             'velocity': ball.velocity,
             'speed': ball.speed,
             'max_speed': max_ball_speed,
+            'position': ball.position,
+            'goal_mouth_position': goal_mouth_position,
+            'max_dist_to_goal': max_dist_to_goal,
+            'goal_angle': goal_angle,
         }
         computed_values = {}
         for func_name, func, reqd_params in function_list:
@@ -104,14 +113,14 @@ def node_features(
                     ball_node_features.append(value)
                 else: #else, print out the missing parameters. Maybe you should check if there is a default value. Then it is okay if the parameter is not present
                     missing_params = [param for param in reqd_params if param not in all_params]
-                    print(f"Warning: Missing parameters {missing_params} for function '{func_name}'")
-                    computed_values[func_name] = None
-                    ball_node_features.append(None)
+                    #print(f"Warning: Missing parameters {missing_params} for function '{func_name}'")
+                    computed_values[func_name] = 0
+                    ball_node_features.append(0)
             except Exception as e:
                 print(f"Error while executing function '{func_name}': {e}")
                 computed_values[func_name] = None   
                 ball_node_features.append(None) 
-
+        #print(computed_values)
         return np.asarray([ball_node_features])
 
     # loop over attacking players, grab ball_carrier, potential receiver and intended receiver
