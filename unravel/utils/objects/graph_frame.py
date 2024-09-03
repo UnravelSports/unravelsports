@@ -24,6 +24,7 @@ from .graph_settings import GraphSettings
 from .default_tracking import DefaultTrackingModel
 from ..features.node_feature_set import NodeFeatureSet
 
+
 @dataclass
 class GraphFrame:
     frame_id: int
@@ -121,7 +122,7 @@ class GraphFrame:
             include_ball_node=True,
             defending_team_node_value=self.settings.defending_team_node_value,
             non_potential_receiver_node_value=self.settings.non_potential_receiver_node_value,
-            function_list=self.node_features.get_features()
+            function_list=self.node_features.get_features(),
         )
 
     def _edge_features(self, A, A_delaunay):

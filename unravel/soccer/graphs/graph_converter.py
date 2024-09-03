@@ -35,6 +35,7 @@ logger.addHandler(stdout_handler)
 
 from ...utils.features.node_feature_set import NodeFeatureSet
 
+
 @dataclass(repr=True)
 class GraphConverter:
     """
@@ -107,7 +108,7 @@ class GraphConverter:
     settings: GraphSettings = field(
         init=False, repr=False, default_factory=GraphSettings
     )
-    
+
     node_features: NodeFeatureSet = field(
         init=False, repr=False, default_factory=NodeFeatureSet
     )
@@ -271,7 +272,7 @@ class GraphConverter:
                         label=label,
                         graph_id=graph_id,
                         settings=self.settings,
-                        node_features = self.node_features
+                        node_features=self.node_features,
                     )
                     if gnn_frame.graph_data:
                         self.graph_frames.append(gnn_frame)
