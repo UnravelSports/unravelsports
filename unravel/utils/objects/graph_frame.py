@@ -23,6 +23,7 @@ from ..features import (
 from .graph_settings import GraphSettings
 from .default_tracking import DefaultTrackingModel
 from ..features.node_feature_set import NodeFeatureSet
+from ..features.edge_feature_set import EdgeFeatureSet
 
 
 @dataclass
@@ -34,6 +35,7 @@ class GraphFrame:
     label: Union[int, bool]
     graph_data: dict = field(init=False, repr=False, default=None)
     node_features: NodeFeatureSet
+    edge_features: EdgeFeatureSet
 
     def __post_init__(self):
         A, A_delaunay = self._adjaceny_matrix()
@@ -135,6 +137,7 @@ class GraphFrame:
             self.settings.pitch_dimensions,
             A,
             A_delaunay,
+            function_list=self.edge_features.get_features()
         )
 
     def _quality_check(self, X, E):

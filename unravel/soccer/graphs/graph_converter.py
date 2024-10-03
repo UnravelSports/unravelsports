@@ -34,6 +34,7 @@ stdout_handler = logging.StreamHandler(sys.stdout)
 logger.addHandler(stdout_handler)
 
 from ...utils.features.node_feature_set import NodeFeatureSet
+from ...utils.features.edge_feature_set import EdgeFeatureSet
 
 
 @dataclass(repr=True)
@@ -111,6 +112,10 @@ class GraphConverter:
 
     node_features: NodeFeatureSet = field(
         init=False, repr=False, default_factory=NodeFeatureSet
+    )
+    
+    edge_features: EdgeFeatureSet = field(
+        init=False, repr=False, default_factory=EdgeFeatureSet
     )
 
     def __post_init__(self):
@@ -273,6 +278,7 @@ class GraphConverter:
                         graph_id=graph_id,
                         settings=self.settings,
                         node_features=self.node_features,
+                        edge_features=self.edge_features
                     )
                     if gnn_frame.graph_data:
                         self.graph_frames.append(gnn_frame)
