@@ -1,0 +1,51 @@
+{
+    "__version__": "0.1.2",
+    "node_features": [
+        "normalize_x",
+        "normalize_y",
+        "unit_velocity_x",
+        "unit_velocity_y",
+        "normalized_velocity_angle",
+        "normalized_speed",
+        "normalized_goal_distance",
+        "normed_goal_angle",
+        "normalized_ball_distance",
+        "normed_ball_angle",
+        "team",
+        "potential_reciever"
+    ],
+    "edge_features": [
+        "normalize_dist",
+        "normalize_speed_diff",
+        "normalise_cos_pos",
+        "normalise_sin_pos",
+        "normalise_cos_vel",
+        "normalise_sin_vel"
+    ],
+    "graph_settings": {
+        "infer_ball_ownership": true,
+        "infer_goalkeepers": true,
+        "ball_carrier_treshold": 25.0,
+        "max_player_speed": 12.0,
+        "max_ball_speed": 28.0,
+        "boundary_correction": null,
+        "self_loop_ball": false,
+        "adjacency_matrix_connect_type": "ball",
+        "adjacency_matrix_type": "split_by_team",
+        "label_type": "binary",
+        "defending_team_node_value": 0.1,
+        "non_potential_receiver_node_value": 0.1,
+        "random_seed": false,
+        "pad": false,
+        "verbose": false,
+        "pitch_dimensions": {
+            "pitch_length": 105,
+            "pitch_width": 68,
+            "max_x": 52.5,
+            "min_x": -52.5,
+            "max_y": 34.0,
+            "min_y": -34.0
+        },
+        "pad_settings": null
+    }
+}

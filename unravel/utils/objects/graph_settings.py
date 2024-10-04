@@ -131,3 +131,34 @@ class GraphSettings:
             max_nodes=(n_players * 2) + n_ball,
             n_players=n_players,
         )
+
+    def to_dict(self):
+        return {
+            "infer_ball_ownership": self.infer_ball_ownership,
+            "infer_goalkeepers": self.infer_goalkeepers,
+            "ball_carrier_treshold": self.ball_carrier_treshold,
+            "max_player_speed": self.max_player_speed,
+            "max_ball_speed": self.max_ball_speed,
+            "boundary_correction": self.boundary_correction,
+            "self_loop_ball": self.self_loop_ball,
+            "adjacency_matrix_connect_type": self.adjacency_matrix_connect_type,
+            "adjacency_matrix_type": self.adjacency_matrix_type,
+            "label_type": self.label_type,
+            "defending_team_node_value": self.defending_team_node_value,
+            "non_potential_receiver_node_value": self.non_potential_receiver_node_value,
+            "random_seed": self.random_seed,
+            "pad": self.pad,
+            "verbose": self.verbose,
+            "pitch_dimensions": self._serialize_pitch_dimensions(),
+            "pad_settings": self.pad_settings,
+        }
+
+    def _serialize_pitch_dimensions(self):
+        return {
+            "pitch_length": self.pitch_dimensions.pitch_length,
+            "pitch_width": self.pitch_dimensions.pitch_width,
+            "max_x": self.pitch_dimensions.x_dim.max,
+            "min_x": self.pitch_dimensions.x_dim.min,
+            "max_y": self.pitch_dimensions.y_dim.max,
+            "min_y": self.pitch_dimensions.y_dim.min,
+        }
