@@ -150,9 +150,9 @@ class GraphSettings:
             "pad": self.pad,
             "verbose": self.verbose,
             "pitch_dimensions": self._serialize_pitch_dimensions(),
-            "pad_settings": self.pad_settings
+            "pad_settings": self.pad_settings,
         }
-        
+
     def _serialize_pitch_dimensions(self):
         return {
             "pitch_length": self.pitch_dimensions.pitch_length,

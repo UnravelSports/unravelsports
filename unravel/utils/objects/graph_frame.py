@@ -137,7 +137,7 @@ class GraphFrame:
             self.settings.pitch_dimensions,
             A,
             A_delaunay,
-            function_list=self.edge_features.get_features()
+            function_list=self.edge_features.get_features(),
         )
 
     def _quality_check(self, X, E):

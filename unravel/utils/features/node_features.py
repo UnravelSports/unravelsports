@@ -153,7 +153,7 @@ def node_features(
 
     # compute ball features
     b_features = ball_features(ball)
-    print(b_features)
+    # print(b_features)
     X = np.append(ap_features, dp_features, axis=0)
 
     if include_ball_node:
@@ -161,5 +161,7 @@ def node_features(
 
     # convert np.NaN to 0 (zero)
     X = np.nan_to_num(X)
-    #print(X)
+    # print(X)
+    # with open('output_file2.txt', 'w') as file:
+    #     file.write(np.array2string(X))
     return X

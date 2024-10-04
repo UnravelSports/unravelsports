@@ -28,7 +28,7 @@ def edge_features(
     # reshape it to a (<=23**2, ) matrix and then mask all values that are 0 in `a` (nz)
     # then we concat all the features into a single (nz, n_edge_features) matrix
     """
-    #print(function_list)
+    # print(function_list)
     max_dist_to_player = np.sqrt(
         pitch_dimensions.pitch_length**2 + pitch_dimensions.pitch_width**2
     )
@@ -99,7 +99,7 @@ def edge_features(
     #         reindex(vel_sin_matrix, non_zero_idxs, len_a),
     #     ]
     # )
-    #Flexible feature set
+    # Flexible feature set
     all_params = {
         "distances_between_players": distances_between_players,
         "max_dist_to_player": max_dist_to_player,
@@ -107,7 +107,7 @@ def edge_features(
         "h_spe": h_spe,
         "max_speed": max(max_player_speed, max_ball_speed),
         "angle_pos_matrix": angle_pos_matrix,
-        "angle_vel_matrix": angle_vel_matrix
+        "angle_vel_matrix": angle_vel_matrix,
     }
     e_features = []
     computed_values = {}
@@ -131,10 +131,10 @@ def edge_features(
                 computed_values[func_name] = 0
                 e_features.append(0)
         except Exception as e:
-                print(f"Error while executing function '{func_name}': {e}")
-                computed_values[func_name] = None
-                e_features.append(None)
-    
+            print(f"Error while executing function '{func_name}': {e}")
+            computed_values[func_name] = None
+            e_features.append(None)
+
     e_tuple = list(e_features)
 
     if delaunay_adjacency_matrix is not None:
@@ -144,6 +144,8 @@ def edge_features(
         e_tuple.extend(extra_tuple)
 
     e = np.concatenate(e_tuple, axis=1)
-    print(function_list)
-    print(np.nan_to_num(e))
+    # print(function_list)
+    # print(np.nan_to_num(e))
+    # with open('output_file2.txt', 'w') as file:
+    #     file.write(np.array2string(np.nan_to_num(e)))
     return np.nan_to_num(e)

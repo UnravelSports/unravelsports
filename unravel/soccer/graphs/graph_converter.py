@@ -2,7 +2,6 @@ import logging
 import sys
 from copy import deepcopy
 import json
-#from .. import __version__
 
 import warnings
 
@@ -115,7 +114,7 @@ class GraphConverter:
     node_features: NodeFeatureSet = field(
         init=False, repr=False, default_factory=NodeFeatureSet
     )
-    
+
     edge_features: EdgeFeatureSet = field(
         init=False, repr=False, default_factory=EdgeFeatureSet
     )
@@ -280,7 +279,7 @@ class GraphConverter:
                         graph_id=graph_id,
                         settings=self.settings,
                         node_features=self.node_features,
-                        edge_features=self.edge_features
+                        edge_features=self.edge_features,
                     )
                     if gnn_frame.graph_data:
                         self.graph_frames.append(gnn_frame)
@@ -325,16 +324,22 @@ class GraphConverter:
         with gzip.open(file_path, "wb") as file:
             data = [x.graph_data for x in self.graph_frames]
             pickle.dump(data, file)
-            
+
     def export_settings(self) -> None:
-        file_path = 'settings.json'
+        file_path = "settings.json"
         data = {
             "__version__": "0.1.2",
-            "node_features": [func_name for func_name,_,_ in self.node_features.get_features()],
-            "edge_features": [func_name for func_name,_,_ in self.edge_features.get_features()],
-            "graph_settings": self.settings.to_dict()
-            }
+            "node_features": [
+                func_name for func_name, _, _ in self.node_features.get_features()
+            ],
+            "edge_features": [
+                func_name for func_name, _, _ in self.edge_features.get_features()
+            ],
+            "graph_settings": self.settings.to_dict(),
+        }
         print(data)
 
-        with open(file_path, 'w') as json_file:
+        with open(file_path, "w") as json_file:
             json.dump(data, json_file, indent=4)
+
+        return
