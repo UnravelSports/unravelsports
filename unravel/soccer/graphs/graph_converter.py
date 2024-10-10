@@ -26,6 +26,9 @@ from .exceptions import (
     KeyMismatchError,
 )
 
+from .graph_settings import GraphSettings
+from .graph_frame import GraphFrame
+
 from ...utils import *
 
 logger = logging.getLogger(__name__)
@@ -35,7 +38,7 @@ logger.addHandler(stdout_handler)
 
 
 @dataclass(repr=True)
-class GraphConverter:
+class SoccerGraphConverter(DefaultGraphConverter):
     """
     Converts our dataset TrackingDataset into an internal structure
 
@@ -72,60 +75,20 @@ class GraphConverter:
         verbose (bool): The converter logs warnings / error messages when specific frames have no coordinates, or other missing information. False mutes all these warnings.
     """
 
-    dataset: TrackingDataset
+    dataset: TrackingDataset = None
     labels: dict = None
-    prediction: bool = False
+
+    labels: dict = None
     graph_id: Union[str, int, dict] = None
     graph_ids: dict = None
 
-    ball_carrier_treshold: float = 25.0
-    max_player_speed: float = 12.0
-    max_ball_speed: float = 28.0
-    boundary_correction: float = None
-    self_loop_ball: bool = False
-    adjacency_matrix_connect_type: Union[
-        Literal["ball"], Literal["ball_carrier"], Literal["no_connection"]
-    ] = "ball"
-    adjacency_matrix_type: Union[
-        Literal["delaunay"],
-        Literal["split_by_team"],
-        Literal["dense"],
-        Literal["dense_ap"],
-        Literal["dense_dp"],
-    ] = "split_by_team"
-    label_type: Literal["binary"] = "binary"
-    infer_ball_ownership: bool = True
     infer_goalkeepers: bool = True
-    defending_team_node_value: float = 0.1
-    non_potential_receiver_node_value: float = 0.1
-    random_seed: Union[bool, int] = False
-    pad: bool = False
-    verbose: bool = False
-
-    graph_frames: dict = field(init=False, repr=False, default=None)
-    settings: GraphSettings = field(
-        init=False, repr=False, default_factory=GraphSettings
-    )
+    infer_ball_ownership: bool = True
+    boundary_correction: float = None
 
     def __post_init__(self):
-        if not self.labels and not self.prediction:
-            raise Exception(
-                "Please specify 'labels' or set 'prediction=True' if you want to use the converted dataset to make predictions on."
-            )
-
-        if self.graph_id is not None and self.graph_ids:
-            raise Exception("Please set either 'graph_id' or 'graph_ids', not both...")
-
-        if self.graph_ids:
-            if not self.prediction:
-                if not set(list(self.labels.keys())) == set(
-                    list(self.graph_ids.keys())
-                ):
-                    raise KeyMismatchError(
-                        "When 'graph_id' is of type dict it needs to have the exact same keys as 'labels'..."
-                    )
-        if not self.graph_ids and self.prediction:
-            self.graph_ids = {x.frame_id: x.frame_id for x in self.dataset}
+        if not self.dataset:
+            raise Exception("Please provide a 'kloppy' dataset.")
 
         if hasattr(
             AdjacenyMatrixConnectType, self.adjacency_matrix_connect_type.upper()
@@ -189,6 +152,26 @@ class GraphConverter:
             self.orientation = self.dataset.metadata.orientation
 
         self.settings.pitch_dimensions = self.dataset.metadata.pitch_dimensions
+
+    def _sport_specific_checks(self):
+        if not self.labels and not self.prediction:
+            raise Exception(
+                "Please specify 'labels' or set 'prediction=True' if you want to use the converted dataset to make predictions on."
+            )
+
+        if self.graph_id is not None and self.graph_ids:
+            raise Exception("Please set either 'graph_id' or 'graph_ids', not both...")
+
+        if self.graph_ids:
+            if not self.prediction:
+                if not set(list(self.labels.keys())) == set(
+                    list(self.graph_ids.keys())
+                ):
+                    raise KeyMismatchException(
+                        "When 'graph_id' is of type dict it needs to have the exact same keys as 'labels'..."
+                    )
+        if not self.graph_ids and self.prediction:
+            self.graph_ids = {x.frame_id: x.frame_id for x in self.dataset}
 
     def _convert(self, frame: Frame):
         data = DefaultTrackingModel(
@@ -277,13 +260,6 @@ class GraphConverter:
             self.to_graph_frames()
 
         return [g.to_spektral_graph() for g in self.graph_frames]
-
-    def to_custom_dataset(self) -> CustomSpektralDataset:
-        """
-        Spektral requires a spektral Dataset to load the data
-        for docs see https://graphneural.network/creating-dataset/
-        """
-        return CustomSpektralDataset(graphs=self.to_spektral_graphs())
 
     def to_pickle(self, file_path: str) -> None:
         """

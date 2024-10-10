@@ -1,5 +1,5 @@
 from pathlib import Path
-from unravel.soccer import GraphConverter
+from unravel.soccer import SoccerGraphConverter
 from unravel.utils import dummy_labels, dummy_graph_ids, CustomSpektralDataset
 from unravel.classifiers import CrystalGraphClassifier
 
@@ -19,6 +19,8 @@ import pytest
 
 import numpy as np
 import pandas as pd
+
+from os.path import join
 
 
 class TestSpektral:
@@ -42,8 +44,8 @@ class TestSpektral:
         )
 
     @pytest.fixture()
-    def converter(self, dataset: TrackingDataset) -> GraphConverter:
-        return GraphConverter(
+    def converter(self, dataset: TrackingDataset) -> SoccerGraphConverter:
+        return SoccerGraphConverter(
             dataset=dataset,
             labels=dummy_labels(dataset),
             graph_ids=dummy_graph_ids(dataset),
@@ -65,8 +67,8 @@ class TestSpektral:
         )
 
     @pytest.fixture()
-    def converter_preds(self, dataset: TrackingDataset) -> GraphConverter:
-        return GraphConverter(
+    def converter_preds(self, dataset: TrackingDataset) -> SoccerGraphConverter:
+        return SoccerGraphConverter(
             dataset=dataset,
             prediction=True,
             ball_carrier_treshold=25.0,
@@ -86,19 +88,21 @@ class TestSpektral:
             verbose=False,
         )
 
-    def test_training(self, converter: GraphConverter):
+    def test_training(self, converter: SoccerGraphConverter):
         train = CustomSpektralDataset(graphs=converter.to_spektral_graphs())
 
         cd = converter.to_custom_dataset()
         assert isinstance(cd, CustomSpektralDataset)
 
-        converter.to_pickle("tests/files/test.pickle.gz")
+        pickle_folder = join("tests", "files", "kloppy")
+
+        converter.to_pickle(join(pickle_folder, "test.pickle.gz"))
 
         with pytest.raises(
             ValueError,
             match="Only compressed pickle files of type 'some_file_name.pickle.gz' are supported...",
         ):
-            converter.to_pickle("tests/files/test.pickle")
+            converter.to_pickle(join(pickle_folder, "test.pickle"))
 
         model = CrystalGraphClassifier()
 
@@ -133,7 +137,7 @@ class TestSpektral:
 
         assert np.allclose(pred, loaded_pred, atol=1e-8)
 
-    def test_prediction(self, converter_preds: GraphConverter):
+    def test_prediction(self, converter_preds: SoccerGraphConverter):
         pred_dataset = CustomSpektralDataset(
             graphs=converter_preds.to_spektral_graphs()
         )

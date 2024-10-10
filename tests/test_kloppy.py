@@ -1,11 +1,10 @@
 from pathlib import Path
-from unravel.soccer import GraphConverter
+from unravel.soccer import SoccerGraphConverter, GraphFrame, GraphSettings
 from unravel.utils import (
     DefaultTrackingModel,
     dummy_labels,
     dummy_graph_ids,
     CustomSpektralDataset,
-    GraphFrame,
 )
 
 from kloppy import skillcorner
@@ -40,8 +39,8 @@ class TestKloppyData:
         )
 
     @pytest.fixture()
-    def gnnc(self, dataset: TrackingDataset) -> GraphConverter:
-        return GraphConverter(
+    def gnnc(self, dataset: TrackingDataset) -> SoccerGraphConverter:
+        return SoccerGraphConverter(
             dataset=dataset,
             labels=dummy_labels(dataset),
             graph_ids=dummy_graph_ids(dataset),
@@ -63,8 +62,8 @@ class TestKloppyData:
         )
 
     @pytest.fixture()
-    def gnnc_padding(self, dataset: TrackingDataset) -> GraphConverter:
-        return GraphConverter(
+    def gnnc_padding(self, dataset: TrackingDataset) -> SoccerGraphConverter:
+        return SoccerGraphConverter(
             dataset=dataset,
             labels=dummy_labels(dataset),
             graph_id=1234,
@@ -86,8 +85,8 @@ class TestKloppyData:
         )
 
     @pytest.fixture()
-    def gnnc_padding_random(self, dataset: TrackingDataset) -> GraphConverter:
-        return GraphConverter(
+    def gnnc_padding_random(self, dataset: TrackingDataset) -> SoccerGraphConverter:
+        return SoccerGraphConverter(
             dataset=dataset,
             labels=dummy_labels(dataset),
             # settings
@@ -108,7 +107,7 @@ class TestKloppyData:
             verbose=False,
         )
 
-    def test_conversion(self, gnnc: GraphConverter):
+    def test_conversion(self, gnnc: SoccerGraphConverter):
         data, label, frame_id, _ = gnnc._convert(gnnc.dataset[2])
 
         assert isinstance(data, DefaultTrackingModel)
@@ -153,7 +152,7 @@ class TestKloppyData:
 
         assert gid == "abcdefg"
 
-    def test_conversion_padding(self, gnnc_padding: GraphConverter):
+    def test_conversion_padding(self, gnnc_padding: SoccerGraphConverter):
         data, _, frame_id, graph_id = gnnc_padding._convert(gnnc_padding.dataset[2])
 
         assert isinstance(data, DefaultTrackingModel)
@@ -167,7 +166,7 @@ class TestKloppyData:
         assert len(data.home_players) == 11
         assert len(data.away_players) == 11
 
-    def test_to_spektral_graph(self, gnnc: GraphConverter):
+    def test_to_spektral_graph(self, gnnc: SoccerGraphConverter):
         """
         Test navigating (next/prev) through events
         """
@@ -249,7 +248,7 @@ class TestKloppyData:
             )
 
     def test_to_spektral_graph_padding_random(
-        self, gnnc_padding_random: GraphConverter
+        self, gnnc_padding_random: SoccerGraphConverter
     ):
         """
         Test navigating (next/prev) through events

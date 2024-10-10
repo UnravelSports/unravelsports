@@ -69,16 +69,6 @@ def normalize_coords(value, max_value):
     return value / max_value
 
 
-def normalize_speed(value, max_speed):
-    x = value / max_speed
-    try:
-        return 1 if x > 1 else 0 if x < 0 else x
-    except ValueError:
-        x[x < 0] = 0
-        x[x > 1] = 1
-        return x
-
-
 def normalize_sincos(value):
     return (value + 1) / 2
 
@@ -112,3 +102,52 @@ def reindex(m, non_zero_idxs, len_a):
 def make_sparse(a):
     A = sparse.csr_matrix(a)
     return np.nan_to_num(A)
+
+
+def unit_vector_from_angle(value, angle_radians):
+    # Compute velocity components
+    v_x = value * np.cos(angle_radians)
+    v_y = value * np.sin(angle_radians)
+
+    # Create velocity vector
+    velocity = np.array([v_x, v_y])
+
+    # Normalize the vector (get unit vector)
+    norm = np.linalg.norm(velocity)
+    if norm == 0:
+        return np.zeros_like(velocity)
+
+    return velocity / norm
+
+
+def normalize_speed(value, max_speed):
+    x = value / max_speed
+    return np.clip(x, 0, 1)
+
+
+def normalize_speeds_nfl(s, team, ball_id, settings):
+    ball_mask = team == ball_id
+    s_normed = np.zeros_like(s)
+
+    s_normed[ball_mask] = normalize_speed(s[ball_mask], settings.max_ball_speed)
+
+    s_normed[~ball_mask] = normalize_speed(s[~ball_mask], settings.max_player_speed)
+    return s_normed
+
+
+def normalize_accelerations_nfl(a, team, ball_id, settings):
+    ball_mask = team == ball_id
+    s_normed = np.zeros_like(a)
+
+    s_normed[ball_mask] = normalize_speed(a[ball_mask], settings.max_ball_speed)
+
+    s_normed[~ball_mask] = normalize_speed(a[~ball_mask], settings.max_player_speed)
+    return s_normed
+
+
+def flatten_to_reshaped_array(arr, s0, s1, as_list=False):
+    # Convert the structure into a list of arrays
+    flattened_list = [item for sublist in arr for item in sublist]
+    # Concatenate the arrays into one single array
+    result_array = np.concatenate(flattened_list).reshape(s0, s1)
+    return result_array if not as_list else result_array.tolist()

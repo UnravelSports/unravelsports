@@ -1,6 +1,6 @@
 import numpy as np
 
-from .utils import (
+from ....utils import (
     normalize_distance,
     normalize_speed,
     normalize_sincos,

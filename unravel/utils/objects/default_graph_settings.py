@@ -1,7 +1,6 @@
 import numpy as np
 from dataclasses import dataclass, field
 from typing import Union
-from kloppy.domain import MetricPitchDimensions
 
 from ..features import (
     AdjacencyMatrixType,
@@ -12,7 +11,7 @@ from ..features import (
 
 
 @dataclass
-class GraphSettings:
+class DefaultGraphSettings:
     """
     Configuration settings for a Graph Neural Network (GNN) applied in sports analytics.
 
@@ -41,11 +40,13 @@ class GraphSettings:
     """
 
     infer_ball_ownership: bool = True
-    infer_goalkeepers: bool = True
+    # infer_goalkeepers: bool = True
     ball_carrier_treshold: float = 25.0
     max_player_speed: float = 12.0
     max_ball_speed: float = 28.0
-    boundary_correction: float = None
+    max_player_acceleration: float = None
+    max_ball_acceleration: float = None
+    # boundary_correction: float = None
     self_loop_ball: bool = True
     adjacency_matrix_connect_type: AdjacenyMatrixConnectType = (
         AdjacenyMatrixConnectType.BALL
@@ -82,14 +83,6 @@ class GraphSettings:
     @property
     def pad_settings(self) -> Pad:
         return self._pad_settings
-
-    @property
-    def pitch_dimensions(self) -> int:
-        return self._pitch_dimensions
-
-    @pitch_dimensions.setter
-    def pitch_dimensions(self, pitch_dimensions: MetricPitchDimensions) -> None:
-        self._pitch_dimensions = pitch_dimensions
 
     def __pad_settings(self):
         """

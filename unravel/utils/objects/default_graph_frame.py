@@ -6,29 +6,23 @@ from typing import Union
 
 from dataclasses import dataclass, field
 
-from warnings import *
+from ..exceptions.warnings import QualityCheckWarning
 
 from spektral.data import Graph
 
-from ..exceptions import AdjcacenyMatrixTypeNotSet
 from ..features import (
-    AdjacencyMatrixType,
     PredictionLabelType,
-    delaunay_adjacency_matrix,
-    adjacency_matrix,
-    node_features,
-    edge_features,
     make_sparse,
 )
-from .graph_settings import GraphSettings
+from .default_graph_settings import DefaultGraphSettings
 from .default_tracking import DefaultTrackingModel
 
 
 @dataclass
-class GraphFrame:
+class DefaultGraphFrame:
     frame_id: int
     data: DefaultTrackingModel
-    settings: GraphSettings
+    settings: DefaultGraphSettings
     graph_id: Union[str, int]
     label: Union[int, bool]
     graph_data: dict = field(init=False, repr=False, default=None)
@@ -78,74 +72,26 @@ class GraphFrame:
         else we create a seperate one as A_delaunay.
         This way we can use the Delaunay matrix in the Edge Features if it's not used as the Adj Matrix
         """
-        if not self.settings.adjacency_matrix_type:
-            raise AdjcacenyMatrixTypeNotSet(
-                "AdjacencyMatrixTypeNotSet Error... Please set `adjacency_matrix_type`..."
-            )
-        elif self.settings.adjacency_matrix_type == AdjacencyMatrixType.DELAUNAY:
-            A = delaunay_adjacency_matrix(
-                self.data.attacking_players,
-                self.data.defending_players,
-                self.settings.adjacency_matrix_connect_type,
-                self.data.ball_carrier_idx,
-                self.settings.self_loop_ball,
-            )
-            A_delaunay = None
-        else:
-            A = adjacency_matrix(
-                self.data.attacking_players,
-                self.data.defending_players,
-                self.settings.adjacency_matrix_connect_type,
-                self.settings.adjacency_matrix_type,
-                self.data.ball_carrier_idx,
-            )
-            A_delaunay = delaunay_adjacency_matrix(
-                self.data.attacking_players,
-                self.data.defending_players,
-                self.settings.adjacency_matrix_connect_type,
-                self.data.ball_carrier_idx,
-                self.settings.self_loop_ball,
-            )
-        return A, A_delaunay
+        raise NotImplementedError()
 
     def _node_features(self):
-        return node_features(
-            attacking_players=self.data.attacking_players,
-            defending_players=self.data.defending_players,
-            ball=self.data.ball,
-            max_player_speed=self.settings.max_player_speed,
-            max_ball_speed=self.settings.max_ball_speed,
-            ball_carrier_idx=self.data.ball_carrier_idx,
-            pitch_dimensions=self.settings.pitch_dimensions,
-            include_ball_node=True,
-            defending_team_node_value=self.settings.defending_team_node_value,
-            non_potential_receiver_node_value=self.settings.non_potential_receiver_node_value,
-        )
+        raise NotImplementedError()
 
     def _edge_features(self, A, A_delaunay):
-        return edge_features(
-            self.data.attacking_players,
-            self.data.defending_players,
-            self.data.ball,
-            self.settings.max_player_speed,
-            self.settings.max_ball_speed,
-            self.settings.pitch_dimensions,
-            A,
-            A_delaunay,
-        )
+        raise NotImplementedError()
 
     def _quality_check(self, X, E):
         if self.settings.boundary_correction is not None:
             if (np.max(X) <= 1) or (np.min(X) >= -1):
                 warnings.warn(
                     f"""Node Feature(s) outside boundary for frame={self.frame_id}, skipping...""",
-                    warnings.QualityCheckWarning,
+                    QualityCheckWarning,
                 )
                 return False
             if (np.max(E) <= 1) or (np.min(E) >= -1):
                 warnings.warn(
                     f"""Edge Feature(s) outside boundary for frame={self.frame_id}, skipping...""",
-                    warnings.QualityCheckWarning,
+                    QualityCheckWarning,
                 )
                 return False
         return True

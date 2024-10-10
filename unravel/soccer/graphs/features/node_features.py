@@ -1,7 +1,7 @@
 import math
 import numpy as np
 
-from .utils import (
+from ....utils import (
     unit_vector,
     normalize_angles,
     normalize_distance,
