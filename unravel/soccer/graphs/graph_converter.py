@@ -1,6 +1,7 @@
 import logging
 import sys
 from copy import deepcopy
+import json
 
 import warnings
 
@@ -32,6 +33,9 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 stdout_handler = logging.StreamHandler(sys.stdout)
 logger.addHandler(stdout_handler)
+
+from ...utils.features.node_feature_set import NodeFeatureSet
+from ...utils.features.edge_feature_set import EdgeFeatureSet
 
 
 @dataclass(repr=True)
@@ -105,6 +109,14 @@ class GraphConverter:
     graph_frames: dict = field(init=False, repr=False, default=None)
     settings: GraphSettings = field(
         init=False, repr=False, default_factory=GraphSettings
+    )
+
+    node_features: NodeFeatureSet = field(
+        init=False, repr=False, default_factory=NodeFeatureSet
+    )
+
+    edge_features: EdgeFeatureSet = field(
+        init=False, repr=False, default_factory=EdgeFeatureSet
     )
 
     def __post_init__(self):
@@ -266,6 +278,8 @@ class GraphConverter:
                         label=label,
                         graph_id=graph_id,
                         settings=self.settings,
+                        node_features=self.node_features,
+                        edge_features=self.edge_features,
                     )
                     if gnn_frame.graph_data:
                         self.graph_frames.append(gnn_frame)
@@ -310,3 +324,22 @@ class GraphConverter:
         with gzip.open(file_path, "wb") as file:
             data = [x.graph_data for x in self.graph_frames]
             pickle.dump(data, file)
+
+    def export_settings(self) -> None:
+        file_path = "settings.json"
+        data = {
+            "__version__": "0.1.2",
+            "node_features": [
+                func_name for func_name, _, _ in self.node_features.get_features()
+            ],
+            "edge_features": [
+                func_name for func_name, _, _ in self.edge_features.get_features()
+            ],
+            "graph_settings": self.settings.to_dict(),
+        }
+        print(data)
+
+        with open(file_path, "w") as json_file:
+            json.dump(data, json_file, indent=4)
+
+        return

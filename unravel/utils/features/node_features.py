@@ -1,5 +1,6 @@
 import math
 import numpy as np
+import inspect
 
 from .utils import (
     unit_vector,
@@ -21,6 +22,7 @@ def node_features(
     include_ball_node: bool = True,
     defending_team_node_value: float = 0.1,
     non_potential_receiver_node_value: float = 0.1,
+    function_list=None,
 ):
     """
     node features matrix is (n_nodes, n_node_features) (<=23, 17)
@@ -45,81 +47,92 @@ def node_features(
         goal_angle = math.atan2(
             p.y1 - goal_mouth_position[0], p.x1 - goal_mouth_position[1]
         )
+        player_node_features = []
+        all_params = {
+            "x": p.x1,
+            "max_x": pitch_dimensions.x_dim.max,
+            "y": p.y1,
+            "max_y": pitch_dimensions.y_dim.max,
+            "velocity": p.velocity,
+            "speed": p.speed,
+            "max_speed": max_player_speed,
+            "position": p.position,
+            "goal_mouth_position": goal_mouth_position,
+            "max_dist_to_goal": max_dist_to_goal,
+            "goal_angle": goal_angle,
+            "ball_position": ball.position,
+            "max_dist_to_player": max_dist_to_player,
+            "ball_angle": ball_angle,
+            "team": team,
+            "potential_receiver": potential_receiver,
+            "non_potential_receiver_node_value": non_potential_receiver_node_value,
+        }
+        computed_values = {}
+        for func_name, func, reqd_params in function_list:
+            try:
+                if all(
+                    param in all_params for param in reqd_params
+                ):  # if all the required parameters exist in all_params, then compute
+                    params = [all_params[param] for param in reqd_params]
+                    value = func(*params)
+                    computed_values[func_name] = value
+                    player_node_features.append(value)
+                else:  # else, print out the missing parameters. Maybe you should check if there is a default value. Then it is okay if the parameter is not present
+                    missing_params = [
+                        param for param in reqd_params if param not in all_params
+                    ]
+                    print(
+                        f"Warning: Missing parameters {missing_params} for function '{func_name}'"
+                    )
+                    computed_values[func_name] = 0
+                    player_node_features.append(0)
+            except Exception as e:
+                print(f"Error while executing function '{func_name}': {e}")
+                computed_values[func_name] = None
+                player_node_features.append(None)
 
-        player_node_features = [
-            (
-                0.0
-                if np.isnan(p.x1)
-                else normalize_coords(p.x1, pitch_dimensions.x_dim.max)
-            ),
-            (
-                0.0
-                if np.isnan(p.x1)
-                else normalize_coords(p.y1, pitch_dimensions.y_dim.max)
-            ),
-            0.0 if np.isnan(p.x1) else unit_vector(p.velocity)[0],
-            0.0 if np.isnan(p.x1) else unit_vector(p.velocity)[1],
-            (
-                0.0
-                if np.isnan(p.x1)
-                else round(normalize_speed(p.speed, max_speed=max_player_speed), 3)
-            ),
-            (
-                0.0
-                if np.isnan(p.x1)
-                else normalize_angles(np.arctan2(p.velocity[1], p.velocity[0]))
-            ),
-            (
-                0.0
-                if np.isnan(p.x1)
-                else normalize_distance(
-                    np.linalg.norm(p.position - goal_mouth_position),
-                    max_distance=max_dist_to_goal,
-                )
-            ),  # distance to the goal mouth
-            0.0 if np.isnan(p.x1) else normalize_angles(goal_angle),
-            (
-                0.0
-                if np.isnan(p.x1)
-                else normalize_distance(
-                    np.linalg.norm(p.position - ball.position),
-                    max_distance=max_dist_to_player,
-                )
-            ),  # distance to the ball
-            0.0 if np.isnan(p.x1) else normalize_angles(ball_angle),
-            0.0 if np.isnan(p.x1) else team,
-            # 1 if player is on same team but not in possession, 0.1 for all other players, 0.1 if the player is 'missing'
-            (
-                0.0
-                if np.isnan(p.x1)
-                else 1.0 if potential_receiver else non_potential_receiver_node_value
-            ),
-        ]
         return player_node_features
 
     def ball_features(ball):
         goal_angle = math.atan2(
             ball.y1 - goal_mouth_position[1], ball.x1 - goal_mouth_position[0]
         )
-        ball_node_features = [
-            normalize_coords(ball.x1, pitch_dimensions.x_dim.max),
-            normalize_coords(ball.y1, pitch_dimensions.y_dim.max),
-            unit_vector(ball.velocity)[0],
-            unit_vector(ball.velocity)[1],
-            round(normalize_speed(ball.speed, max_speed=max_ball_speed), 3),
-            normalize_angles(np.arctan2(ball.velocity[1], ball.velocity[0])),
-            normalize_distance(
-                np.linalg.norm(ball.position - goal_mouth_position),
-                max_distance=max_dist_to_goal,
-            ),  # distance to the goal mouth
-            normalize_angles(goal_angle),
-            # ball_angle 2x, ball_dist 2x, attacking_team 2x, ball carrier, potential receiver (all always 0 for ball)
-            0,
-            0,
-            0,
-            0,  # , 0
-        ]
-
+        ball_node_features = []
+        all_params = {
+            "x": ball.x1,
+            "max_x": pitch_dimensions.x_dim.max,
+            "y": ball.y1,
+            "max_y": pitch_dimensions.y_dim.max,
+            "velocity": ball.velocity,
+            "speed": ball.speed,
+            "max_speed": max_ball_speed,
+            "position": ball.position,
+            "goal_mouth_position": goal_mouth_position,
+            "max_dist_to_goal": max_dist_to_goal,
+            "goal_angle": goal_angle,
+        }
+        computed_values = {}
+        for func_name, func, reqd_params in function_list:
+            try:
+                if all(
+                    param in all_params for param in reqd_params
+                ):  # if all the required parameters exist in all_params, then compute
+                    params = [all_params[param] for param in reqd_params]
+                    value = func(*params)
+                    computed_values[func_name] = value
+                    ball_node_features.append(value)
+                else:  # else, print out the missing parameters. Maybe you should check if there is a default value. Then it is okay if the parameter is not present
+                    missing_params = [
+                        param for param in reqd_params if param not in all_params
+                    ]
+                    # print(f"Warning: Missing parameters {missing_params} for function '{func_name}'")
+                    computed_values[func_name] = 0
+                    ball_node_features.append(0)
+            except Exception as e:
+                print(f"Error while executing function '{func_name}': {e}")
+                computed_values[func_name] = None
+                ball_node_features.append(None)
+        # print(computed_values)
         return np.asarray([ball_node_features])
 
     # loop over attacking players, grab ball_carrier, potential receiver and intended receiver
@@ -140,6 +153,7 @@ def node_features(
 
     # compute ball features
     b_features = ball_features(ball)
+    # print(b_features)
     X = np.append(ap_features, dp_features, axis=0)
 
     if include_ball_node:
@@ -147,4 +161,7 @@ def node_features(
 
     # convert np.NaN to 0 (zero)
     X = np.nan_to_num(X)
+    # print(X)
+    # with open('output_file2.txt', 'w') as file:
+    #     file.write(np.array2string(X))
     return X
