@@ -117,6 +117,7 @@ class SoccerGraphConverter(DefaultGraphConverter):
                 f"Invalid label_type: {self.label_type}. Should be of type 'binary'"
             )
 
+        self._sport_specific_checks()
         self.settings = GraphSettings(
             ball_carrier_treshold=self.ball_carrier_treshold,
             max_player_speed=self.max_player_speed,

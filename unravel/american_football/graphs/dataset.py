@@ -6,7 +6,7 @@ import polars as pl
 
 import numpy as np
 
-from .graph_settings import AmericanFootballPitchDimensions
+from .graph_settings import AmericanFootballPitchDimensions, Dimension, Unit
 from ...utils import add_dummy_label_column, add_graph_id_column
 
 
@@ -28,6 +28,9 @@ class BigDataBowlDataset:
             raise Exception("Missing data file path...")
 
     def load(self):
+        pitch_length = self.pitch_dimensions.pitch_length
+        pitch_width = self.pitch_dimensions.pitch_width
+
         df = pl.read_csv(
             self.tracking_file_path,
             separator=",",
@@ -35,41 +38,51 @@ class BigDataBowlDataset:
             null_values=["NA", "NULL", ""],
             try_parse_dates=True,
         )
-        df = df.with_columns(
-            [
-                (pl.col("x") - (self.pitch_dimensions.pitch_length / 2)).alias("x"),
-                (pl.col("y") - (self.pitch_dimensions.pitch_width / 2)).alias("y"),
-                ((pl.col("o") * np.pi / 180 + np.pi) % (2 * np.pi) - np.pi).alias("o"),
-                ((pl.col("dir") * np.pi / 180 + np.pi) % (2 * np.pi) - np.pi).alias(
-                    "dir"
-                ),
-            ]
-        ).with_columns(
-            [
-                pl.when(pl.col("playDirection") == "left")
-                .then(pl.col("x") * -1.0)
-                .otherwise(pl.col("x"))
-                .alias("x"),
-                pl.when(pl.col("playDirection") == "left")
-                .then(pl.col("y") * -1.0)
-                .otherwise(pl.col("y"))
-                .alias("y"),
-                pl.when(pl.col("playDirection") == "left")
-                .then(pl.col("o") * -1.0)
+
+        play_direction = "left"
+
+        df = (
+            df.with_columns(
+                pl.when(pl.col("playDirection") == play_direction)
+                .then(pl.col("o") + 180)  # rotate 180 degrees
                 .otherwise(pl.col("o"))
                 .alias("o"),
-                pl.when(pl.col("playDirection") == "left")
-                .then(pl.col("dir") * -1.0)
+                pl.when(pl.col("playDirection") == play_direction)
+                .then(pl.col("dir") + 180)  # rotate 180 degrees
                 .otherwise(pl.col("dir"))
                 .alias("dir"),
-                # set "football" to nflId -9999 for ordering purposes
-                pl.when(pl.col("team") == "football")
-                .then(-9999)
-                .otherwise(pl.col("nflId"))
-                .alias("nflId"),
-            ]
+            )
+            .with_columns(
+                [
+                    (pl.col("x") - (pitch_length / 2)).alias("x"),
+                    (pl.col("y") - (pitch_width / 2)).alias("y"),
+                    # convert to radian on (-pi, pi) range
+                    (((pl.col("o") * np.pi / 180) + np.pi) % (2 * np.pi) - np.pi).alias(
+                        "o"
+                    ),
+                    (
+                        ((pl.col("dir") * np.pi / 180) + np.pi) % (2 * np.pi) - np.pi
+                    ).alias("dir"),
+                ]
+            )
+            .with_columns(
+                [
+                    pl.when(pl.col("playDirection") == play_direction)
+                    .then(pl.col("x") * -1.0)
+                    .otherwise(pl.col("x"))
+                    .alias("x"),
+                    pl.when(pl.col("playDirection") == play_direction)
+                    .then(pl.col("y") * -1.0)
+                    .otherwise(pl.col("y"))
+                    .alias("y"),
+                    # set "football" to nflId -9999 for ordering purposes
+                    pl.when(pl.col("team") == "football")
+                    .then(-9999.9)
+                    .otherwise(pl.col("nflId"))
+                    .alias("nflId"),
+                ]
+            )
         )
-
         players = pl.read_csv(
             self.players_file_path,
             separator=",",
@@ -77,6 +90,10 @@ class BigDataBowlDataset:
             null_values=["NA", "NULL", ""],
             try_parse_dates=True,
         )
+        players = players.with_columns(
+            pl.col("nflId").cast(pl.Float64, strict=False).alias("nflId")
+        )
+        players = self._convert_weight_height_to_metric(df=players)
 
         plays = pl.read_csv(
             self.plays_file_path,
@@ -87,7 +104,9 @@ class BigDataBowlDataset:
         )
 
         df = df.join(
-            (players.select(["nflId", "officialPosition"])), on="nflId", how="left"
+            (players.select(["nflId", "officialPosition", "height_cm", "weight_kg"])),
+            on="nflId",
+            how="left",
         )
         df = df.join(
             (plays.select(["gameId", "playId", "possessionTeam"])),
@@ -95,6 +114,17 @@ class BigDataBowlDataset:
             how="left",
         )
         self.data = df
+
+        # update pitch dimensions to how it looks after loading
+        self.pitch_dimensions = AmericanFootballPitchDimensions(
+            x_dim=Dimension(min=-pitch_length / 2, max=pitch_length / 2),
+            y_dim=Dimension(min=-pitch_width / 2, max=pitch_width / 2),
+            standardized=False,
+            unit=Unit.YARDS,
+            pitch_length=pitch_length,
+            pitch_width=pitch_width,
+        )
+
         return self.data, self.pitch_dimensions
 
     def add_dummy_labels(
@@ -110,3 +140,27 @@ class BigDataBowlDataset:
     ) -> pl.DataFrame:
         self.data = add_graph_id_column(self.data, by, column_name)
         return self.data
+
+    @staticmethod
+    def _convert_weight_height_to_metric(df: pl.DataFrame):
+        df = df.with_columns(
+            [
+                pl.col("height")
+                .str.extract(r"(\d+)")
+                .cast(pl.Float64)
+                .alias("feet"),  # Extract feet and cast to float
+                pl.col("height")
+                .str.extract(r"\d+-(\d+)", 1)
+                .cast(pl.Float64)
+                .alias("inches"),  # Extract inches and cast to float
+            ]
+        )
+        df = df.with_columns(
+            [
+                (pl.col("feet") * 30.48 + pl.col("inches") * 2.54).alias("height_cm"),
+                (pl.col("weight") * 0.453592).alias(
+                    "weight_kg"
+                ),  # Convert pounds to kilograms
+            ]
+        ).drop(["height", "feet", "inches", "weight"])
+        return df

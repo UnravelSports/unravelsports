@@ -1,5 +1,6 @@
 from pathlib import Path
 from unravel.soccer import SoccerGraphConverter
+from unravel.american_football import BigDataBowlDataset, AmericanFootballGraphConverter
 from unravel.utils import dummy_labels, dummy_graph_ids, CustomSpektralDataset
 from unravel.classifiers import CrystalGraphClassifier
 
@@ -24,6 +25,31 @@ from os.path import join
 
 
 class TestSpektral:
+    @pytest.fixture
+    def coordinates(self, base_dir: Path) -> str:
+        return base_dir / "files" / "bdb_coords.csv"
+
+    @pytest.fixture
+    def players(self, base_dir: Path) -> str:
+        return base_dir / "files" / "bdb_players.csv"
+
+    @pytest.fixture
+    def plays(self, base_dir: Path) -> str:
+        return base_dir / "files" / "bdb_plays.csv"
+
+    @pytest.fixture
+    def bdb_dataset(self, coordinates: str, players: str, plays: str):
+        bdb_dataset = BigDataBowlDataset(
+            tracking_file_path=coordinates,
+            players_file_path=players,
+            plays_file_path=plays,
+        )
+        bdb_dataset.load()
+        bdb_dataset.add_graph_ids(by=["gameId", "playId"], column_name="graph_id")
+        bdb_dataset.add_dummy_labels(
+            by=["gameId", "playId", "frameId"], column_name="label"
+        )
+        return bdb_dataset
 
     @pytest.fixture
     def match_data(self, base_dir: Path) -> str:
@@ -34,7 +60,7 @@ class TestSpektral:
         return base_dir / "files" / "skillcorner_structured_data.json.gz"
 
     @pytest.fixture()
-    def dataset(self, match_data: str, structured_data: str) -> TrackingDataset:
+    def kloppy_dataset(self, match_data: str, structured_data: str) -> TrackingDataset:
         return skillcorner.load(
             raw_data=structured_data,
             meta_data=match_data,
@@ -44,11 +70,11 @@ class TestSpektral:
         )
 
     @pytest.fixture()
-    def converter(self, dataset: TrackingDataset) -> SoccerGraphConverter:
+    def soccer_converter(self, kloppy_dataset: TrackingDataset) -> SoccerGraphConverter:
         return SoccerGraphConverter(
-            dataset=dataset,
-            labels=dummy_labels(dataset),
-            graph_ids=dummy_graph_ids(dataset),
+            dataset=kloppy_dataset,
+            labels=dummy_labels(kloppy_dataset),
+            graph_ids=dummy_graph_ids(kloppy_dataset),
             ball_carrier_treshold=25.0,
             max_player_speed=12.0,
             max_ball_speed=28.0,
@@ -67,9 +93,11 @@ class TestSpektral:
         )
 
     @pytest.fixture()
-    def converter_preds(self, dataset: TrackingDataset) -> SoccerGraphConverter:
+    def soccer_converter_preds(
+        self, kloppy_dataset: TrackingDataset
+    ) -> SoccerGraphConverter:
         return SoccerGraphConverter(
-            dataset=dataset,
+            dataset=kloppy_dataset,
             prediction=True,
             ball_carrier_treshold=25.0,
             max_player_speed=12.0,
@@ -88,21 +116,139 @@ class TestSpektral:
             verbose=False,
         )
 
-    def test_training(self, converter: SoccerGraphConverter):
-        train = CustomSpektralDataset(graphs=converter.to_spektral_graphs())
+    @pytest.fixture
+    def bdb_converter(
+        self, bdb_dataset: BigDataBowlDataset
+    ) -> AmericanFootballGraphConverter:
+        return AmericanFootballGraphConverter(
+            dataset=bdb_dataset.data,
+            pitch_dimensions=bdb_dataset.pitch_dimensions,
+            label_col="label",
+            graph_id_col="graph_id",
+            ball_carrier_treshold=25.0,
+            max_player_speed=8.0,
+            max_ball_speed=28.0,
+            max_player_acceleration=10.0,
+            max_ball_acceleration=10.0,
+            self_loop_ball=True,
+            adjacency_matrix_connect_type="ball",
+            adjacency_matrix_type="split_by_team",
+            label_type="binary",
+            defending_team_node_value=0.0,
+            non_potential_receiver_node_value=0.1,
+            random_seed=42,
+            pad=False,
+            verbose=False,
+        )
 
-        cd = converter.to_custom_dataset()
+    @pytest.fixture
+    def bdb_converter_preds(
+        self, bdb_dataset: BigDataBowlDataset
+    ) -> AmericanFootballGraphConverter:
+        return AmericanFootballGraphConverter(
+            dataset=bdb_dataset.data,
+            pitch_dimensions=bdb_dataset.pitch_dimensions,
+            prediction=True,
+            ball_carrier_treshold=25.0,
+            max_player_speed=8.0,
+            max_ball_speed=28.0,
+            max_player_acceleration=10.0,
+            max_ball_acceleration=10.0,
+            self_loop_ball=True,
+            adjacency_matrix_connect_type="ball",
+            adjacency_matrix_type="split_by_team",
+            label_type="binary",
+            defending_team_node_value=0.0,
+            non_potential_receiver_node_value=0.1,
+            random_seed=42,
+            pad=False,
+            verbose=False,
+        )
+
+    def test_soccer_training(self, soccer_converter: SoccerGraphConverter):
+        train = CustomSpektralDataset(graphs=soccer_converter.to_spektral_graphs())
+
+        cd = soccer_converter.to_custom_dataset()
         assert isinstance(cd, CustomSpektralDataset)
 
         pickle_folder = join("tests", "files", "kloppy")
 
-        converter.to_pickle(join(pickle_folder, "test.pickle.gz"))
+        soccer_converter.to_pickle(join(pickle_folder, "test.pickle.gz"))
 
         with pytest.raises(
             ValueError,
             match="Only compressed pickle files of type 'some_file_name.pickle.gz' are supported...",
         ):
-            converter.to_pickle(join(pickle_folder, "test.pickle"))
+            soccer_converter.to_pickle(join(pickle_folder, "test.pickle"))
+
+        model = CrystalGraphClassifier()
+
+        assert model.channels == 128
+        assert model.drop_out == 0.5
+        assert model.n_layers == 3
+        assert model.n_out == 1
+
+        model.compile(
+            loss=BinaryCrossentropy(),
+            optimizer=Adam(),
+            metrics=[AUC(), BinaryAccuracy()],
+        )
+
+        loader_tr = DisjointLoader(train, batch_size=32)
+        model.fit(
+            loader_tr.load(),
+            epochs=1,
+            steps_per_epoch=loader_tr.steps_per_epoch,
+            verbose=0,
+        )
+        model_path = join("tests", "files", "models", "my-test-gnn")
+        model.save(model_path)
+        loaded_model = load_model(model_path)
+
+        loader_te = DisjointLoader(train, batch_size=32, epochs=1, shuffle=False)
+        pred = model.predict(loader_te.load())
+
+        loader_te = DisjointLoader(train, batch_size=32, epochs=1, shuffle=False)
+        loaded_pred = loaded_model.predict(loader_te.load(), use_multiprocessing=True)
+
+        assert np.allclose(pred, loaded_pred, atol=1e-8)
+
+    def test_soccer_prediction(self, soccer_converter_preds: SoccerGraphConverter):
+        pred_dataset = CustomSpektralDataset(
+            graphs=soccer_converter_preds.to_spektral_graphs()
+        )
+        loader_pred = DisjointLoader(
+            pred_dataset, batch_size=32, epochs=1, shuffle=False
+        )
+        model_path = join("tests", "files", "models", "my-test-gnn")
+        loaded_model = load_model(model_path)
+
+        preds = loaded_model.predict(loader_pred.load())
+
+        assert not np.any(np.isnan(preds.flatten()))
+
+        df = pd.DataFrame(
+            {"frame_id": [x.id for x in pred_dataset], "y": preds.flatten()}
+        )
+
+        assert df["frame_id"].iloc[0] == 1524
+        assert df["frame_id"].iloc[-1] == 1621
+
+    def test_bdb_training(self, bdb_converter: AmericanFootballGraphConverter):
+        train = CustomSpektralDataset(graphs=bdb_converter.to_spektral_graphs())
+
+        cd = bdb_converter.to_custom_dataset()
+        assert isinstance(cd, CustomSpektralDataset)
+
+        pickle_folder = join("tests", "files", "bdb")
+
+        bdb_converter.to_pickle(join(pickle_folder, "test_bdb.pickle.gz"))
+
+        with pytest.raises(
+            ValueError,
+            match="Only compressed pickle files of type 'some_file_name.pickle.gz' are supported...",
+        ):
+            bdb_converter.to_pickle(join(pickle_folder, "test_bdb.pickle"))
 
         model = CrystalGraphClassifier()
 
@@ -125,7 +271,7 @@ class TestSpektral:
             verbose=0,
         )
 
-        model_path = "tests/files/models/my-test-gnn"
+        model_path = join("tests", "files", "models", "my_bdb-test-gnn")
         model.save(model_path)
         loaded_model = load_model(model_path)
 
@@ -137,15 +283,17 @@ class TestSpektral:
 
         assert np.allclose(pred, loaded_pred, atol=1e-8)
 
-    def test_prediction(self, converter_preds: SoccerGraphConverter):
+    def test_soccer_prediction(
+        self, bdb_converter_preds: AmericanFootballGraphConverter
+    ):
         pred_dataset = CustomSpektralDataset(
-            graphs=converter_preds.to_spektral_graphs()
+            graphs=bdb_converter_preds.to_spektral_graphs()
         )
         loader_pred = DisjointLoader(
             pred_dataset, batch_size=32, epochs=1, shuffle=False
         )
 
-        model_path = "tests/files/models/my-test-gnn"
+        model_path = join("tests", "files", "models", "my_bdb-test-gnn")
         loaded_model = load_model(model_path)
 
         preds = loaded_model.predict(loader_pred.load())
@@ -156,5 +304,5 @@ class TestSpektral:
             {"frame_id": [x.id for x in pred_dataset], "y": preds.flatten()}
         )
 
-        assert df["frame_id"].iloc[0] == 1524
-        assert df["frame_id"].iloc[-1] == 1621
+        assert df["frame_id"].iloc[0] == "2021091300-4845"
+        assert df["frame_id"].iloc[-1] == "2021091300-4845"

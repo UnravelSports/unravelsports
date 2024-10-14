@@ -4,16 +4,28 @@ import numpy as np
 from ....utils import (
     normalize_coords,
     normalize_speeds_nfl,
-    normalize_angles,
+    normalize_sincos,
     normalize_distance,
     unit_vector_from_angle,
     normalize_speeds_nfl,
     normalize_accelerations_nfl,
+    normalize_between,
 )
 
 
 def compute_node_features(
-    x, y, s, a, o, dir, team, official_position, possession_team, settings
+    x,
+    y,
+    s,
+    a,
+    o,
+    dir,
+    team,
+    official_position,
+    possession_team,
+    height,
+    weight,
+    settings,
 ):
     ball_id = settings.ball_id
 
@@ -38,15 +50,26 @@ def compute_node_features(
     else:
         ball_position = np.sarray([np.nan, np.nan])
 
-    x_normed = normalize_coords(x, settings.pitch_dimensions.x_dim.max)
-    y_normed = normalize_coords(y, settings.pitch_dimensions.y_dim.max)
+    x_normed = normalize_between(
+        value=x,
+        max_value=settings.pitch_dimensions.x_dim.max,
+        min_value=settings.pitch_dimensions.x_dim.min,
+    )
+    y_normed = normalize_between(
+        value=y,
+        max_value=settings.pitch_dimensions.y_dim.max,
+        min_value=settings.pitch_dimensions.y_dim.min,
+    )
     uv_sa = unit_vector_from_angle(value=s, angle_radians=dir)
-    s_normed = normalize_speeds_nfl(s, team, ball_id, settings)
-    uv_aa = unit_vector_from_angle(value=a, angle_radians=dir)
-    a_normed = normalize_accelerations_nfl(a, team, ball_id, settings)
+    s_normed = normalize_speeds_nfl(s, team, settings)
 
-    dir_normed = normalize_angles(dir)
-    o_normed = normalize_angles(o)
+    uv_aa = unit_vector_from_angle(value=a, angle_radians=dir)
+    a_normed = normalize_accelerations_nfl(a, team, settings)
+
+    dir_sin_normed = normalize_sincos(np.nan_to_num(np.sin(dir)))
+    dir_cos_normed = normalize_sincos(np.nan_to_num(np.cos(dir)))
+    o_sin_normed = normalize_sincos(np.nan_to_num(np.sin(o)))
+    o_cos_normed = normalize_sincos(np.nan_to_num(np.cos(o)))
 
     dist_to_goal = np.linalg.norm(position - goal_mouth_position, axis=1)
     normed_dist_to_goal = normalize_distance(
@@ -58,12 +81,22 @@ def compute_node_features(
         value=dist_to_ball, max_distance=max_dist_to_player
     )
 
-    dist_to_end_zone = y - settings.pitch_dimensions.end_zone
-    normed_dist_to_end_zone = dist_to_end_zone / settings.pitch_dimensions.y_dim.max
+    dist_to_end_zone = settings.pitch_dimensions.end_zone - y
+    normed_dist_to_end_zone = normalize_between(
+        value=dist_to_end_zone,
+        max_value=settings.pitch_dimensions.pitch_length,
+        min_value=0,
+    )
 
     is_possession_team = np.where(team == possession_team, 1, 0)
     is_qb = np.where(official_position == settings.qb_id, 1, 0)
     is_ball = np.where(team == ball_id, 1, 0)
+    weight_normed = normalize_between(
+        min_value=settings.min_weight, max_value=settings.max_weight, value=weight
+    )
+    height_normed = normalize_between(
+        min_value=settings.min_height, max_value=settings.max_height, value=height
+    )
 
     X = np.nan_to_num(
         np.stack(
@@ -76,14 +109,18 @@ def compute_node_features(
                 uv_aa[0],
                 uv_aa[1],
                 a_normed,
-                dir_normed,
-                o_normed,
+                dir_sin_normed,
+                dir_cos_normed,
+                o_sin_normed,
+                o_cos_normed,
                 normed_dist_to_goal,
                 normed_dist_to_ball,
                 normed_dist_to_end_zone,
                 is_possession_team,
                 is_qb,
                 is_ball,
+                weight_normed,
+                height_normed,
             ),
             axis=-1,
         )

@@ -28,7 +28,7 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
         pitch_dimensions: AmericanFootballPitchDimensions,
         label_col: str = "label",
         graph_id_col: str = "graph_id",
-        chunk_size: int = 10_000,
+        chunk_size: int = 2_000,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -60,6 +60,8 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
             ball_carrier_treshold=self.ball_carrier_treshold,
             max_player_speed=self.max_player_speed,
             max_ball_speed=self.max_ball_speed,
+            max_ball_acceleration=self.max_ball_acceleration,
+            max_player_acceleration=self.max_player_acceleration,
             self_loop_ball=self.self_loop_ball,
             adjacency_matrix_connect_type=self.adjacency_matrix_connect_type,
             adjacency_matrix_type=self.adjacency_matrix_type,
@@ -83,8 +85,10 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
             team = args[7].to_numpy()
             official_position = args[8].to_numpy()
             possession_team = args[9].to_numpy()
-            graph_id = args[10].to_numpy()
-            label = args[11].to_numpy()
+            height = args[10].to_numpy()
+            weight = args[11].to_numpy()
+            graph_id = args[12].to_numpy()
+            label = args[13].to_numpy()
 
             if not np.all(graph_id == graph_id[0]):
                 raise Exception(
@@ -95,11 +99,9 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
                 raise Exception(
                     "Label selection contains multiple different values for a single selection (group by) of playId and frameId, make sure this is not the case. Each group can only have 1 label."
                 )
-
             adjacency_matrix = compute_adjacency_matrix(
                 team=team, possession_team=possession_team, settings=self.settings
             )
-
             edge_features = compute_edge_features(
                 adjacency_matrix=adjacency_matrix,
                 p=np.stack((x, y), axis=-1),
@@ -107,9 +109,9 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
                 a=a,
                 dir=dir,
                 o=o,  # Shape will be (N, 2)
+                team=team,
                 settings=self.settings,
             )
-
             node_features = compute_node_features(
                 x,
                 y,
@@ -120,6 +122,8 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
                 team=team,
                 official_position=official_position,
                 possession_team=possession_team,
+                height=height,
+                weight=weight,
                 settings=self.settings,
             )
             return {
@@ -143,7 +147,7 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
             }
 
         result_df = self.dataset.group_by(
-            ["playId", "frameId"], maintain_order=True
+            ["gameId", "playId", "frameId"], maintain_order=True
         ).agg(
             pl.map_groups(
                 exprs=[
@@ -157,6 +161,8 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
                     "team",
                     "officialPosition",
                     "possessionTeam",
+                    "height_cm",
+                    "weight_kg",
                     self.graph_id_col,
                     self.label_col,
                 ],

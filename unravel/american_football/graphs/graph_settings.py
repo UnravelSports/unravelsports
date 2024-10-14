@@ -1,7 +1,6 @@
-from dataclasses import dataclass
-
 from ...utils import DefaultGraphSettings
 
+from dataclasses import dataclass, field
 from kloppy.domain import Dimension, Unit
 from typing import Optional
 
@@ -11,14 +10,17 @@ PITCH_WIDTH = 53.3
 
 @dataclass
 class AmericanFootballPitchDimensions:
-    x_dim = Dimension(min=0, max=PITCH_LENGTH)
-    y_dim = Dimension(min=0, max=PITCH_WIDTH)
-    standardized = False
-    unit = Unit.YARDS
+    pitch_length: float = PITCH_LENGTH
+    pitch_width: float = PITCH_WIDTH
+    standardized: bool = False
+    unit: Unit = Unit.YARDS
 
-    pitch_length = PITCH_LENGTH
-    pitch_width = PITCH_WIDTH
-    end_zone = PITCH_LENGTH - 10
+    x_dim: Dimension = field(default_factory=lambda: Dimension(min=0, max=PITCH_LENGTH))
+    y_dim: Dimension = field(default_factory=lambda: Dimension(min=0, max=PITCH_WIDTH))
+    end_zone: float = field(init=False)
+
+    def __post_init__(self):
+        self.end_zone = self.pitch_length - 10  # Calculated value
 
 
 @dataclass
@@ -26,6 +28,10 @@ class AmericanFootballGraphSettings(DefaultGraphSettings):
     pitch_dimensions: AmericanFootballPitchDimensions = None
     ball_id: str = "football"
     qb_id: str = "QB"
+    max_height: float = 225.0  # in cm
+    min_height: float = 150.0
+    max_weight: float = 200.0  # in kg
+    min_weight: float = 60.0
 
     def __post_init__(self):
         if not isinstance(self.pitch_dimensions, AmericanFootballPitchDimensions):
