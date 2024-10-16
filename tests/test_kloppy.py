@@ -1,5 +1,5 @@
 from pathlib import Path
-from unravel.soccer import SoccerGraphConverter, GraphFrame, GraphSettings
+from unravel.soccer import SoccerGraphConverter, GraphFrame, SoccerGraphSettings
 from unravel.utils import (
     DefaultTrackingModel,
     dummy_labels,

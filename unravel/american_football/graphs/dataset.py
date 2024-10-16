@@ -40,6 +40,10 @@ class BigDataBowlDataset:
         )
 
         play_direction = "left"
+        
+        if "club" in df.columns:
+            df = df.with_columns(pl.col("club").alias("team"))
+            df = df.drop("club")
 
         df = (
             df.with_columns(
@@ -88,8 +92,13 @@ class BigDataBowlDataset:
             separator=",",
             encoding="utf8",
             null_values=["NA", "NULL", ""],
-            try_parse_dates=True,
+            dtypes={"birthDate": pl.Date},
+            ignore_errors=True
         )
+        if "position" in players.columns:
+            players = players.with_columns(pl.col("position").alias("officialPosition"))
+            players = players.drop("position")
+        
         players = players.with_columns(
             pl.col("nflId").cast(pl.Float64, strict=False).alias("nflId")
         )

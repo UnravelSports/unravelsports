@@ -7,6 +7,8 @@ from typing import List
 
 from spektral.data import Graph
 
+from .dataset import BigDataBowlDataset
+
 from .graph_settings import (
     AmericanFootballGraphSettings,
     AmericanFootballPitchDimensions,
@@ -24,20 +26,21 @@ from ...utils import DefaultGraphConverter, flatten_to_reshaped_array, make_spar
 class AmericanFootballGraphConverter(DefaultGraphConverter):
     def __init__(
         self,
-        dataset: pl.DataFrame,
-        pitch_dimensions: AmericanFootballPitchDimensions,
+        dataset: BigDataBowlDataset,
         label_col: str = "label",
         graph_id_col: str = "graph_id",
         chunk_size: int = 2_000,
+        attacking_non_qb_node_value: float = 0.1,
         **kwargs,
     ):
         super().__init__(**kwargs)
 
-        self.dataset = dataset
-        self.pitch_dimensions = pitch_dimensions
+        self.dataset: pl.DataFrame = dataset.data
+        self.pitch_dimensions: AmericanFootballPitchDimensions = dataset.pitch_dimensions
         self.label_col = label_col
         self.graph_id_col = graph_id_col
         self.chunk_size = chunk_size
+        self.attacking_non_qb_node_value = attacking_non_qb_node_value
 
         self._sport_specific_checks()
 
@@ -57,7 +60,6 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
     def _apply_settings(self):
         return AmericanFootballGraphSettings(
             pitch_dimensions=self.pitch_dimensions,
-            ball_carrier_treshold=self.ball_carrier_treshold,
             max_player_speed=self.max_player_speed,
             max_ball_speed=self.max_ball_speed,
             max_ball_acceleration=self.max_ball_acceleration,
@@ -67,7 +69,7 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
             adjacency_matrix_type=self.adjacency_matrix_type,
             label_type=self.label_type,
             defending_team_node_value=self.defending_team_node_value,
-            non_potential_receiver_node_value=self.non_potential_receiver_node_value,
+            attacking_non_qb_node_value=self.attacking_non_qb_node_value,
             random_seed=self.random_seed,
             pad=self.pad,
             verbose=self.verbose,

@@ -88,8 +88,17 @@ def compute_node_features(
         min_value=0,
     )
 
-    is_possession_team = np.where(team == possession_team, 1, 0)
-    is_qb = np.where(official_position == settings.qb_id, 1, 0)
+    is_possession_team = np.where(team == possession_team, 1, settings.defending_team_node_value)
+    is_qb = np.where(
+    official_position == settings.qb_id,  # First condition
+    1,  # If true, set to 1 (indicating the player is a QB)
+    np.where(
+        team == possession_team,  # Second condition inside the else of the first
+            settings.attacking_non_qb_node_value,  # If true, set to attacking_non_qb_value
+        0  # If false, set to 0
+        )
+    )
+
     is_ball = np.where(team == ball_id, 1, 0)
     weight_normed = normalize_between(
         min_value=settings.min_weight, max_value=settings.max_weight, value=weight

@@ -141,11 +141,9 @@ class TestAmericanFootballDataset:
     @pytest.fixture
     def gnnc(self, dataset):
         return AmericanFootballGraphConverter(
-            dataset=dataset.data,
-            pitch_dimensions=dataset.pitch_dimensions,
+            dataset=dataset,
             label_col="label",
             graph_id_col="graph_id",
-            ball_carrier_treshold=25.0,
             max_player_speed=8.0,
             max_ball_speed=28.0,
             max_player_acceleration=10.0,
@@ -155,7 +153,7 @@ class TestAmericanFootballDataset:
             adjacency_matrix_type="split_by_team",
             label_type="binary",
             defending_team_node_value=0.0,
-            non_potential_receiver_node_value=0.1,
+            attacking_non_qb_node_value=0.1,
             random_seed=42,
             pad=False,
             verbose=False,
@@ -181,6 +179,7 @@ class TestAmericanFootballDataset:
         assert row_10["dir"] == pytest.approx(55.29, rel=1e-9)
 
     def test_dataset_loader(self, dataset: tuple):
+        assert isinstance(dataset, BigDataBowlDataset)
         assert isinstance(dataset.data, pl.DataFrame)
         assert isinstance(dataset.pitch_dimensions, AmericanFootballPitchDimensions)
 

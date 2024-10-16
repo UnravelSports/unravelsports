@@ -28,6 +28,7 @@ class AmericanFootballGraphSettings(DefaultGraphSettings):
     pitch_dimensions: AmericanFootballPitchDimensions = None
     ball_id: str = "football"
     qb_id: str = "QB"
+    attacking_non_qb_node_value: float = 0.1
     max_height: float = 225.0  # in cm
     min_height: float = 150.0
     max_weight: float = 200.0  # in kg
@@ -38,3 +39,10 @@ class AmericanFootballGraphSettings(DefaultGraphSettings):
             raise Exception(
                 "Incorrect pitch_dimension type... Should be of type AmericanFootballPitchDimensions"
             )
+        self._sport_specific_checks()
+            
+    def _sport_specific_checks(self):
+        if self.attacking_non_qb_node_value > 1:
+            self.attacking_non_qb_node_value = 1
+        elif self.attacking_non_qb_node_value < 0:
+            self.attacking_non_qb_node_value = 0

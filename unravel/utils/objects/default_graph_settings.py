@@ -40,13 +40,10 @@ class DefaultGraphSettings:
     """
 
     infer_ball_ownership: bool = True
-    # infer_goalkeepers: bool = True
-    ball_carrier_treshold: float = 25.0
     max_player_speed: float = 12.0
     max_ball_speed: float = 28.0
     max_player_acceleration: float = None
     max_ball_acceleration: float = None
-    # boundary_correction: float = None
     self_loop_ball: bool = True
     adjacency_matrix_connect_type: AdjacenyMatrixConnectType = (
         AdjacenyMatrixConnectType.BALL
@@ -54,7 +51,6 @@ class DefaultGraphSettings:
     adjacency_matrix_type: AdjacencyMatrixType = AdjacencyMatrixType.SPLIT_BY_TEAM
     label_type: PredictionLabelType = PredictionLabelType.BINARY
     defending_team_node_value: float = 0.1
-    non_potential_receiver_node_value: float = 0.1
     random_seed: Union[int, bool] = False
     pad: bool = True
     verbose: bool = False
@@ -67,11 +63,6 @@ class DefaultGraphSettings:
             self.defending_team_node_value = 1
         elif self.defending_team_node_value < 0:
             self.defending_team_node_value = 0
-
-        if self.non_potential_receiver_node_value > 1:
-            self.non_potential_receiver_node_value = 1
-        elif self.non_potential_receiver_node_value < 0:
-            self.non_potential_receiver_node_value = 0
 
         if self.pad:
             if self.adjacency_matrix_type == AdjacencyMatrixType.DELAUNAY:
@@ -124,3 +115,6 @@ class DefaultGraphSettings:
             max_nodes=(n_players * 2) + n_ball,
             n_players=n_players,
         )
+
+    def _sport_specific_checks(self):
+        raise NotImplementedError()

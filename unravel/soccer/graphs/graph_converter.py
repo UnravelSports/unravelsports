@@ -26,7 +26,7 @@ from .exceptions import (
     KeyMismatchError,
 )
 
-from .graph_settings import GraphSettings
+from .graph_settings import SoccerGraphSettings
 from .graph_frame import GraphFrame
 
 from ...utils import *
@@ -118,7 +118,7 @@ class SoccerGraphConverter(DefaultGraphConverter):
             )
 
         self._sport_specific_checks()
-        self.settings = GraphSettings(
+        self.settings = SoccerGraphSettings(
             ball_carrier_treshold=self.ball_carrier_treshold,
             max_player_speed=self.max_player_speed,
             max_ball_speed=self.max_ball_speed,
