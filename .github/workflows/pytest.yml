@@ -40,9 +40,10 @@ jobs:
       if: runner.os == 'Windows'   # Only run on Windows
       env:
         PYTHONIOENCODING: utf-8  # Ensure Python uses UTF-8 encoding
+        PYTHONUTF8: 1  # Force Python to use UTF-8 mode
       run: |
         chcp 65001  # Change code page to UTF-8
-        python -m pip install --upgrade pip
+        python -m pip install --upgrade pip setuptools
         python -m pip install -e .[test]
       shell: pwsh
     
