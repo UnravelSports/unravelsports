@@ -22,7 +22,9 @@ def compute_adjacency_matrix(team, possession_team, settings):
         # Create a pairwise team comparison matrix
         adjacency_matrix = np.equal(team[:, None], team[None, :]).astype(np.int32)
     elif adjacency_matrix_type == AdjacencyMatrixType.DELAUNAY:
-        raise NotImplementedError("Delaunay matrix not implemented for American Football...")
+        raise NotImplementedError(
+            "Delaunay matrix not implemented for American Football..."
+        )
     else:
         raise NotImplementedError("Please specify an existing AdjacencyMatrixType...")
 
@@ -38,5 +40,3 @@ def compute_adjacency_matrix(team, possession_team, settings):
             )
 
     return adjacency_matrix
-
-

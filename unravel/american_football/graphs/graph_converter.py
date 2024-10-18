@@ -36,7 +36,9 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
         super().__init__(**kwargs)
 
         self.dataset: pl.DataFrame = dataset.data
-        self.pitch_dimensions: AmericanFootballPitchDimensions = dataset.pitch_dimensions
+        self.pitch_dimensions: AmericanFootballPitchDimensions = (
+            dataset.pitch_dimensions
+        )
         self.label_col = label_col
         self.graph_id_col = graph_id_col
         self.chunk_size = chunk_size

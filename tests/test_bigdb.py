@@ -137,7 +137,7 @@ class TestAmericanFootballDataset:
             "height_normed": 0.4722666666666665,
         }
         return item_idx, assert_values
-    
+
     @pytest.fixture
     def arguments(self):
         return dict(
@@ -155,9 +155,9 @@ class TestAmericanFootballDataset:
             attacking_non_qb_node_value=0.1,
             random_seed=42,
             pad=False,
-            verbose=False
+            verbose=False,
         )
-        
+
     @pytest.fixture
     def non_default_arguments(self):
         return dict(
@@ -179,22 +179,16 @@ class TestAmericanFootballDataset:
 
     @pytest.fixture
     def gnnc(self, dataset, arguments):
-        return AmericanFootballGraphConverter(
-            dataset=dataset,
-            **arguments
-        )
-        
+        return AmericanFootballGraphConverter(dataset=dataset, **arguments)
+
     @pytest.fixture
     def gnnc_non_default(self, dataset, non_default_arguments):
-        return AmericanFootballGraphConverter(
-            dataset=dataset,
-            **non_default_arguments
-        )
-        
+        return AmericanFootballGraphConverter(dataset=dataset, **non_default_arguments)
+
     def test_settings(self, gnnc_non_default, non_default_arguments):
         settings = gnnc_non_default.settings
         assert isinstance(settings, AmericanFootballGraphSettings)
-        
+
         assert settings.pitch_dimensions.pitch_length == 120.0
         assert settings.pitch_dimensions.pitch_width == 53.3
         assert settings.pitch_dimensions.standardized == False
@@ -204,23 +198,41 @@ class TestAmericanFootballDataset:
         assert settings.pitch_dimensions.y_dim.max == 26.65
         assert settings.pitch_dimensions.y_dim.min == -26.65
         assert settings.pitch_dimensions.end_zone == 50.0
-        
-        assert settings.ball_id == 'football'
-        assert settings.qb_id == 'QB'
+
+        assert settings.ball_id == "football"
+        assert settings.qb_id == "QB"
         assert settings.max_height == 225.0
         assert settings.min_height == 150.0
         assert settings.max_weight == 200.0
         assert settings.min_weight == 60.0
-        assert settings.max_ball_speed == non_default_arguments['max_ball_speed']
-        assert settings.max_ball_speed == non_default_arguments['max_ball_speed']
-        assert settings.max_player_acceleration == non_default_arguments['max_player_acceleration']
-        assert settings.max_ball_acceleration ==non_default_arguments['max_ball_acceleration']
-        assert settings.self_loop_ball == non_default_arguments['self_loop_ball']
-        assert settings.adjacency_matrix_connect_type == non_default_arguments['adjacency_matrix_connect_type']
-        assert settings.adjacency_matrix_type == non_default_arguments['adjacency_matrix_type']
-        assert settings.label_type == non_default_arguments['label_type']
-        assert settings.defending_team_node_value == non_default_arguments['defending_team_node_value']
-        assert settings.attacking_non_qb_node_value == non_default_arguments['attacking_non_qb_node_value']
+        assert settings.max_ball_speed == non_default_arguments["max_ball_speed"]
+        assert settings.max_ball_speed == non_default_arguments["max_ball_speed"]
+        assert (
+            settings.max_player_acceleration
+            == non_default_arguments["max_player_acceleration"]
+        )
+        assert (
+            settings.max_ball_acceleration
+            == non_default_arguments["max_ball_acceleration"]
+        )
+        assert settings.self_loop_ball == non_default_arguments["self_loop_ball"]
+        assert (
+            settings.adjacency_matrix_connect_type
+            == non_default_arguments["adjacency_matrix_connect_type"]
+        )
+        assert (
+            settings.adjacency_matrix_type
+            == non_default_arguments["adjacency_matrix_type"]
+        )
+        assert settings.label_type == non_default_arguments["label_type"]
+        assert (
+            settings.defending_team_node_value
+            == non_default_arguments["defending_team_node_value"]
+        )
+        assert (
+            settings.attacking_non_qb_node_value
+            == non_default_arguments["attacking_non_qb_node_value"]
+        )
 
     def test_raw_data(self, raw_dataset: pd.DataFrame):
         row_10 = raw_dataset.loc[10]
@@ -327,10 +339,12 @@ class TestAmericanFootballDataset:
             assert e[item_idx_e][idx] == pytest.approx(
                 edge_feature_assert_values.get(edge_feature), abs=1e-5
             )
-        
+
         np.testing.assert_array_equal(a, adj_matrix_values)
-        
-    def test_to_graph_frames(self, gnnc: AmericanFootballGraphConverter, node_feature_values):
+
+    def test_to_graph_frames(
+        self, gnnc: AmericanFootballGraphConverter, node_feature_values
+    ):
         graph_frames = gnnc.to_graph_frames()
 
         data = graph_frames
@@ -348,16 +362,18 @@ class TestAmericanFootballDataset:
                 node_feature_assert_values.get(node_feature), abs=1e-5
             )
 
-
-    def test_to_spektral_graph(self, gnnc: AmericanFootballGraphConverter, 
+    def test_to_spektral_graph(
+        self,
+        gnnc: AmericanFootballGraphConverter,
         node_feature_values: tuple,
         edge_feature_values: tuple,
-        adj_matrix_values: tuple):
+        adj_matrix_values: tuple,
+    ):
         """
         Test navigating (next/prev) through events
         """
         spektral_graphs = gnnc.to_spektral_graphs()
-        
+
         item_idx_x, node_feature_assert_values = node_feature_values
         item_idx_e, edge_feature_assert_values = edge_feature_values
 
@@ -375,18 +391,20 @@ class TestAmericanFootballDataset:
             assert x[item_idx_x][idx] == pytest.approx(
                 node_feature_assert_values.get(node_feature), abs=1e-5
             )
-            
+
         e = data[4].e
         for idx, edge_feature in enumerate(edge_feature_assert_values.keys()):
             assert e[item_idx_e][idx] == pytest.approx(
                 edge_feature_assert_values.get(edge_feature), abs=1e-5
             )
-        
+
         def __are_csr_matrices_equal(mat1, mat2):
-            return (mat1.shape == mat2.shape and
-                    np.array_equal(mat1.data, mat2.data) and
-                    np.array_equal(mat1.indices, mat2.indices) and
-                    np.array_equal(mat1.indptr, mat2.indptr))
+            return (
+                mat1.shape == mat2.shape
+                and np.array_equal(mat1.data, mat2.data)
+                and np.array_equal(mat1.indices, mat2.indices)
+                and np.array_equal(mat1.indptr, mat2.indptr)
+            )
 
         a = data[4].a
         assert __are_csr_matrices_equal(a, make_sparse(adj_matrix_values))

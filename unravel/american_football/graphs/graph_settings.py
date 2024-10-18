@@ -40,7 +40,7 @@ class AmericanFootballGraphSettings(DefaultGraphSettings):
                 "Incorrect pitch_dimension type... Should be of type AmericanFootballPitchDimensions"
             )
         self._sport_specific_checks()
-            
+
     def _sport_specific_checks(self):
         if self.attacking_non_qb_node_value > 1:
             self.attacking_non_qb_node_value = 1
