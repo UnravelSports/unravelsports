@@ -24,6 +24,18 @@ from ...utils import DefaultGraphConverter, flatten_to_reshaped_array, make_spar
 
 @dataclass(repr=True)
 class AmericanFootballGraphConverter(DefaultGraphConverter):
+    """
+    Converts our dataset TrackingDataset into an internal structure
+
+    Attributes:
+        dataset (TrackingDataset): Kloppy TrackingDataset.
+        label_col (str): Column name that contains labels in the dataset.data Polars dataframe
+        graph_id_col (str): Column name that contains graph ids in the dataset.data Polars dataframe
+
+        chunk_size (int): Used to batch convert Polars into Graphs
+        attacking_non_qb_node_value (float): Value between 0 and 1 to assign any attacking team player who is not the QB
+    """
+
     def __init__(
         self,
         dataset: BigDataBowlDataset,

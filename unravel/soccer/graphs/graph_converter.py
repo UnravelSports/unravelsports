@@ -59,20 +59,8 @@ class SoccerGraphConverter(DefaultGraphConverter):
             Also infers ball_carrier within ball_carrier_threshold
         infer_goalkeepers (bool): set True if no GK label is provider, set False for incomplete (broadcast tracking) data that might not have a GK in every frame
         ball_carrier_threshold (float): The distance threshold to determine the ball carrier. Defaults to 25.0.
-        max_player_speed (float): The maximum speed of a player in meters per second. Defaults to 12.0.
-        max_ball_speed (float): The maximum speed of the ball in meters per second. Defaults to 28.0.
         boundary_correction (float): A correction factor for boundary calculations, used to correct out of bounds as a percentages (Used as 1+boundary_correction, ie 0.05). Defaults to None.
-        self_loop_ball (bool): Flag to indicate if the ball node should have a self-loop. Defaults to True.
-        adjacency_matrix_connect_type (AdjacencyMatrixConnectType): The type of connection used in the adjacency matrix, typically related to the ball. Defaults to AdjacenyMatrixConnectType.BALL.
-        adjacency_matrix_type (AdjacencyMatrixType): The type of adjacency matrix, indicating how connections are structured, such as split by team. Defaults to AdjacencyMatrixType.SPLIT_BY_TEAM.
-        label_type (PredictionLabelType): The type of prediction label used. Defaults to PredictionLabelType.BINARY.
-        random_seed (int, bool): When a random_seed is given it will randomly shuffle an individual Graph without changing the underlying structure.
-            When set to True it will shuffle every frame differently, False won't shuffle. Defaults to False.
-            Adviced to set True when creating actual dataset.
-        pad (bool): True pads to a total amount of 22 players and ball (so 23x23 adjacency matrix).
-            It dynamically changes the edge feature padding size based on the combination of AdjacenyMatrixConnectType and AdjacencyMatrixType, and self_loop_ball
-            Ie. AdjacenyMatrixConnectType.BALL and AdjacencyMatrixType.SPLIT_BY_TEAM has a maximum of 287 edges (11*11)*2 + (11+11)*2 + 1
-        verbose (bool): The converter logs warnings / error messages when specific frames have no coordinates, or other missing information. False mutes all these warnings.
+        non_potential_receiver_node_value (float): Value between 0 and 1 to assign to the defing team players
     """
 
     dataset: TrackingDataset = None
@@ -85,6 +73,9 @@ class SoccerGraphConverter(DefaultGraphConverter):
     infer_goalkeepers: bool = True
     infer_ball_ownership: bool = True
     boundary_correction: float = None
+    ball_carrier_treshold: float = 25.0
+
+    non_potential_receiver_node_value: float = 0.1
 
     def __post_init__(self):
         if not self.dataset:

@@ -46,11 +46,6 @@ class DefaultGraphConverter:
         The latter can be useful when splitting graphs by possession or sequence id. In this case the dict would be {frame_id: sequence_id/possession_id}.
         Note that sequence_id/possession_id should probably be unique for the whole dataset. Perhaps like so {frame_id: 'match_id-sequence_id'}. Defaults to None.
 
-        infer_ball_ownership (bool):
-            Infers 'attacking_team' if no 'ball_owning_team' (Kloppy) or 'attacking_team' (List[Dict]) is provided, by finding player closest to ball using ball xyz.
-            Also infers ball_carrier within ball_carrier_threshold
-        infer_goalkeepers (bool): set True if no GK label is provider, set False for incomplete (broadcast tracking) data that might not have a GK in every frame
-        ball_carrier_threshold (float): The distance threshold to determine the ball carrier. Defaults to 25.0.
         max_player_speed (float): The maximum speed of a player in meters per second. Defaults to 12.0.
         max_ball_speed (float): The maximum speed of the ball in meters per second. Defaults to 28.0.
         boundary_correction (float): A correction factor for boundary calculations, used to correct out of bounds as a percentages (Used as 1+boundary_correction, ie 0.05). Defaults to None.
@@ -58,6 +53,7 @@ class DefaultGraphConverter:
         adjacency_matrix_connect_type (AdjacencyMatrixConnectType): The type of connection used in the adjacency matrix, typically related to the ball. Defaults to AdjacenyMatrixConnectType.BALL.
         adjacency_matrix_type (AdjacencyMatrixType): The type of adjacency matrix, indicating how connections are structured, such as split by team. Defaults to AdjacencyMatrixType.SPLIT_BY_TEAM.
         label_type (PredictionLabelType): The type of prediction label used. Defaults to PredictionLabelType.BINARY.
+        defending_team_node_value (float): Value between 0 and 1 to assign to the defending team nodes
         random_seed (int, bool): When a random_seed is given it will randomly shuffle an individual Graph without changing the underlying structure.
             When set to True it will shuffle every frame differently, False won't shuffle. Defaults to False.
             Adviced to set True when creating actual dataset.
@@ -69,7 +65,6 @@ class DefaultGraphConverter:
 
     prediction: bool = False
 
-    ball_carrier_treshold: float = 25.0
     max_player_speed: float = 12.0
     max_ball_speed: float = 28.0
     max_player_acceleration: float = 6.0
@@ -89,7 +84,6 @@ class DefaultGraphConverter:
     label_type: Literal["binary"] = "binary"
 
     defending_team_node_value: float = 0.1
-    non_potential_receiver_node_value: float = 0.1
     random_seed: Union[bool, int] = False
     pad: bool = False
     verbose: bool = False
