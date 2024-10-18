@@ -13,7 +13,7 @@ from kloppy.domain import (
 
 from . import DefaultPlayer, DefaultBall
 from ..exceptions import (
-    InvalidAttackingTeamType,
+    InvalidAttackingTeamTypeException,
     MissingAttackingTeam,
     MissingCoordinates,
     NoNextFrameWarning,
@@ -65,7 +65,7 @@ class DefaultTrackingModel:
             Ground.HOME.value,
             Ground.AWAY.value,
         ]:
-            raise InvalidAttackingTeamType(
+            raise InvalidAttackingTeamTypeException(
                 f"'attacking_team' should be of type {Ground.HOME} or {Ground.AWAY}"
             )
 
@@ -88,7 +88,7 @@ class DefaultTrackingModel:
             Ground.HOME.value,
             Ground.AWAY.value,
         ]:
-            raise InvalidAttackingTeamType(
+            raise InvalidAttackingTeamTypeException(
                 f"'attacking_team' should be of type {Ground.HOME} or {Ground.AWAY}"
             )
 

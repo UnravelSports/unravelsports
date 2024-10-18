@@ -1,26 +1,30 @@
-class MissingHomePlayerData(Exception):
+class MissingHomePlayerDataException(Exception):
     pass
 
 
-class MissingAwayPlayerData(Exception):
+class MissingAwayPlayerDataException(Exception):
     pass
 
 
-class MissingBallData(Exception):
+class MissingBallDataException(Exception):
     pass
 
 
-class InvalidAttackingTeam(Exception):
+class InvalidAttackingTeamException(Exception):
     pass
 
 
-class ModelParametersNotSet(Exception):
+class ModelParametersNotSetException(Exception):
     pass
 
 
-class InvalidAttackingTeamType(Exception):
+class InvalidAttackingTeamTypeException(Exception):
     pass
 
 
-class AdjcacenyMatrixTypeNotSet(Exception):
+class AdjcacenyMatrixTypeNotSetException(Exception):
+    pass
+
+
+class KeyMismatchException(Exception):
     pass

@@ -27,8 +27,8 @@ class AdjacencyMatrixType:
     DELAUNAY = "delaunay"
     SPLIT_BY_TEAM = "split_by_team"
     DENSE = "dense"
-    DENSE_ATTACKING_PLAYERS = "dense_ap"
-    DENSE_DEFENSIVE_PLAYERS = "dense_dp"
+    DENSE_AP = "dense_ap"
+    DENSE_DP = "dense_dp"
 
 
 class PredictionLabelType:
@@ -54,6 +54,10 @@ def normalize_angles(angle):
     return (((angle - old_min) * new_range) / old_range) + new_min
 
 
+def normalize_between(min_value, max_value, value):
+    return (value - min_value) / (max_value - min_value)
+
+
 def normalize_distance(value, max_distance):
     return value / max_distance
 
@@ -67,16 +71,6 @@ def unit_vector(vector):
 
 def normalize_coords(value, max_value):
     return value / max_value
-
-
-def normalize_speed(value, max_speed):
-    x = value / max_speed
-    try:
-        return 1 if x > 1 else 0 if x < 0 else x
-    except ValueError:
-        x[x < 0] = 0
-        x[x > 1] = 1
-        return x
 
 
 def normalize_sincos(value):
@@ -112,3 +106,69 @@ def reindex(m, non_zero_idxs, len_a):
 def make_sparse(a):
     A = sparse.csr_matrix(a)
     return np.nan_to_num(A)
+
+
+def unit_vector_from_angle(value, angle_radians):
+    # Compute velocity components
+    value = np.nan_to_num(value, nan=0.0)
+    angle_radians = np.nan_to_num(angle_radians, nan=0.0)
+
+    v_x = value * np.cos(angle_radians)
+    v_y = value * np.sin(angle_radians)
+
+    # Create velocity vector
+    velocity = np.array([v_x, v_y])
+
+    # Normalize the vector (get unit vector)
+    norm = np.linalg.norm(velocity)
+    if norm == 0:
+        return np.zeros_like(velocity)
+
+    return velocity / norm
+
+
+def normalize_speed(value, max_speed):
+    x = value / max_speed
+    return np.clip(x, 0, 1)
+
+
+def normalize_acceleration(value, max_acceleration):
+    x = value / max_acceleration
+    return np.clip(x, -1, 1)
+
+
+def normalize_speeds_nfl(s, team, settings):
+    ball_mask = team == settings.ball_id
+    s_normed = np.zeros_like(s)
+
+    s_normed[ball_mask] = normalize_speed(s[ball_mask], settings.max_ball_speed)
+
+    s_normed[~ball_mask] = normalize_speed(s[~ball_mask], settings.max_player_speed)
+    return s_normed
+
+
+def normalize_speed_differences_nfl(s, team, settings):
+
+    return normalize_speeds_nfl(s, team, settings) * np.sign(s)
+
+
+def normalize_accelerations_nfl(a, team, settings):
+    ball_mask = team == settings.ball_id
+    a_normed = np.zeros_like(a)
+
+    a_normed[ball_mask] = normalize_acceleration(
+        a[ball_mask], settings.max_ball_acceleration
+    )
+
+    a_normed[~ball_mask] = normalize_acceleration(
+        a[~ball_mask], settings.max_player_acceleration
+    )
+    return a_normed
+
+
+def flatten_to_reshaped_array(arr, s0, s1, as_list=False):
+    # Convert the structure into a list of arrays
+    flattened_list = [item for sublist in arr for item in sublist]
+    # Concatenate the arrays into one single array
+    result_array = np.concatenate(flattened_list).reshape(s0, s1)
+    return result_array if not as_list else result_array.tolist()

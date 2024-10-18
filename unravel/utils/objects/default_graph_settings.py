@@ -1,7 +1,6 @@
 import numpy as np
 from dataclasses import dataclass, field
 from typing import Union
-from kloppy.domain import MetricPitchDimensions
 
 from ..features import (
     AdjacencyMatrixType,
@@ -12,7 +11,7 @@ from ..features import (
 
 
 @dataclass
-class GraphSettings:
+class DefaultGraphSettings:
     """
     Configuration settings for a Graph Neural Network (GNN) applied in sports analytics.
 
@@ -41,11 +40,10 @@ class GraphSettings:
     """
 
     infer_ball_ownership: bool = True
-    infer_goalkeepers: bool = True
-    ball_carrier_treshold: float = 25.0
     max_player_speed: float = 12.0
     max_ball_speed: float = 28.0
-    boundary_correction: float = None
+    max_player_acceleration: float = None
+    max_ball_acceleration: float = None
     self_loop_ball: bool = True
     adjacency_matrix_connect_type: AdjacenyMatrixConnectType = (
         AdjacenyMatrixConnectType.BALL
@@ -53,7 +51,6 @@ class GraphSettings:
     adjacency_matrix_type: AdjacencyMatrixType = AdjacencyMatrixType.SPLIT_BY_TEAM
     label_type: PredictionLabelType = PredictionLabelType.BINARY
     defending_team_node_value: float = 0.1
-    non_potential_receiver_node_value: float = 0.1
     random_seed: Union[int, bool] = False
     pad: bool = True
     verbose: bool = False
@@ -67,11 +64,6 @@ class GraphSettings:
         elif self.defending_team_node_value < 0:
             self.defending_team_node_value = 0
 
-        if self.non_potential_receiver_node_value > 1:
-            self.non_potential_receiver_node_value = 1
-        elif self.non_potential_receiver_node_value < 0:
-            self.non_potential_receiver_node_value = 0
-
         if self.pad:
             if self.adjacency_matrix_type == AdjacencyMatrixType.DELAUNAY:
                 raise NotImplementedError(
@@ -82,14 +74,6 @@ class GraphSettings:
     @property
     def pad_settings(self) -> Pad:
         return self._pad_settings
-
-    @property
-    def pitch_dimensions(self) -> int:
-        return self._pitch_dimensions
-
-    @pitch_dimensions.setter
-    def pitch_dimensions(self, pitch_dimensions: MetricPitchDimensions) -> None:
-        self._pitch_dimensions = pitch_dimensions
 
     def __pad_settings(self):
         """
@@ -119,8 +103,8 @@ class GraphSettings:
         elif self.adjacency_matrix_type == AdjacencyMatrixType.DENSE:
             max_player_edges = (n_players + n_players) ** 2
         elif self.adjacency_matrix_type in (
-            AdjacencyMatrixType.DENSE_ATTACKING_PLAYERS,
-            AdjacencyMatrixType.DENSE_DEFENSIVE_PLAYERS,
+            AdjacencyMatrixType.DENSE_AP,
+            AdjacencyMatrixType.DENSE_DP,
         ):
             max_player_edges = n_players * n_players
         else:
@@ -131,3 +115,6 @@ class GraphSettings:
             max_nodes=(n_players * 2) + n_ball,
             n_players=n_players,
         )
+
+    def _sport_specific_checks(self):
+        raise NotImplementedError()

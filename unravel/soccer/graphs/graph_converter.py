@@ -26,6 +26,9 @@ from .exceptions import (
     KeyMismatchError,
 )
 
+from .graph_settings import SoccerGraphSettings
+from .graph_frame import GraphFrame
+
 from ...utils import *
 
 logger = logging.getLogger(__name__)
@@ -35,7 +38,7 @@ logger.addHandler(stdout_handler)
 
 
 @dataclass(repr=True)
-class GraphConverter:
+class SoccerGraphConverter(DefaultGraphConverter):
     """
     Converts our dataset TrackingDataset into an internal structure
 
@@ -56,105 +59,30 @@ class GraphConverter:
             Also infers ball_carrier within ball_carrier_threshold
         infer_goalkeepers (bool): set True if no GK label is provider, set False for incomplete (broadcast tracking) data that might not have a GK in every frame
         ball_carrier_threshold (float): The distance threshold to determine the ball carrier. Defaults to 25.0.
-        max_player_speed (float): The maximum speed of a player in meters per second. Defaults to 12.0.
-        max_ball_speed (float): The maximum speed of the ball in meters per second. Defaults to 28.0.
         boundary_correction (float): A correction factor for boundary calculations, used to correct out of bounds as a percentages (Used as 1+boundary_correction, ie 0.05). Defaults to None.
-        self_loop_ball (bool): Flag to indicate if the ball node should have a self-loop. Defaults to True.
-        adjacency_matrix_connect_type (AdjacencyMatrixConnectType): The type of connection used in the adjacency matrix, typically related to the ball. Defaults to AdjacenyMatrixConnectType.BALL.
-        adjacency_matrix_type (AdjacencyMatrixType): The type of adjacency matrix, indicating how connections are structured, such as split by team. Defaults to AdjacencyMatrixType.SPLIT_BY_TEAM.
-        label_type (PredictionLabelType): The type of prediction label used. Defaults to PredictionLabelType.BINARY.
-        random_seed (int, bool): When a random_seed is given it will randomly shuffle an individual Graph without changing the underlying structure.
-            When set to True it will shuffle every frame differently, False won't shuffle. Defaults to False.
-            Adviced to set True when creating actual dataset.
-        pad (bool): True pads to a total amount of 22 players and ball (so 23x23 adjacency matrix).
-            It dynamically changes the edge feature padding size based on the combination of AdjacenyMatrixConnectType and AdjacencyMatrixType, and self_loop_ball
-            Ie. AdjacenyMatrixConnectType.BALL and AdjacencyMatrixType.SPLIT_BY_TEAM has a maximum of 287 edges (11*11)*2 + (11+11)*2 + 1
-        verbose (bool): The converter logs warnings / error messages when specific frames have no coordinates, or other missing information. False mutes all these warnings.
+        non_potential_receiver_node_value (float): Value between 0 and 1 to assign to the defing team players
     """
 
-    dataset: TrackingDataset
+    dataset: TrackingDataset = None
     labels: dict = None
-    prediction: bool = False
+
+    labels: dict = None
     graph_id: Union[str, int, dict] = None
     graph_ids: dict = None
 
-    ball_carrier_treshold: float = 25.0
-    max_player_speed: float = 12.0
-    max_ball_speed: float = 28.0
-    boundary_correction: float = None
-    self_loop_ball: bool = False
-    adjacency_matrix_connect_type: Union[
-        Literal["ball"], Literal["ball_carrier"], Literal["no_connection"]
-    ] = "ball"
-    adjacency_matrix_type: Union[
-        Literal["delaunay"],
-        Literal["split_by_team"],
-        Literal["dense"],
-        Literal["dense_ap"],
-        Literal["dense_dp"],
-    ] = "split_by_team"
-    label_type: Literal["binary"] = "binary"
-    infer_ball_ownership: bool = True
     infer_goalkeepers: bool = True
-    defending_team_node_value: float = 0.1
-    non_potential_receiver_node_value: float = 0.1
-    random_seed: Union[bool, int] = False
-    pad: bool = False
-    verbose: bool = False
+    infer_ball_ownership: bool = True
+    boundary_correction: float = None
+    ball_carrier_treshold: float = 25.0
 
-    graph_frames: dict = field(init=False, repr=False, default=None)
-    settings: GraphSettings = field(
-        init=False, repr=False, default_factory=GraphSettings
-    )
+    non_potential_receiver_node_value: float = 0.1
 
     def __post_init__(self):
-        if not self.labels and not self.prediction:
-            raise Exception(
-                "Please specify 'labels' or set 'prediction=True' if you want to use the converted dataset to make predictions on."
-            )
+        if not self.dataset:
+            raise Exception("Please provide a 'kloppy' dataset.")
 
-        if self.graph_id is not None and self.graph_ids:
-            raise Exception("Please set either 'graph_id' or 'graph_ids', not both...")
-
-        if self.graph_ids:
-            if not self.prediction:
-                if not set(list(self.labels.keys())) == set(
-                    list(self.graph_ids.keys())
-                ):
-                    raise KeyMismatchError(
-                        "When 'graph_id' is of type dict it needs to have the exact same keys as 'labels'..."
-                    )
-        if not self.graph_ids and self.prediction:
-            self.graph_ids = {x.frame_id: x.frame_id for x in self.dataset}
-
-        if hasattr(
-            AdjacenyMatrixConnectType, self.adjacency_matrix_connect_type.upper()
-        ):
-            self.adjacency_matrix_connect_type = getattr(
-                AdjacenyMatrixConnectType, self.adjacency_matrix_connect_type.upper()
-            )
-        else:
-            raise ValueError(
-                f"Invalid adjacency_matrix_connect_type: {self.adjacency_matrix_connect_type}. Should by of type 'ball', 'ball_carrier' or 'no_connection'"
-            )
-
-        if hasattr(AdjacencyMatrixType, self.adjacency_matrix_type.upper()):
-            self.adjacency_matrix_type = getattr(
-                AdjacencyMatrixType, self.adjacency_matrix_type.upper()
-            )
-        else:
-            raise ValueError(
-                f"Invalid adjacency_matrix_type: {self.adjacency_matrix_type}. Should be of type 'delaunay', 'split_by_team', 'dense', 'dense_ap' or 'dense_dp'"
-            )
-
-        if hasattr(PredictionLabelType, self.label_type.upper()):
-            self.label_type = getattr(PredictionLabelType, self.label_type.upper())
-        else:
-            raise ValueError(
-                f"Invalid label_type: {self.label_type}. Should be of type 'binary'"
-            )
-
-        self.settings = GraphSettings(
+        self._sport_specific_checks()
+        self.settings = SoccerGraphSettings(
             ball_carrier_treshold=self.ball_carrier_treshold,
             max_player_speed=self.max_player_speed,
             max_ball_speed=self.max_ball_speed,
@@ -189,6 +117,56 @@ class GraphConverter:
             self.orientation = self.dataset.metadata.orientation
 
         self.settings.pitch_dimensions = self.dataset.metadata.pitch_dimensions
+
+    def _sport_specific_checks(self):
+        if not self.labels and not self.prediction:
+            raise Exception(
+                "Please specify 'labels' or set 'prediction=True' if you want to use the converted dataset to make predictions on."
+            )
+
+        if self.graph_id is not None and self.graph_ids:
+            raise Exception("Please set either 'graph_id' or 'graph_ids', not both...")
+
+        if self.graph_ids:
+            if not self.prediction:
+                if not set(list(self.labels.keys())) == set(
+                    list(self.graph_ids.keys())
+                ):
+                    raise KeyMismatchException(
+                        "When 'graph_id' is of type dict it needs to have the exact same keys as 'labels'..."
+                    )
+        if not self.graph_ids and self.prediction:
+            self.graph_ids = {x.frame_id: x.frame_id for x in self.dataset}
+
+        if self.labels and not isinstance(self.labels, dict):
+            raise Exception("'labels' should be of type dictionary (dict)")
+
+        if self.graph_id and not isinstance(self.graph_id, (str, int, dict)):
+            raise Exception("'graph_id_col' should be of type {str, int, dict}")
+
+        if self.graph_ids and not isinstance(self.graph_ids, dict):
+            raise Exception("chunk_size should be of type dictionary (dict")
+
+        if not isinstance(self.infer_goalkeepers, bool):
+            raise Exception("'infer_goalkeepers' should be of type boolean (bool)")
+
+        if not isinstance(self.infer_ball_ownership, bool):
+            raise Exception("'infer_ball_ownership' should be of type boolean (bool)")
+
+        if self.boundary_correction and not isinstance(self.boundary_correction, float):
+            raise Exception("'boundary_correction' should be of type float")
+
+        if self.ball_carrier_treshold and not isinstance(
+            self.ball_carrier_treshold, float
+        ):
+            raise Exception("'ball_carrier_treshold' should be of type float")
+
+        if self.non_potential_receiver_node_value and not isinstance(
+            self.non_potential_receiver_node_value, float
+        ):
+            raise Exception(
+                "'non_potential_receiver_node_value' should be of type float"
+            )
 
     def _convert(self, frame: Frame):
         data = DefaultTrackingModel(
@@ -277,13 +255,6 @@ class GraphConverter:
             self.to_graph_frames()
 
         return [g.to_spektral_graph() for g in self.graph_frames]
-
-    def to_custom_dataset(self) -> CustomSpektralDataset:
-        """
-        Spektral requires a spektral Dataset to load the data
-        for docs see https://graphneural.network/creating-dataset/
-        """
-        return CustomSpektralDataset(graphs=self.to_spektral_graphs())
 
     def to_pickle(self, file_path: str) -> None:
         """
