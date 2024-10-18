@@ -81,33 +81,6 @@ class SoccerGraphConverter(DefaultGraphConverter):
         if not self.dataset:
             raise Exception("Please provide a 'kloppy' dataset.")
 
-        if hasattr(
-            AdjacenyMatrixConnectType, self.adjacency_matrix_connect_type.upper()
-        ):
-            self.adjacency_matrix_connect_type = getattr(
-                AdjacenyMatrixConnectType, self.adjacency_matrix_connect_type.upper()
-            )
-        else:
-            raise ValueError(
-                f"Invalid adjacency_matrix_connect_type: {self.adjacency_matrix_connect_type}. Should by of type 'ball', 'ball_carrier' or 'no_connection'"
-            )
-
-        if hasattr(AdjacencyMatrixType, self.adjacency_matrix_type.upper()):
-            self.adjacency_matrix_type = getattr(
-                AdjacencyMatrixType, self.adjacency_matrix_type.upper()
-            )
-        else:
-            raise ValueError(
-                f"Invalid adjacency_matrix_type: {self.adjacency_matrix_type}. Should be of type 'delaunay', 'split_by_team', 'dense', 'dense_ap' or 'dense_dp'"
-            )
-
-        if hasattr(PredictionLabelType, self.label_type.upper()):
-            self.label_type = getattr(PredictionLabelType, self.label_type.upper())
-        else:
-            raise ValueError(
-                f"Invalid label_type: {self.label_type}. Should be of type 'binary'"
-            )
-
         self._sport_specific_checks()
         self.settings = SoccerGraphSettings(
             ball_carrier_treshold=self.ball_carrier_treshold,
@@ -164,6 +137,36 @@ class SoccerGraphConverter(DefaultGraphConverter):
                     )
         if not self.graph_ids and self.prediction:
             self.graph_ids = {x.frame_id: x.frame_id for x in self.dataset}
+
+        if self.labels and not isinstance(self.labels, dict):
+            raise Exception("'labels' should be of type dictionary (dict)")
+
+        if self.graph_id and not isinstance(self.graph_id, (str, int, dict)):
+            raise Exception("'graph_id_col' should be of type {str, int, dict}")
+
+        if self.graph_ids and not isinstance(self.graph_ids, dict):
+            raise Exception("chunk_size should be of type dictionary (dict")
+
+        if not isinstance(self.infer_goalkeepers, bool):
+            raise Exception("'infer_goalkeepers' should be of type boolean (bool)")
+
+        if not isinstance(self.infer_ball_ownership, bool):
+            raise Exception("'infer_ball_ownership' should be of type boolean (bool)")
+
+        if self.boundary_correction and not isinstance(self.boundary_correction, float):
+            raise Exception("'boundary_correction' should be of type float")
+
+        if self.ball_carrier_treshold and not isinstance(
+            self.ball_carrier_treshold, float
+        ):
+            raise Exception("'ball_carrier_treshold' should be of type float")
+
+        if self.non_potential_receiver_node_value and not isinstance(
+            self.non_potential_receiver_node_value, float
+        ):
+            raise Exception(
+                "'non_potential_receiver_node_value' should be of type float"
+            )
 
     def _convert(self, frame: Frame):
         data = DefaultTrackingModel(

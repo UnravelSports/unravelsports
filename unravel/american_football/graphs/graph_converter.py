@@ -47,6 +47,9 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
     ):
         super().__init__(**kwargs)
 
+        if not isinstance(dataset, BigDataBowlDataset):
+            raise Exception("'dataset' should be an instance of BigDataBowlDataset")
+        
         self.dataset: pl.DataFrame = dataset.data
         self.pitch_dimensions: AmericanFootballPitchDimensions = (
             dataset.pitch_dimensions
@@ -61,6 +64,21 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
         self.settings = self._apply_settings()
 
     def _sport_specific_checks(self):
+
+        if not isinstance(self.label_col, str):
+            raise Exception("'label_col' should be of type string (str)")
+
+        if not isinstance(self.graph_id_col, str):
+            raise Exception("'graph_id_col' should be of type string (str)")
+
+        if not isinstance(self.chunk_size, int):
+            raise Exception("chunk_size should be of type integer (int)")
+
+        if not isinstance(self.attacking_non_qb_node_value, (int, float)):
+            raise Exception(
+                "'attacking_non_qb_node_value' should be of type float or integer (int)"
+            )
+
         if not self.label_col in self.dataset.columns and not self.prediction:
             raise Exception(
                 "Please specify a 'label_col' and add that column to your 'dataset' or set 'prediction=True' if you want to use the converted dataset to make predictions on."

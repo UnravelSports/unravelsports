@@ -17,25 +17,35 @@ The **unravelsports** package aims to aid researchers, analysts and enthusiasts 
 🌀 Features
 -----
 
-⚽ Convert **positional soccer data** into graphs to train **graph neural networks** by leveraging the powerful [**Kloppy**](https://github.com/PySport/kloppy/tree/master) data conversion standard and [**Spektral**](https://github.com/danielegrattarola/spektral) - a flexible framework for training graph neural networks. 
+### **Convert**
 
-⚽ **Randomize** and **split** data into train, test and validation sets along matches, sequences or possessions to avoid leakage and improve model quality.
+⚽ **Soccer positional tracking data** into [Graphs](examples/graphs_faq.ipynb) to train **graph neural networks** by leveraging the powerful [**Kloppy**](https://github.com/PySport/kloppy) data conversion standard for 
+  - _Metrica_
+  - _Sportec_
+  - _Tracab (CyronHego)_
+  - _SecondSpectrum_
+  - _SkillCorner_ 
+  - _StatsPerform_ 
+  
+🏈 **BigDataBowl American football positional tracking data** into [Graphs](examples/graphs_faq.ipynb) to train **graph neural networks** by leveraging [**Polars**](https://github.com/pola-rs/polars).
 
-⚽ **Train**, **validate** and **test** your (custom) Graph model(s) and easily **predict** on new data.
-
-⚽ Leverage the power of **Kloppy** standardization and **unravelsports** to execute the these features for _Metrica_, _Sportec_, _Tracab (CyronHego)_, _SecondSpectrum_, _SkillCorner_ and _StatsPerform_ tracking data.
+### **Graph Neural Networks**
+These [Graphs](examples/graphs_faq.ipynb) can be used with [**Spektral**](https://github.com/danielegrattarola/spektral) - a flexible framework for training graph neural networks. 
+`unravelsports` allows you to **randomize** and **split** data into train, test and validation sets along matches, sequences or possessions to avoid leakage and improve model quality. And finally, **train**, **validate** and **test** your (custom) Graph model(s) and easily **predict** on new data.
 
 ⌛ ***More to come soon...!***
 
 🌀 Quick Start
 -----
-📖 The [**Quick Start Jupyter Notebook**](examples/0_quick_start_guide.ipynb) explains how to convert any positional tracking data from **Kloppy** to **Spektral GNN** in a few easy steps while walking you through the most important features and documentation.
+📖 ⚽ The [**Quick Start Jupyter Notebook**](examples/0_quick_start_guide.ipynb) explains how to convert any positional tracking data from **Kloppy** to **Spektral GNN** in a few easy steps while walking you through the most important features and documentation.
 
-📖 The [**Graph Converter Tutorial Jupyter Notebook**](examples/1_kloppy_gnn_train.ipynb) gives an in-depth walkthrough.
+📖 ⚽ The [**Graph Converter Tutorial Jupyter Notebook**](examples/1_kloppy_gnn_train.ipynb) gives an in-depth walkthrough.
+
+📖 🏈 The [**BigDataBowl Converter Tutorial Jupyter Notebook**](examples/2_big_data_bowl_guide.ipynb) gives an guide on how to convert the BigDataBowl data into Graphs.
 
 🌀 Documentation
 -----
-For now, follow the [**Graph Converter Tutorial**](examples/1_kloppy_gnn_train.ipynb), more documentation will follow!
+For now, follow the [**Graph Converter Tutorial**](examples/1_kloppy_gnn_train.ipynb) and check the [**Graph FAQ**](examples/graphs_faq.ipynb), more documentation will follow!
 
 Additional reading:
 
@@ -55,6 +65,7 @@ spektral==1.20.0
 tensorflow==2.14.0 
 keras==2.14.0
 kloppy==3.15.0
+polars==1.2.1
 ```
 These dependencies come pre-installed with the package. It is advised to create a [virtual environment](https://virtualenv.pypa.io/en/latest/).
 

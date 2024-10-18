@@ -69,7 +69,6 @@ class DefaultGraphConverter:
     max_ball_speed: float = 28.0
     max_player_acceleration: float = 6.0
     max_ball_acceleration: float = 13.5
-    # boundary_correction: float = None
     self_loop_ball: bool = False
     adjacency_matrix_connect_type: Union[
         Literal["ball"], Literal["ball_carrier"], Literal["no_connection"]
@@ -120,6 +119,37 @@ class DefaultGraphConverter:
             raise ValueError(
                 f"Invalid label_type: {self.label_type}. Should be of type 'binary'"
             )
+            
+        if not isinstance(self.prediction, bool):
+            raise Exception("'prediction' should be of type boolean (bool)")
+
+        if not isinstance(self.max_player_speed, (float, int)):
+            raise Exception("'max_player_speed' should be of type float or int")
+
+        if not isinstance(self.max_ball_speed, (float, int)):
+            raise Exception("'max_ball_speed' should be of type float or int")
+
+        if not isinstance(self.max_player_acceleration, (float, int)):
+            raise Exception("'max_player_acceleration' should be of type float or int")
+
+        if not isinstance(self.max_ball_acceleration, (float, int)):
+            raise Exception("'max_ball_acceleration' should be of type float or int")
+
+        if not isinstance(self.self_loop_ball, bool):
+            raise Exception("'self_loop_ball' should be of type boolean (bool)")
+
+        if not isinstance(self.defending_team_node_value, (float, int)):
+            raise Exception("'defending_team_node_value' should be of type float or int")
+
+        if not isinstance(self.random_seed, (bool, int)):
+            raise Exception("'random_seed' should be of type boolean (bool) or int")
+
+        if not isinstance(self.pad, bool):
+            raise Exception("'pad' should be of type boolean (bool)")
+
+        if not isinstance(self.verbose, bool):
+            raise Exception("'verbose' should be of type boolean (bool)")
+
 
     def _sport_specific_checks(self):
         raise NotImplementedError(
