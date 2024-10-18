@@ -30,8 +30,8 @@ def compute_node_features(
     ball_id = settings.ball_id
 
     goal_mouth_position = (
-        settings.pitch_dimensions.pitch_length,
-        settings.pitch_dimensions.pitch_width / 2,
+        settings.pitch_dimensions.x_dim.max,
+        (settings.pitch_dimensions.y_dim.max + settings.pitch_dimensions.y_dim.min) / 2,
     )
     max_dist_to_player = np.sqrt(
         settings.pitch_dimensions.pitch_length**2
@@ -81,7 +81,7 @@ def compute_node_features(
         value=dist_to_ball, max_distance=max_dist_to_player
     )
 
-    dist_to_end_zone = settings.pitch_dimensions.end_zone - y
+    dist_to_end_zone = settings.pitch_dimensions.end_zone - x
     normed_dist_to_end_zone = normalize_between(
         value=dist_to_end_zone,
         max_value=settings.pitch_dimensions.pitch_length,

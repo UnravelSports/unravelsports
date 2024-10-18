@@ -127,9 +127,9 @@ class TestAmericanFootballDataset:
             "dir_cos_normed": 0.6008808723120034,
             "o_sin_normed": 0.394422899008786,
             "o_cos_normed": 0.9887263812669529,
-            "normed_dist_to_goal": 0.7706709456302273,
+            "normed_dist_to_goal": 0.31312769316888,
             "normed_dist_to_ball": 0.05817057703598108,
-            "normed_dist_to_end_zone": 0.8320000000000001,
+            "normed_dist_to_end_zone": 0.2486666666666667,
             "is_possession_team": 0.0,
             "is_qb": 0.0,
             "is_ball": 0.0,
@@ -137,11 +137,10 @@ class TestAmericanFootballDataset:
             "height_normed": 0.4722666666666665,
         }
         return item_idx, assert_values
-
+    
     @pytest.fixture
-    def gnnc(self, dataset):
-        return AmericanFootballGraphConverter(
-            dataset=dataset,
+    def arguments(self):
+        return dict(
             label_col="label",
             graph_id_col="graph_id",
             max_player_speed=8.0,
@@ -156,8 +155,72 @@ class TestAmericanFootballDataset:
             attacking_non_qb_node_value=0.1,
             random_seed=42,
             pad=False,
-            verbose=False,
+            verbose=False
         )
+        
+    @pytest.fixture
+    def non_default_arguments(self):
+        return dict(
+            label_col="label",
+            graph_id_col="graph_id",
+            max_player_speed=12.0,
+            max_ball_speed=24.0,
+            max_player_acceleration=11.0,
+            max_ball_acceleration=12.0,
+            self_loop_ball=False,
+            adjacency_matrix_connect_type="ball",
+            adjacency_matrix_type="dense_ap",
+            label_type="binary",
+            defending_team_node_value=0.3,
+            attacking_non_qb_node_value=0.2,
+            random_seed=42,
+            pad=False,
+        )
+
+    @pytest.fixture
+    def gnnc(self, dataset, arguments):
+        return AmericanFootballGraphConverter(
+            dataset=dataset,
+            **arguments
+        )
+        
+    @pytest.fixture
+    def gnnc_non_default(self, dataset, non_default_arguments):
+        return AmericanFootballGraphConverter(
+            dataset=dataset,
+            **non_default_arguments
+        )
+        
+    def test_settings(self, gnnc_non_default, non_default_arguments):
+        settings = gnnc_non_default.settings
+        assert isinstance(settings, AmericanFootballGraphSettings)
+        
+        assert settings.pitch_dimensions.pitch_length == 120.0
+        assert settings.pitch_dimensions.pitch_width == 53.3
+        assert settings.pitch_dimensions.standardized == False
+        assert settings.pitch_dimensions.unit == Unit.YARDS
+        assert settings.pitch_dimensions.x_dim.max == 60.0
+        assert settings.pitch_dimensions.x_dim.min == -60.0
+        assert settings.pitch_dimensions.y_dim.max == 26.65
+        assert settings.pitch_dimensions.y_dim.min == -26.65
+        assert settings.pitch_dimensions.end_zone == 50.0
+        
+        assert settings.ball_id == 'football'
+        assert settings.qb_id == 'QB'
+        assert settings.max_height == 225.0
+        assert settings.min_height == 150.0
+        assert settings.max_weight == 200.0
+        assert settings.min_weight == 60.0
+        assert settings.max_ball_speed == non_default_arguments['max_ball_speed']
+        assert settings.max_ball_speed == non_default_arguments['max_ball_speed']
+        assert settings.max_player_acceleration == non_default_arguments['max_player_acceleration']
+        assert settings.max_ball_acceleration ==non_default_arguments['max_ball_acceleration']
+        assert settings.self_loop_ball == non_default_arguments['self_loop_ball']
+        assert settings.adjacency_matrix_connect_type == non_default_arguments['adjacency_matrix_connect_type']
+        assert settings.adjacency_matrix_type == non_default_arguments['adjacency_matrix_type']
+        assert settings.label_type == non_default_arguments['label_type']
+        assert settings.defending_team_node_value == non_default_arguments['defending_team_node_value']
+        assert settings.attacking_non_qb_node_value == non_default_arguments['attacking_non_qb_node_value']
 
     def test_raw_data(self, raw_dataset: pd.DataFrame):
         row_10 = raw_dataset.loc[10]

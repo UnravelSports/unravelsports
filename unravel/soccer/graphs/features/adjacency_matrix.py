@@ -25,10 +25,10 @@ def adjacency_matrix(
     if adjacency_matrix_type == AdjacencyMatrixType.DENSE:
         Z1 = np.ones((ap, dp), dtype=int)  # Create off-diagonal ones array
         Z2 = np.ones((dp, ap), dtype=int)  # Create off-diagonal ones array
-    elif adjacency_matrix_type == AdjacencyMatrixType.DENSE_ATTACKING_PLAYERS:
+    elif adjacency_matrix_type == AdjacencyMatrixType.DENSE_AP:
         Z1 = np.ones((ap, dp), dtype=int)  # Create off-diagonal ones array
         Z2 = np.zeros((dp, ap), dtype=int)  # Create off-diagonal zeros array
-    elif adjacency_matrix_type == AdjacencyMatrixType.DENSE_DEFENSIVE_PLAYERS:
+    elif adjacency_matrix_type == AdjacencyMatrixType.DENSE_DP:
         Z1 = np.zeros((ap, dp), dtype=int)  # Create off-diagonal zeros array
         Z2 = np.ones((dp, ap), dtype=int)  # Create off-diagonal ones array
     elif adjacency_matrix_type == AdjacencyMatrixType.SPLIT_BY_TEAM:

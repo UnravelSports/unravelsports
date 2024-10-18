@@ -20,7 +20,7 @@ class AmericanFootballPitchDimensions:
     end_zone: float = field(init=False)
 
     def __post_init__(self):
-        self.end_zone = self.pitch_length - 10  # Calculated value
+        self.end_zone = self.x_dim.max - 10  # Calculated value
 
 
 @dataclass

@@ -103,8 +103,8 @@ class DefaultGraphSettings:
         elif self.adjacency_matrix_type == AdjacencyMatrixType.DENSE:
             max_player_edges = (n_players + n_players) ** 2
         elif self.adjacency_matrix_type in (
-            AdjacencyMatrixType.DENSE_ATTACKING_PLAYERS,
-            AdjacencyMatrixType.DENSE_DEFENSIVE_PLAYERS,
+            AdjacencyMatrixType.DENSE_AP,
+            AdjacencyMatrixType.DENSE_DP,
         ):
             max_player_edges = n_players * n_players
         else:

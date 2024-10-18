@@ -12,10 +12,10 @@ def compute_adjacency_matrix(team, possession_team, settings):
     defensive_team = np.setdiff1d(team, exclusion_ids)[0]
     if adjacency_matrix_type == AdjacencyMatrixType.DENSE:
         adjacency_matrix = np.ones((team.shape[0], team.shape[0])).astype(np.int32)
-    elif adjacency_matrix_type == AdjacencyMatrixType.DENSE_ATTACKING_PLAYERS:
+    elif adjacency_matrix_type == AdjacencyMatrixType.DENSE_AP:
         is_att = team == np.unique(possession_team)[0]
         adjacency_matrix = np.outer(is_att, is_att).astype(int)
-    elif adjacency_matrix_type == AdjacencyMatrixType.DENSE_DEFENSIVE_PLAYERS:
+    elif adjacency_matrix_type == AdjacencyMatrixType.DENSE_DP:
         is_def = team == defensive_team
         adjacency_matrix = np.outer(is_def, is_def).astype(int)
     elif adjacency_matrix_type == AdjacencyMatrixType.SPLIT_BY_TEAM:

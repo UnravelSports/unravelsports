@@ -27,8 +27,8 @@ class AdjacencyMatrixType:
     DELAUNAY = "delaunay"
     SPLIT_BY_TEAM = "split_by_team"
     DENSE = "dense"
-    DENSE_ATTACKING_PLAYERS = "dense_ap"
-    DENSE_DEFENSIVE_PLAYERS = "dense_dp"
+    DENSE_AP = "dense_ap"
+    DENSE_DP = "dense_dp"
 
 
 class PredictionLabelType:
