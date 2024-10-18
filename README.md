@@ -19,7 +19,7 @@ The **unravelsports** package aims to aid researchers, analysts and enthusiasts 
 
 ### **Convert**
 
-⚽ **Soccer positional tracking data** into [Graphs](examples/graphs_faq.ipynb) to train **graph neural networks** by leveraging the powerful [**Kloppy**](https://github.com/PySport/kloppy) data conversion standard for 
+⚽ **Soccer positional tracking data** into [Graphs](examples/graphs_faq.md) to train **graph neural networks** by leveraging the powerful [**Kloppy**](https://github.com/PySport/kloppy) data conversion standard for 
   - _Metrica_
   - _Sportec_
   - _Tracab (CyronHego)_
@@ -27,10 +27,10 @@ The **unravelsports** package aims to aid researchers, analysts and enthusiasts 
   - _SkillCorner_ 
   - _StatsPerform_ 
   
-🏈 **BigDataBowl American football positional tracking data** into [Graphs](examples/graphs_faq.ipynb) to train **graph neural networks** by leveraging [**Polars**](https://github.com/pola-rs/polars).
+🏈 **BigDataBowl American football positional tracking data** into [Graphs](examples/graphs_faq.md) to train **graph neural networks** by leveraging [**Polars**](https://github.com/pola-rs/polars).
 
 ### **Graph Neural Networks**
-These [Graphs](examples/graphs_faq.ipynb) can be used with [**Spektral**](https://github.com/danielegrattarola/spektral) - a flexible framework for training graph neural networks. 
+These [Graphs](examples/graphs_faq.md) can be used with [**Spektral**](https://github.com/danielegrattarola/spektral) - a flexible framework for training graph neural networks. 
 `unravelsports` allows you to **randomize** and **split** data into train, test and validation sets along matches, sequences or possessions to avoid leakage and improve model quality. And finally, **train**, **validate** and **test** your (custom) Graph model(s) and easily **predict** on new data.
 
 ⌛ ***More to come soon...!***
@@ -45,7 +45,7 @@ These [Graphs](examples/graphs_faq.ipynb) can be used with [**Spektral**](https:
 
 🌀 Documentation
 -----
-For now, follow the [**Graph Converter Tutorial**](examples/1_kloppy_gnn_train.ipynb) and check the [**Graph FAQ**](examples/graphs_faq.ipynb), more documentation will follow!
+For now, follow the [**Graph Converter Tutorial**](examples/1_kloppy_gnn_train.ipynb) and check the [**Graph FAQ**](examples/graphs_faq.md), more documentation will follow!
 
 Additional reading:
 
