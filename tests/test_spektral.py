@@ -27,15 +27,15 @@ from os.path import join
 class TestSpektral:
     @pytest.fixture
     def coordinates(self, base_dir: Path) -> str:
-        return base_dir / "files" / "bdb_coords.csv"
+        return base_dir / "files" / "bdb_coords-1.csv"
 
     @pytest.fixture
     def players(self, base_dir: Path) -> str:
-        return base_dir / "files" / "bdb_players.csv"
+        return base_dir / "files" / "bdb_players-1.csv"
 
     @pytest.fixture
     def plays(self, base_dir: Path) -> str:
-        return base_dir / "files" / "bdb_plays.csv"
+        return base_dir / "files" / "bdb_plays-1.csv"
 
     @pytest.fixture
     def bdb_dataset(self, coordinates: str, players: str, plays: str):
@@ -121,8 +121,7 @@ class TestSpektral:
         self, bdb_dataset: BigDataBowlDataset
     ) -> AmericanFootballGraphConverter:
         return AmericanFootballGraphConverter(
-            dataset=bdb_dataset.data,
-            pitch_dimensions=bdb_dataset.pitch_dimensions,
+            dataset=bdb_dataset,
             label_col="label",
             graph_id_col="graph_id",
             ball_carrier_treshold=25.0,
@@ -146,8 +145,7 @@ class TestSpektral:
         self, bdb_dataset: BigDataBowlDataset
     ) -> AmericanFootballGraphConverter:
         return AmericanFootballGraphConverter(
-            dataset=bdb_dataset.data,
-            pitch_dimensions=bdb_dataset.pitch_dimensions,
+            dataset=bdb_dataset,
             prediction=True,
             ball_carrier_treshold=25.0,
             max_player_speed=8.0,
@@ -283,9 +281,7 @@ class TestSpektral:
 
         assert np.allclose(pred, loaded_pred, atol=1e-8)
 
-    def test_soccer_prediction(
-        self, bdb_converter_preds: AmericanFootballGraphConverter
-    ):
+    def test_dbd_prediction(self, bdb_converter_preds: AmericanFootballGraphConverter):
         pred_dataset = CustomSpektralDataset(
             graphs=bdb_converter_preds.to_spektral_graphs()
         )
@@ -305,4 +301,4 @@ class TestSpektral:
         )
 
         assert df["frame_id"].iloc[0] == "2021091300-4845"
-        assert df["frame_id"].iloc[-1] == "2021091300-4845"
+        assert df["frame_id"].iloc[-1] == "2021103108-54"

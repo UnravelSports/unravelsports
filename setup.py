@@ -35,6 +35,7 @@ setup(
         "tensorflow>=2.14.0;platform_machine != 'arm64' or platform_system != 'Darwin'",
         "tensorflow-macos>=2.14.0;platform_machine == 'arm64' and platform_system == 'Darwin'",
         "keras==2.14.0",
+        "polars==1.2.1",
     ],
     extras_require={
         "test": [
