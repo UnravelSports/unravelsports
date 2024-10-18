@@ -35,11 +35,12 @@ jobs:
       env:
         PYTHONIOENCODING: utf-8  # Ensure Python uses UTF-8 encoding
       run: |
-        if [ "${{ runner.os }}" == "Windows" ]; then
-          chcp 65001 | python -m pip install -e .[test]
-        else
+        if ($Env:RUNNER_OS -eq 'Windows') {
+          chcp 65001
           python -m pip install -e .[test]
-        fi
+        } else {
+          python -m pip install -e .[test]
+        }
     
     - name: Code formatting
       run: |
