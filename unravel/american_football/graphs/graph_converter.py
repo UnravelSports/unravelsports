@@ -49,7 +49,7 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
 
         if not isinstance(dataset, BigDataBowlDataset):
             raise Exception("'dataset' should be an instance of BigDataBowlDataset")
-        
+
         self.dataset: pl.DataFrame = dataset.data
         self.pitch_dimensions: AmericanFootballPitchDimensions = (
             dataset.pitch_dimensions

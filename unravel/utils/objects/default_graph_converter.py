@@ -119,7 +119,7 @@ class DefaultGraphConverter:
             raise ValueError(
                 f"Invalid label_type: {self.label_type}. Should be of type 'binary'"
             )
-            
+
         if not isinstance(self.prediction, bool):
             raise Exception("'prediction' should be of type boolean (bool)")
 
@@ -139,7 +139,9 @@ class DefaultGraphConverter:
             raise Exception("'self_loop_ball' should be of type boolean (bool)")
 
         if not isinstance(self.defending_team_node_value, (float, int)):
-            raise Exception("'defending_team_node_value' should be of type float or int")
+            raise Exception(
+                "'defending_team_node_value' should be of type float or int"
+            )
 
         if not isinstance(self.random_seed, (bool, int)):
             raise Exception("'random_seed' should be of type boolean (bool) or int")
@@ -149,7 +151,6 @@ class DefaultGraphConverter:
 
         if not isinstance(self.verbose, bool):
             raise Exception("'verbose' should be of type boolean (bool)")
-
 
     def _sport_specific_checks(self):
         raise NotImplementedError(
