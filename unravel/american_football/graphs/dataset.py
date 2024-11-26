@@ -7,11 +7,11 @@ import polars as pl
 import numpy as np
 
 from .graph_settings import AmericanFootballPitchDimensions, Dimension, Unit
-from ...utils import add_dummy_label_column, add_graph_id_column
+from ...utils import DefaultDataset, add_dummy_label_column, add_graph_id_column
 
 
 @dataclass
-class BigDataBowlDataset:
+class BigDataBowlDataset(DefaultDataset):
     tracking_file_path: str
     players_file_path: str
     plays_file_path: str

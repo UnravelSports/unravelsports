@@ -74,11 +74,6 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
         if not isinstance(self.chunk_size, int):
             raise Exception("chunk_size should be of type integer (int)")
 
-        if not isinstance(self.attacking_non_qb_node_value, (int, float)):
-            raise Exception(
-                "'attacking_non_qb_node_value' should be of type float or integer (int)"
-            )
-
         if not self.label_col in self.dataset.columns and not self.prediction:
             raise Exception(
                 "Please specify a 'label_col' and add that column to your 'dataset' or set 'prediction=True' if you want to use the converted dataset to make predictions on."
@@ -87,6 +82,12 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
         if not self.graph_id_col in self.dataset.columns:
             raise Exception(
                 "Please specify a 'graph_id_col' and add that column to your 'dataset' ..."
+            )
+
+        # Parameter Checks
+        if not isinstance(self.attacking_non_qb_node_value, (int, float)):
+            raise Exception(
+                "'attacking_non_qb_node_value' should be of type float or integer (int)"
             )
 
     def _apply_settings(self):

@@ -69,6 +69,15 @@ def unit_vector(vector):
     return vector / norm
 
 
+def unit_vectors(vectors):
+    magnitudes = np.linalg.norm(vectors, axis=1, keepdims=True)
+
+    magnitudes[magnitudes == 0] = 1
+
+    unit_vectors = vectors / magnitudes
+    return unit_vectors
+
+
 def normalize_coords(value, max_value):
     return value / max_value
 
@@ -172,3 +181,35 @@ def flatten_to_reshaped_array(arr, s0, s1, as_list=False):
     # Concatenate the arrays into one single array
     result_array = np.concatenate(flattened_list).reshape(s0, s1)
     return result_array if not as_list else result_array.tolist()
+
+
+def distance_to_ball(
+    x: np.array, y: np.array, team: np.array, ball_id: str, z: np.array = None
+):
+    if z is not None:
+        position = np.stack((x, y, z), axis=-1)
+    else:
+        position = np.stack((x, y), axis=-1)
+    if np.where(team == ball_id)[0].size >= 1:
+        ball_index = np.where(team == ball_id)[0]
+        ball_position = position[ball_index][0]
+    else:
+        if z is not None:
+            ball_position = np.asarray([0.0, 0.0, 0.0])
+        else:
+            ball_position = np.asarray([0.0, 0.0])
+    dist_to_ball = np.linalg.norm(position - ball_position, axis=1)
+    return position, ball_position, dist_to_ball
+
+
+def get_ball_carrier_idx(x, y, z, team, possession_team, ball_id, threshold):
+    _, _, dist_to_ball = distance_to_ball(x=x, y=y, z=z, team=team, ball_id=ball_id)
+
+    filtered_distances = np.where(
+        (team != possession_team) | (dist_to_ball <= threshold), np.inf, dist_to_ball
+    )
+
+    ball_carrier_idx = (
+        np.argmin(filtered_distances) if np.isfinite(filtered_distances).any() else None
+    )
+    return ball_carrier_idx
