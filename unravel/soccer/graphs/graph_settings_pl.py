@@ -8,10 +8,9 @@ from typing import Optional
 
 
 @dataclass
-class GraphSettingsPL(DefaultGraphSettings):
+class GraphSettingsPolars(DefaultGraphSettings):
     ball_id: str = "ball"
     goalkeeper_id: str = "GK"
-    infer_goalkeepers: bool = True
     boundary_correction: float = None
     non_potential_receiver_node_value: float = 0.1
     ball_carrier_treshold: float = 25.0

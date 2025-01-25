@@ -8,7 +8,7 @@ import warnings
 
 from dataclasses import dataclass, field, asdict
 
-from typing import List, Union, Dict, Literal
+from typing import List, Union, Dict, Literal, Any
 
 from kloppy.domain import (
     TrackingDataset,
@@ -29,8 +29,8 @@ from .exceptions import (
     KeyMismatchError,
 )
 
-from .graph_settings_pl import GraphSettingsPL
-from .dataset import KloppyDataset
+from .graph_settings_pl import GraphSettingsPolars
+from .dataset import KloppyPolarsDataset
 from .features import (
     compute_node_features_pl,
     compute_adjacency_matrix_pl,
@@ -46,7 +46,7 @@ logger.addHandler(stdout_handler)
 
 
 @dataclass(repr=True)
-class SoccerGraphConverterPL(DefaultGraphConverter):
+class SoccerGraphConverterPolars(DefaultGraphConverter):
     """
     Converts our dataset TrackingDataset into an internal structure
 
@@ -62,36 +62,124 @@ class SoccerGraphConverterPL(DefaultGraphConverter):
         The latter can be useful when splitting graphs by possession or sequence id. In this case the dict would be {frame_id: sequence_id/possession_id}.
         Note that sequence_id/possession_id should probably be unique for the whole dataset. Perhaps like so {frame_id: 'match_id-sequence_id'}. Defaults to None.
 
-        infer_ball_ownership (bool):
-            Infers 'attacking_team' if no 'ball_owning_team' (Kloppy) or 'attacking_team' (List[Dict]) is provided, by finding player closest to ball using ball xyz.
-            Also infers ball_carrier within ball_carrier_threshold
-        infer_goalkeepers (bool): set True if no GK label is provider, set False for incomplete (broadcast tracking) data that might not have a GK in every frame
         ball_carrier_threshold (float): The distance threshold to determine the ball carrier. Defaults to 25.0.
-        boundary_correction (float): A correction factor for boundary calculations, used to correct out of bounds as a percentages (Used as 1+boundary_correction, ie 0.05). Defaults to None.
         non_potential_receiver_node_value (float): Value between 0 and 1 to assign to the defing team players
     """
 
-    dataset: KloppyDataset = None
-
-    label_col: str = "label"
-    graph_id_col: str = "graph_id"
+    dataset: KloppyPolarsDataset = None
 
     chunk_size: int = 2_0000
-
-    infer_goalkeepers: bool = True
-    infer_ball_ownership: bool = True
-    boundary_correction: float = None
-    ball_carrier_treshold: float = 25.0
-
     non_potential_receiver_node_value: float = 0.1
 
     def __post_init__(self):
         self.pitch_dimensions: MetricPitchDimensions = self.dataset.pitch_dimensions
+        self.label_col = self.dataset._label_column
+        self.graph_id_col = self.dataset._graph_id_column
+        
+        self.ball_carrier_threshold = self.dataset.ball_carrier_threshold
         self.dataset = self.dataset.data
 
         self._sport_specific_checks()
         self.settings = self._apply_settings()
         self.dataset = self._apply_filters()
+        
+        if self.pad:
+            self.dataset = self._apply_padding(df=self.dataset)
+    
+    @staticmethod   
+    def _apply_padding(df: pl.DataFrame) -> pl.DataFrame:
+        keep_columns = [
+            'timestamp',
+            'ball_state',
+            'position_name',
+            'label',
+            'graph_id'
+        ]
+        empty_columns = [
+            'id', 'x', 'y', 'z', 'vx', 'vy',
+            'vz', 'v', 'ax', 'ay', 'az', 'a'
+        ]
+        group_by_columns = ['game_id', 'period_id', 'frame_id', 'team_id', 'ball_owning_team_id']
+        
+        counts = (
+            df.group_by(group_by_columns)
+            .agg(
+                pl.len().alias('count'),
+                *[pl.first(col).alias(col) for col in keep_columns]
+            )
+        )
+        
+        counts = counts.with_columns([
+            pl.when(pl.col('team_id') == "ball")
+            .then(1)
+            .when(pl.col('team_id') == pl.col('ball_owning_team_id'))
+            .then(11)
+            .otherwise(11)
+            .alias('target_length')
+        ])
+        
+        groups_to_pad = (
+            counts
+            .filter(pl.col('count') < pl.col('target_length'))
+            .with_columns(
+                (pl.col('target_length') - pl.col('count')).alias('repeats')
+            )
+        )
+        
+        if len(groups_to_pad) == 0:
+            return df
+            
+        padding_rows = []
+        for row in groups_to_pad.iter_rows(named=True):
+            base_row = {col: row[col] for col in keep_columns + group_by_columns}
+            padding_rows.extend([base_row] * row['repeats'])
+        
+        padding_df = pl.DataFrame(padding_rows)
+        
+        schema = df.schema
+        padding_df = padding_df.with_columns([
+            pl.lit(0.0 if schema[col] != pl.String else "None").cast(schema[col]).alias(col)
+            for col in empty_columns
+        ])
+        
+        padding_df = padding_df.select(df.columns)
+        
+        result = pl.concat([df, padding_df], how='vertical')
+        
+        total_frames = (
+            result.select(['game_id', 'period_id', 'frame_id'])
+            .unique()
+            .height
+        )
+        
+        frame_completeness = (
+            result.group_by(['game_id', 'period_id', 'frame_id'])
+            .agg([
+                (pl.col('team_id').eq("ball").sum() == 1).alias('has_ball'),
+                (pl.col('team_id').eq(pl.col('ball_owning_team_id')).sum() == 11).alias('has_owning_team'),
+                ((~pl.col('team_id').eq("ball") & ~pl.col('team_id').eq(pl.col('ball_owning_team_id'))).sum() == 11).alias('has_other_team')
+            ])
+            .filter(
+                pl.col('has_ball') & pl.col('has_owning_team') & pl.col('has_other_team')
+            )
+        )
+        
+        complete_frames = frame_completeness.height
+        
+        dropped_frames = total_frames - complete_frames
+        if dropped_frames > 0:
+            import warnings
+            warnings.warn(
+                f"""Setting pad=True drops frames that do not have at least 1 object for the attacking team, defending team or ball.
+                This operation dropped {dropped_frames} incomplete frames out of {total_frames} total frames ({(dropped_frames/total_frames)*100:.2f}%)
+                """
+            )
+        
+        return result.join(
+            frame_completeness,
+            on=['game_id', 'period_id', 'frame_id'],
+            how='inner'
+        )
 
     def _apply_filters(self):
         return self.dataset.with_columns(
@@ -123,20 +211,17 @@ class SoccerGraphConverterPL(DefaultGraphConverter):
         )
 
     def _apply_settings(self):
-        return GraphSettingsPL(
+        return GraphSettingsPolars(
             pitch_dimensions=self.pitch_dimensions,
-            ball_carrier_treshold=self.ball_carrier_treshold,
+            ball_carrier_treshold=self.ball_carrier_threshold,
             max_player_speed=self.max_player_speed,
             max_ball_speed=self.max_ball_speed,
             max_player_acceleration=self.max_player_acceleration,
             max_ball_acceleration=self.max_ball_acceleration,
-            boundary_correction=self.boundary_correction,
             self_loop_ball=self.self_loop_ball,
             adjacency_matrix_connect_type=self.adjacency_matrix_connect_type,
             adjacency_matrix_type=self.adjacency_matrix_type,
             label_type=self.label_type,
-            infer_ball_ownership=self.infer_ball_ownership,
-            infer_goalkeepers=self.infer_goalkeepers,
             defending_team_node_value=self.defending_team_node_value,
             non_potential_receiver_node_value=self.non_potential_receiver_node_value,
             random_seed=self.random_seed,
@@ -164,20 +249,10 @@ class SoccerGraphConverterPL(DefaultGraphConverter):
                 "Please specify a 'graph_id_col' and add that column to your 'dataset' ..."
             )
 
-        # Parameter Checks
-        if not isinstance(self.infer_goalkeepers, bool):
-            raise Exception("'infer_goalkeepers' should be of type boolean (bool)")
-
-        if not isinstance(self.infer_ball_ownership, bool):
-            raise Exception("'infer_ball_ownership' should be of type boolean (bool)")
-
-        if self.boundary_correction and not isinstance(self.boundary_correction, float):
-            raise Exception("'boundary_correction' should be of type float")
-
-        if self.ball_carrier_treshold and not isinstance(
-            self.ball_carrier_treshold, float
+        if self.ball_carrier_threshold and not isinstance(
+            self.ball_carrier_threshold, float
         ):
-            raise Exception("'ball_carrier_treshold' should be of type float")
+            raise Exception("'ball_carrier_threshold' should be of type float")
 
         if self.non_potential_receiver_node_value and not isinstance(
             self.non_potential_receiver_node_value, float
@@ -185,115 +260,91 @@ class SoccerGraphConverterPL(DefaultGraphConverter):
             raise Exception(
                 "'non_potential_receiver_node_value' should be of type float"
             )
+            
+    @property
+    def __exprs_variables(self):
+        return [
+            "x", "y", "z",
+            "v", "vx", "vy", "vz",
+            "a", "ax", "ay", "az",
+            "team_id", "position_name", "ball_owning_team_id",
+            self.graph_id_col,
+            self.label_col,
+        ]
+    
+    def __compute(self, args: List[pl.Series]) -> dict:
+        d = {col: args[i].to_numpy() for i, col in enumerate(self.__exprs_variables)}
+        
+        if not np.all(d[self.graph_id_col] == d[self.graph_id_col][0]):
+            raise Exception(
+                "GraphId selection contains multiple different values. Make sure each graph_id is unique by at least game_id and frame_id..."
+            )
 
+        if not self.prediction and not np.all(d[self.label_col] == d[self.label_col][0]):
+            raise Exception(
+                """Label selection contains multiple different values for a single selection (group by) of game_id and frame_id, 
+                make sure this is not the case. Each group can only have 1 label."""
+            )
+        
+        ball_carrier_idx = get_ball_carrier_idx(
+            x=d['x'], y=d['y'], z=d['z'],
+            team=d['team_id'],
+            possession_team=d['ball_owning_team_id'],
+            ball_id=self.settings.ball_id,
+            threshold=self.settings.ball_carrier_treshold,
+        )
+        adjacency_matrix = compute_adjacency_matrix_pl(
+            team=d['team_id'],
+            possession_team=d['ball_owning_team_id'],
+            settings=self.settings,
+            ball_carrier_idx=ball_carrier_idx,
+        )
+        edge_features = compute_edge_features_pl(
+            adjacency_matrix=adjacency_matrix,
+            p3d=np.stack((d['x'], d['y'], d['z']), axis=-1),
+            p2d=np.stack((d['x'], d['y']), axis=-1),
+            s=d['v'],
+            velocity=np.stack((d['vx'], d['vy']), axis=-1),
+            team=d['team_id'],
+            settings=self.settings,
+        )
+        node_features = compute_node_features_pl(
+            d['x'],
+            d['y'],
+            s=d['v'],
+            velocity=np.stack((d['vx'], d['vy']), axis=-1),
+            team=d['team_id'],
+            possession_team=d['ball_owning_team_id'],
+            is_gk=(d['position_name'] == self.settings.goalkeeper_id).astype(int),
+            settings=self.settings,
+        )
+        return {
+            "e": pl.Series(
+                [edge_features.tolist()], dtype=pl.List(pl.List(pl.Float64))
+            ),
+            "x": pl.Series(
+                [node_features.tolist()], dtype=pl.List(pl.List(pl.Float64))
+            ),
+            "a": pl.Series(
+                [adjacency_matrix.tolist()], dtype=pl.List(pl.List(pl.Int32))
+            ),
+            "e_shape_0": edge_features.shape[0],
+            "e_shape_1": edge_features.shape[1],
+            "x_shape_0": node_features.shape[0],
+            "x_shape_1": node_features.shape[1],
+            "a_shape_0": adjacency_matrix.shape[0],
+            "a_shape_1": adjacency_matrix.shape[1],
+            self.graph_id_col: d[self.graph_id_col][0],
+            self.label_col: d[self.label_col][0],
+        }
+    
     def _convert(self):
-        def __compute(args: List[pl.Series]) -> dict:
-            x = args[0].to_numpy()
-            y = args[1].to_numpy()
-            z = args[2].to_numpy()
-            v = args[3].to_numpy()
-            vx = args[4].to_numpy()
-            vy = args[5].to_numpy()
-            vz = args[6].to_numpy()
-            a = args[7].to_numpy()
-            ax = args[8].to_numpy()
-            ay = args[9].to_numpy()
-            az = args[10].to_numpy()
-
-            team_id = args[6].to_numpy()
-            position_name = args[7].to_numpy()
-            ball_owning_team_id = args[8].to_numpy()
-            graph_id = args[9].to_numpy()
-            label = args[10].to_numpy()
-
-            if not np.all(graph_id == graph_id[0]):
-                raise Exception(
-                    "GraphId selection contains multiple different values. Make sure each GraphId is unique by at least playId and frameId..."
-                )
-
-            if not self.prediction and not np.all(label == label[0]):
-                raise Exception(
-                    "Label selection contains multiple different values for a single selection (group by) of playId and frameId, make sure this is not the case. Each group can only have 1 label."
-                )
-
-            ball_carrier_idx = get_ball_carrier_idx(
-                x=x,
-                y=y,
-                z=z,
-                team=team_id,
-                possession_team=ball_owning_team_id,
-                ball_id=self.settings.ball_id,
-                threshold=self.settings.ball_carrier_treshold,
-            )
-
-            adjacency_matrix = compute_adjacency_matrix_pl(
-                team=team_id,
-                possession_team=ball_owning_team_id,
-                settings=self.settings,
-                ball_carrier_idx=ball_carrier_idx,
-            )
-            edge_features = compute_edge_features_pl(
-                adjacency_matrix=adjacency_matrix,
-                p3d=np.stack((x, y, z), axis=-1),
-                p2d=np.stack((x, y), axis=-1),
-                s=v,
-                velocity=np.stack((vx, vy), axis=-1),
-                team=team_id,
-                settings=self.settings,
-            )
-            node_features = compute_node_features_pl(
-                x,
-                y,
-                s=v,
-                velocity=np.stack((vx, vy), axis=-1),
-                team=team_id,
-                possession_team=ball_owning_team_id,
-                is_gk=(position_name == self.settings.goalkeeper_id).astype(int),
-                settings=self.settings,
-            )
-            return {
-                "e": pl.Series(
-                    [edge_features.tolist()], dtype=pl.List(pl.List(pl.Float64))
-                ),
-                "x": pl.Series(
-                    [node_features.tolist()], dtype=pl.List(pl.List(pl.Float64))
-                ),
-                "a": pl.Series(
-                    [adjacency_matrix.tolist()], dtype=pl.List(pl.List(pl.Int32))
-                ),
-                "e_shape_0": edge_features.shape[0],
-                "e_shape_1": edge_features.shape[1],
-                "x_shape_0": node_features.shape[0],
-                "x_shape_1": node_features.shape[1],
-                "a_shape_0": adjacency_matrix.shape[0],
-                "a_shape_1": adjacency_matrix.shape[1],
-                self.graph_id_col: graph_id[0],
-                self.label_col: label[0],
-            }
-
         result_df = self.dataset.group_by(
             ["game_id", "frame_id"], maintain_order=True
         ).agg(
             pl.map_groups(
-                exprs=[
-                    "x",
-                    "y",
-                    "z",
-                    "v",
-                    "vx",
-                    "vy",
-                    "vz",
-                    "a",
-                    "ax",
-                    "ay",
-                    "az",
-                    "team_id",
-                    "position_name",
-                    "ball_owning_team_id",
-                    self.graph_id_col,
-                    self.label_col,
-                ],
-                function=__compute,
+                exprs=self.__exprs_variables,
+                function=self.__compute,
             ).alias("result_dict")
         )
 
@@ -318,6 +369,8 @@ class SoccerGraphConverterPL(DefaultGraphConverter):
         )
 
         return graph_df.drop("result_dict")
+    
+    
 
     def to_graph_frames(self) -> List[dict]:
         def __convert_to_graph_data_list(df):
@@ -353,10 +406,10 @@ class SoccerGraphConverterPL(DefaultGraphConverter):
                 graph_list.extend(chunk_graph_list)
 
             return graph_list
-
+        
         graph_df = self._convert()
-        self.graph_frames = __convert_to_graph_data_list(graph_df)
-
+        self.graph_frames = self.__convert_to_graph_data_list(graph_df)
+        
         return self.graph_frames
 
     def to_spektral_graphs(self) -> List[Graph]:
