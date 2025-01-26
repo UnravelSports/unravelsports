@@ -20,9 +20,8 @@ from unravel.american_football import (
     AmericanFootballGraphConverter,
     AmericanFootballPitchDimensions,
 )
+from unravel.american_football.graphs.dataset import Constant
 from unravel.utils import (
-    add_graph_id_column,
-    add_dummy_label_column,
     flatten_to_reshaped_array,
     make_sparse,
     CustomSpektralDataset,
@@ -53,10 +52,8 @@ class TestAmericanFootballDataset:
             plays_file_path=plays,
         )
         bdb_dataset.load()
-        bdb_dataset.add_graph_ids(by=["gameId", "playId"], column_name="graph_id")
-        bdb_dataset.add_dummy_labels(
-            by=["gameId", "playId", "frameId"], column_name="label"
-        )
+        bdb_dataset.add_graph_ids(by=["gameId", "playId"])
+        bdb_dataset.add_dummy_labels(by=["gameId", "playId", "frameId"])
         return bdb_dataset
 
     @pytest.fixture
@@ -141,8 +138,6 @@ class TestAmericanFootballDataset:
     @pytest.fixture
     def arguments(self):
         return dict(
-            label_col="label",
-            graph_id_col="graph_id",
             max_player_speed=8.0,
             max_ball_speed=28.0,
             max_player_acceleration=10.0,
@@ -161,8 +156,6 @@ class TestAmericanFootballDataset:
     @pytest.fixture
     def non_default_arguments(self):
         return dict(
-            label_col="label",
-            graph_id_col="graph_id",
             max_player_speed=12.0,
             max_ball_speed=24.0,
             max_player_acceleration=11.0,
@@ -199,8 +192,8 @@ class TestAmericanFootballDataset:
         assert settings.pitch_dimensions.y_dim.min == -26.65
         assert settings.pitch_dimensions.end_zone == 50.0
 
-        assert settings.ball_id == "football"
-        assert settings.qb_id == "QB"
+        assert Constant.BALL == "football"
+        assert Constant.QB == "QB"
         assert settings.max_height == 225.0
         assert settings.min_height == 150.0
         assert settings.max_weight == 200.0

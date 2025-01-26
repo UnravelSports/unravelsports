@@ -1,33 +1,15 @@
 import logging
 import sys
-from copy import deepcopy
 
-import pandas as pd
-
-import warnings
-
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass
 
 from typing import List, Union, Dict, Literal, Any
 
 from kloppy.domain import (
-    TrackingDataset,
-    Frame,
-    Orientation,
-    DatasetTransformer,
-    DatasetFlag,
-    SecondSpectrumCoordinateSystem,
     MetricPitchDimensions,
 )
 
 from spektral.data import Graph
-
-from .exceptions import (
-    MissingLabelsError,
-    MissingDatasetError,
-    IncorrectDatasetTypeError,
-    KeyMismatchError,
-)
 
 from .graph_settings_pl import GraphSettingsPolars
 from .dataset import KloppyPolarsDataset, Column, Group, Constant
@@ -106,11 +88,11 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             Column.VX,
             Column.VY,
             Column.VZ,
-            Column.V,
+            Column.SPEED,
             Column.AX,
             Column.AY,
             Column.AZ,
-            Column.A,
+            Column.ACCELERATION,
         ]
         group_by_columns = [
             Column.GAME_ID,
@@ -214,29 +196,29 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         return self.dataset.with_columns(
             pl.when(
                 (pl.col(Column.OBJECT_ID) == Constant.BALL)
-                & (pl.col(Column.V) > self.settings.max_ball_speed)
+                & (pl.col(Column.SPEED) > self.settings.max_ball_speed)
             )
             .then(self.settings.max_ball_speed)
             .when(
                 (pl.col(Column.OBJECT_ID) != Constant.BALL)
-                & (pl.col(Column.V) > self.settings.max_player_speed)
+                & (pl.col(Column.SPEED) > self.settings.max_player_speed)
             )
             .then(self.settings.max_player_speed)
-            .otherwise(pl.col(Column.V))
-            .alias(Column.V)
+            .otherwise(pl.col(Column.SPEED))
+            .alias(Column.SPEED)
         ).with_columns(
             pl.when(
                 (pl.col(Column.OBJECT_ID) == Constant.BALL)
-                & (pl.col(Column.A) > self.settings.max_ball_acceleration)
+                & (pl.col(Column.ACCELERATION) > self.settings.max_ball_acceleration)
             )
             .then(self.settings.max_ball_acceleration)
             .when(
                 (pl.col(Column.OBJECT_ID) != Constant.BALL)
-                & (pl.col(Column.A) > self.settings.max_player_acceleration)
+                & (pl.col(Column.ACCELERATION) > self.settings.max_player_acceleration)
             )
             .then(self.settings.max_player_acceleration)
-            .otherwise(pl.col(Column.A))
-            .alias(Column.A)
+            .otherwise(pl.col(Column.ACCELERATION))
+            .alias(Column.ACCELERATION)
         )
 
     def _apply_settings(self):
@@ -290,11 +272,11 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             Column.X,
             Column.Y,
             Column.Z,
-            Column.V,
+            Column.SPEED,
             Column.VX,
             Column.VY,
             Column.VZ,
-            Column.A,
+            Column.ACCELERATION,
             Column.AX,
             Column.AY,
             Column.AZ,
@@ -321,6 +303,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
                 """Label selection contains multiple different values for a single selection (group by) of game_id and frame_id, 
                 make sure this is not the case. Each group can only have 1 label."""
             )
+
         ball_carriers = np.where(d[Column.IS_BALL_CARRIER] == True)[0]
         if len(ball_carriers) == 0:
             ball_carrier_idx = None
@@ -339,7 +322,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             adjacency_matrix=adjacency_matrix,
             p3d=np.stack((d[Column.X], d[Column.Y], d[Column.Z]), axis=-1),
             p2d=np.stack((d[Column.X], d[Column.Y]), axis=-1),
-            s=d[Column.V],
+            s=d[Column.SPEED],
             velocity=velocity,
             team=d[Column.TEAM_ID],
             settings=self.settings,
@@ -348,7 +331,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         node_features = compute_node_features_pl(
             d[Column.X],
             d[Column.Y],
-            s=d[Column.V],
+            s=d[Column.SPEED],
             velocity=velocity,
             team=d[Column.TEAM_ID],
             possession_team=d[Column.BALL_OWNING_TEAM_ID],
@@ -377,77 +360,6 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             self.label_col: d[self.label_col][0],
         }
 
-    # def _convert(self):
-    #     result_df = self.dataset.group_by(Group.BY_FRAME, maintain_order=True).agg(
-    #         pl.map_groups(
-    #             exprs=self.__exprs_variables,
-    #             function=self.__compute,
-    #         ).alias("result_dict")
-    #     )
-
-    #     graph_df = result_df.with_columns(
-    #         [
-    #             pl.col("result_dict").struct.field("a").alias("a"),
-    #             pl.col("result_dict").struct.field("e").alias("e"),
-    #             pl.col("result_dict").struct.field("x").alias("x"),
-    #             pl.col("result_dict").struct.field("e_shape_0").alias("e_shape_0"),
-    #             pl.col("result_dict").struct.field("e_shape_1").alias("e_shape_1"),
-    #             pl.col("result_dict").struct.field("x_shape_0").alias("x_shape_0"),
-    #             pl.col("result_dict").struct.field("x_shape_1").alias("x_shape_1"),
-    #             pl.col("result_dict").struct.field("a_shape_0").alias("a_shape_0"),
-    #             pl.col("result_dict").struct.field("a_shape_1").alias("a_shape_1"),
-    #             pl.col("result_dict")
-    #             .struct.field(self.graph_id_col)
-    #             .alias(self.graph_id_col),
-    #             pl.col("result_dict")
-    #             .struct.field(self.label_col)
-    #             .alias(self.label_col),
-    #         ]
-    #     )
-
-    #     return graph_df.drop("result_dict")
-
-    # def to_graph_frames(self) -> List[dict]:
-    #     def __convert_to_graph_data_list(df):
-    #         lazy_df = df.lazy()
-
-    #         graph_list = []
-
-    #         for chunk in lazy_df.collect().iter_slices(self.chunk_size):
-    #             chunk_graph_list = [
-    #                 {
-    #                     "a": make_sparse(
-    #                         flatten_to_reshaped_array(
-    #                             arr=chunk["a"][i],
-    #                             s0=chunk["a_shape_0"][i],
-    #                             s1=chunk["a_shape_1"][i],
-    #                         )
-    #                     ),
-    #                     "x": flatten_to_reshaped_array(
-    #                         arr=chunk["x"][i],
-    #                         s0=chunk["x_shape_0"][i],
-    #                         s1=chunk["x_shape_1"][i],
-    #                     ),
-    #                     "e": flatten_to_reshaped_array(
-    #                         arr=chunk["e"][i],
-    #                         s0=chunk["e_shape_0"][i],
-    #                         s1=chunk["e_shape_1"][i],
-    #                     ),
-    #                     "y": np.asarray([chunk[self.label_col][i]]),
-    #                     "id": chunk[self.graph_id_col][i],
-    #                 }
-    #                 for i in range(len(chunk["a"]))
-    #             ]
-    #             graph_list.extend(chunk_graph_list)
-
-    #         return graph_list
-
-    #     graph_df = self._convert()
-    #     self.graph_frames = __convert_to_graph_data_list(graph_df)
-
-    #     return self.graph_frames
-
-    ###
     def _convert(self):
         # Group and aggregate in one step
         return (
@@ -475,23 +387,19 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             .drop("result_dict")
         )
 
-    @staticmethod
-    def _reshape_array(arr, s0, s1):
-        return np.array([item for sublist in arr for item in sublist]).reshape(s0, s1)
-
     def to_graph_frames(self) -> List[dict]:
         def process_chunk(chunk: pl.DataFrame) -> List[dict]:
             return [
                 {
                     "a": make_sparse(
-                        self._reshape_array(
+                        reshape_array(
                             chunk["a"][i], chunk["a_shape_0"][i], chunk["a_shape_1"][i]
                         )
                     ),
-                    "x": self._reshape_array(
+                    "x": reshape_array(
                         chunk["x"][i], chunk["x_shape_0"][i], chunk["x_shape_1"][i]
                     ),
-                    "e": self._reshape_array(
+                    "e": reshape_array(
                         chunk["e"][i], chunk["e_shape_0"][i], chunk["e_shape_1"][i]
                     ),
                     "y": np.asarray([chunk[self.label_col][i]]),
@@ -507,8 +415,6 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             for graph in process_chunk(chunk)
         ]
         return self.graph_frames
-
-    ###
 
     def to_spektral_graphs(self) -> List[Graph]:
         if not self.graph_frames:

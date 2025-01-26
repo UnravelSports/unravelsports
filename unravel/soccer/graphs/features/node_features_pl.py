@@ -18,6 +18,7 @@ from ....utils import (
     normalize_speed,
     distance_to_ball,
 )
+from ..dataset import Constant
 
 
 def compute_node_features_pl(
@@ -31,7 +32,7 @@ def compute_node_features_pl(
     ball_carrier,
     settings,
 ):
-    ball_id = settings.ball_id
+    ball_id = Constant.BALL
 
     goal_mouth_position = (
         settings.pitch_dimensions.x_dim.max,
@@ -60,7 +61,7 @@ def compute_node_features_pl(
         max_value=settings.pitch_dimensions.y_dim.max,
         min_value=settings.pitch_dimensions.y_dim.min,
     )
-    s_normed = normalize_speeds_nfl(s, team, settings)
+    s_normed = normalize_speeds_nfl(s, team, ball_id=Constant.BALL, settings=settings)
     uv_velocity = unit_vectors(velocity)
 
     angles = normalize_angles(np.arctan2(uv_velocity[:, 1], uv_velocity[:, 0]))

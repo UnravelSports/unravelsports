@@ -152,6 +152,9 @@ class DefaultGraphConverter:
         if not isinstance(self.verbose, bool):
             raise Exception("'verbose' should be of type boolean (bool)")
 
+    def _shuffle(self):
+        raise NotImplementedError()
+
     def _sport_specific_checks(self):
         raise NotImplementedError(
             "No sport specific checks implementend... Make sure to check for existens of labels of some sort, and graph ids of some sort..."

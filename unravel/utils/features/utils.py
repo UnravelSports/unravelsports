@@ -146,8 +146,8 @@ def normalize_acceleration(value, max_acceleration):
     return np.clip(x, -1, 1)
 
 
-def normalize_speeds_nfl(s, team, settings):
-    ball_mask = team == settings.ball_id
+def normalize_speeds_nfl(s, team, ball_id, settings):
+    ball_mask = team == ball_id
     s_normed = np.zeros_like(s)
 
     s_normed[ball_mask] = normalize_speed(s[ball_mask], settings.max_ball_speed)
@@ -156,13 +156,13 @@ def normalize_speeds_nfl(s, team, settings):
     return s_normed
 
 
-def normalize_speed_differences_nfl(s, team, settings):
+def normalize_speed_differences_nfl(s, team, ball_id, settings):
 
-    return normalize_speeds_nfl(s, team, settings) * np.sign(s)
+    return normalize_speeds_nfl(s, team, ball_id, settings) * np.sign(s)
 
 
-def normalize_accelerations_nfl(a, team, settings):
-    ball_mask = team == settings.ball_id
+def normalize_accelerations_nfl(a, team, ball_id, settings):
+    ball_mask = team == ball_id
     a_normed = np.zeros_like(a)
 
     a_normed[ball_mask] = normalize_acceleration(
@@ -181,6 +181,10 @@ def flatten_to_reshaped_array(arr, s0, s1, as_list=False):
     # Concatenate the arrays into one single array
     result_array = np.concatenate(flattened_list).reshape(s0, s1)
     return result_array if not as_list else result_array.tolist()
+
+
+def reshape_array(arr, s0, s1):
+    return np.array([item for sublist in arr for item in sublist]).reshape(s0, s1)
 
 
 def distance_to_ball(

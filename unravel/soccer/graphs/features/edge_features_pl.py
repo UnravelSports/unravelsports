@@ -20,6 +20,8 @@ from ....utils import (
     normalize_accelerations_nfl,
 )
 
+from ..dataset import Constant
+
 
 def compute_edge_features_pl(adjacency_matrix, p3d, p2d, s, velocity, team, settings):
     # Compute pairwise distances using broadcasting
@@ -39,6 +41,7 @@ def compute_edge_features_pl(adjacency_matrix, p3d, p2d, s, velocity, team, sett
     speed_diff_matrix_normed = normalize_speed_differences_nfl(
         s=speed_diff_matrix,
         team=team,
+        ball_id=Constant.BALL,
         settings=settings,
     )
 

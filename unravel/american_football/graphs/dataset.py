@@ -10,22 +10,52 @@ from .graph_settings import AmericanFootballPitchDimensions, Dimension, Unit
 from ...utils import DefaultDataset, add_dummy_label_column, add_graph_id_column
 
 
+class Constant:
+    BALL = "football"
+    QB = "QB"
+
+
+class Column:
+    OBJECT_ID = "nflId"
+
+    GAME_ID = "gameId"
+    FRAME_ID = "frameId"
+    PLAY_ID = "playId"
+
+    X = "x"
+    Y = "y"
+
+    ACCELERATION = "a"
+    SPEED = "s"
+    ORIENTATION = "o"
+    DIRECTION = "dir"
+    TEAM = "team"
+    CLUB = "club"
+    OFFICIAL_POSITION = "officialPosition"
+    POSSESSION_TEAM = "possessionTeam"
+    HEIGHT_CM = "height_cm"
+    WEIGHT_KG = "weight_kg"
+
+
+class Group:
+    BY_FRAME = [Column.GAME_ID, Column.PLAY_ID, Column.FRAME_ID]
+    BY_PLAY_POSSESSION_TEAM = [Column.GAME_ID, Column.PLAY_ID, Column.POSSESSION_TEAM]
+
+
 @dataclass
 class BigDataBowlDataset(DefaultDataset):
-    tracking_file_path: str
-    players_file_path: str
-    plays_file_path: str
-    pitch_dimensions: AmericanFootballPitchDimensions = field(
-        init=False, repr=False, default_factory=AmericanFootballPitchDimensions
-    )
-
-    def __post_init__(self):
-        if (
-            not self.tracking_file_path
-            or not self.players_file_path
-            or not self.plays_file_path
-        ):
-            raise Exception("Missing data file path...")
+    def __init__(
+        self,
+        tracking_file_path: str,
+        players_file_path: str,
+        plays_file_path: str,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.tracking_file_path = tracking_file_path
+        self.players_file_path = players_file_path
+        self.plays_file_path = plays_file_path
+        self.pitch_dimensions = AmericanFootballPitchDimensions()
 
     def load(self):
         pitch_length = self.pitch_dimensions.pitch_length
@@ -42,48 +72,51 @@ class BigDataBowlDataset(DefaultDataset):
         play_direction = "left"
 
         if "club" in df.columns:
-            df = df.with_columns(pl.col("club").alias("team"))
-            df = df.drop("club")
+            df = df.with_columns(pl.col(Column.CLUB).alias(Column.TEAM))
+            df = df.drop(Column.CLUB)
 
         df = (
             df.with_columns(
                 pl.when(pl.col("playDirection") == play_direction)
-                .then(pl.col("o") + 180)  # rotate 180 degrees
-                .otherwise(pl.col("o"))
-                .alias("o"),
+                .then(pl.col(Column.ORIENTATION) + 180)  # rotate 180 degrees
+                .otherwise(pl.col(Column.ORIENTATION))
+                .alias(Column.ORIENTATION),
                 pl.when(pl.col("playDirection") == play_direction)
-                .then(pl.col("dir") + 180)  # rotate 180 degrees
-                .otherwise(pl.col("dir"))
-                .alias("dir"),
+                .then(pl.col(Column.DIRECTION) + 180)  # rotate 180 degrees
+                .otherwise(pl.col(Column.DIRECTION))
+                .alias(Column.DIRECTION),
             )
             .with_columns(
                 [
-                    (pl.col("x") - (pitch_length / 2)).alias("x"),
-                    (pl.col("y") - (pitch_width / 2)).alias("y"),
+                    (pl.col(Column.X) - (pitch_length / 2)).alias(Column.X),
+                    (pl.col(Column.Y) - (pitch_width / 2)).alias(Column.Y),
                     # convert to radian on (-pi, pi) range
-                    (((pl.col("o") * np.pi / 180) + np.pi) % (2 * np.pi) - np.pi).alias(
-                        "o"
-                    ),
                     (
-                        ((pl.col("dir") * np.pi / 180) + np.pi) % (2 * np.pi) - np.pi
-                    ).alias("dir"),
+                        ((pl.col(Column.ORIENTATION) * np.pi / 180) + np.pi)
+                        % (2 * np.pi)
+                        - np.pi
+                    ).alias(Column.ORIENTATION),
+                    (
+                        ((pl.col(Column.DIRECTION) * np.pi / 180) + np.pi) % (2 * np.pi)
+                        - np.pi
+                    ).alias(Column.DIRECTION),
                 ]
             )
             .with_columns(
                 [
                     pl.when(pl.col("playDirection") == play_direction)
-                    .then(pl.col("x") * -1.0)
-                    .otherwise(pl.col("x"))
-                    .alias("x"),
+                    .then(pl.col(Column.X) * -1.0)
+                    .otherwise(pl.col(Column.X))
+                    .alias(Column.X),
                     pl.when(pl.col("playDirection") == play_direction)
-                    .then(pl.col("y") * -1.0)
-                    .otherwise(pl.col("y"))
-                    .alias("y"),
+                    .then(pl.col(Column.Y) * -1.0)
+                    .otherwise(pl.col(Column.Y))
+                    .alias(Column.Y),
                     # set "football" to nflId -9999 for ordering purposes
-                    pl.when(pl.col("team") == "football")
+                    pl.when(pl.col(Column.TEAM) == Constant.BALL)
                     .then(-9999.9)
-                    .otherwise(pl.col("nflId"))
-                    .alias("nflId"),
+                    .otherwise(pl.col(Column.OBJECT_ID))
+                    .alias(Column.OBJECT_ID),
                 ]
             )
         )
@@ -96,11 +129,15 @@ class BigDataBowlDataset(DefaultDataset):
             ignore_errors=True,
         )
         if "position" in players.columns:
-            players = players.with_columns(pl.col("position").alias("officialPosition"))
+            players = players.with_columns(
+                pl.col("position").alias(Column.OFFICIAL_POSITION)
+            )
             players = players.drop("position")
 
         players = players.with_columns(
-            pl.col("nflId").cast(pl.Float64, strict=False).alias("nflId")
+            pl.col(Column.OBJECT_ID)
+            .cast(pl.Float64, strict=False)
+            .alias(Column.OBJECT_ID)
         )
         players = self._convert_weight_height_to_metric(df=players)
 
@@ -113,13 +150,22 @@ class BigDataBowlDataset(DefaultDataset):
         )
 
         df = df.join(
-            (players.select(["nflId", "officialPosition", "height_cm", "weight_kg"])),
-            on="nflId",
+            (
+                players.select(
+                    [
+                        Column.OBJECT_ID,
+                        Column.OFFICIAL_POSITION,
+                        Column.HEIGHT_CM,
+                        Column.WEIGHT_KG,
+                    ]
+                )
+            ),
+            on=Column.OBJECT_ID,
             how="left",
         )
         df = df.join(
-            (plays.select(["gameId", "playId", "possessionTeam"])),
-            on=["gameId", "playId"],
+            (plays.select(Group.BY_PLAY_POSSESSION_TEAM)),
+            on=[Column.GAME_ID, Column.PLAY_ID],
             how="left",
         )
         self.data = df
@@ -137,17 +183,13 @@ class BigDataBowlDataset(DefaultDataset):
         return self.data, self.pitch_dimensions
 
     def add_dummy_labels(
-        self,
-        by: List[str] = ["gameId", "playId", "frameId"],
-        column_name: str = "label",
+        self, by: List[str] = ["gameId", "playId", "frameId"]
     ) -> pl.DataFrame:
-        self.data = add_dummy_label_column(self.data, by, column_name)
+        self.data = add_dummy_label_column(self.data, by, self._label_column)
         return self.data
 
-    def add_graph_ids(
-        self, by: List[str] = ["gameId", "playId"], column_name: str = "graph_id"
-    ) -> pl.DataFrame:
-        self.data = add_graph_id_column(self.data, by, column_name)
+    def add_graph_ids(self, by: List[str] = ["gameId", "playId"]) -> pl.DataFrame:
+        self.data = add_graph_id_column(self.data, by, self._graph_id_column)
         return self.data
 
     @staticmethod
@@ -166,9 +208,11 @@ class BigDataBowlDataset(DefaultDataset):
         )
         df = df.with_columns(
             [
-                (pl.col("feet") * 30.48 + pl.col("inches") * 2.54).alias("height_cm"),
+                (pl.col("feet") * 30.48 + pl.col("inches") * 2.54).alias(
+                    Column.HEIGHT_CM
+                ),
                 (pl.col("weight") * 0.453592).alias(
-                    "weight_kg"
+                    Column.WEIGHT_KG
                 ),  # Convert pounds to kilograms
             ]
         ).drop(["height", "feet", "inches", "weight"])

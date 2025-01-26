@@ -1,12 +1,13 @@
 import numpy as np
 
 from ....utils import AdjacencyMatrixType, AdjacenyMatrixConnectType
+from ..dataset import Constant
 
 
 def compute_adjacency_matrix(team, possession_team, settings):
     adjacency_matrix_type = settings.adjacency_matrix_type
     adjacency_matrix_connect_type = settings.adjacency_matrix_connect_type
-    ball_id = settings.ball_id
+    ball_id = Constant.BALL
 
     exclusion_ids = np.asarray([ball_id, *np.unique(possession_team)])
     defensive_team = np.setdiff1d(team, exclusion_ids)[0]

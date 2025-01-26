@@ -45,10 +45,8 @@ class TestSpektral:
             plays_file_path=plays,
         )
         bdb_dataset.load()
-        bdb_dataset.add_graph_ids(by=["gameId", "playId"], column_name="graph_id")
-        bdb_dataset.add_dummy_labels(
-            by=["gameId", "playId", "frameId"], column_name="label"
-        )
+        bdb_dataset.add_graph_ids(by=["gameId", "playId"])
+        bdb_dataset.add_dummy_labels(by=["gameId", "playId", "frameId"])
         return bdb_dataset
 
     @pytest.fixture
@@ -122,8 +120,6 @@ class TestSpektral:
     ) -> AmericanFootballGraphConverter:
         return AmericanFootballGraphConverter(
             dataset=bdb_dataset,
-            label_col="label",
-            graph_id_col="graph_id",
             max_player_speed=8.0,
             max_ball_speed=28.0,
             max_player_acceleration=10.0,

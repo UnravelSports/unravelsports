@@ -41,12 +41,12 @@ class Column:
     Y = "y"
     Z = "z"
 
-    V = "v"
+    SPEED = "v"
     VX = "vx"
     VY = "vy"
     VZ = "vz"
 
-    A = "a"
+    ACCELERATION = "a"
     AX = "ax"
     AY = "ay"
     AZ = "az"
@@ -67,14 +67,18 @@ class SoccerObject:
 
 @dataclass
 class KloppyPolarsDataset(DefaultDataset):
-    kloppy_dataset: TrackingDataset
-    ball_carrier_threshold: float = 25.0
-    _graph_id_column: str = field(default="graph_id")
-    _label_column: str = field(default="label")
-    _overwrite_orientation: bool = field(default=False, init=False)
-    _infer_goalkeepers: bool = field(default=False, init=False)
+    def __init__(
+        self,
+        kloppy_dataset: TrackingDataset,
+        ball_carrier_threshold: float = 25.0,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.kloppy_dataset = kloppy_dataset
+        self.ball_carrier_threshold = ball_carrier_threshold
+        self._overwrite_orientation: bool = False
+        self._infer_goalkeepers: bool = False
 
-    def __post_init__(self):
         if not isinstance(self.kloppy_dataset, TrackingDataset):
             raise Exception("'kloppy_dataset' should be of type float")
 
@@ -284,7 +288,7 @@ class KloppyPolarsDataset(DefaultDataset):
                     + pl.col(Column.VZ) ** 2
                 )
                 .sqrt()
-                .alias(Column.V)
+                .alias(Column.SPEED)
             ]
         )
 
@@ -325,7 +329,7 @@ class KloppyPolarsDataset(DefaultDataset):
                         + pl.col(Column.AZ) ** 2
                     )
                     .sqrt()
-                    .alias(Column.A)
+                    .alias(Column.ACCELERATION)
                 ]
             )
         )

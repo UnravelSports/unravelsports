@@ -7,7 +7,7 @@ from typing import List
 
 from spektral.data import Graph
 
-from .dataset import BigDataBowlDataset
+from .dataset import BigDataBowlDataset, Group, Column, Constant
 
 from .graph_settings import (
     AmericanFootballGraphSettings,
@@ -19,7 +19,7 @@ from .features import (
     compute_adjacency_matrix,
 )
 
-from ...utils import DefaultGraphConverter, flatten_to_reshaped_array, make_sparse
+from ...utils import DefaultGraphConverter, reshape_array, make_sparse
 
 
 @dataclass(repr=True)
@@ -39,8 +39,6 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
     def __init__(
         self,
         dataset: BigDataBowlDataset,
-        label_col: str = "label",
-        graph_id_col: str = "graph_id",
         chunk_size: int = 2_000,
         attacking_non_qb_node_value: float = 0.1,
         **kwargs,
@@ -50,12 +48,13 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
         if not isinstance(dataset, BigDataBowlDataset):
             raise Exception("'dataset' should be an instance of BigDataBowlDataset")
 
+        self.label_col = dataset._label_column
+        self.graph_id_col = dataset._graph_id_column
+
         self.dataset: pl.DataFrame = dataset.data
         self.pitch_dimensions: AmericanFootballPitchDimensions = (
             dataset.pitch_dimensions
         )
-        self.label_col = label_col
-        self.graph_id_col = graph_id_col
         self.chunk_size = chunk_size
         self.attacking_non_qb_node_value = attacking_non_qb_node_value
 
@@ -108,163 +107,143 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
             verbose=self.verbose,
         )
 
+    @property
+    def __exprs_variables(self):
+        return [
+            Column.X,
+            Column.Y,
+            Column.SPEED,
+            Column.ACCELERATION,
+            Column.ORIENTATION,
+            Column.DIRECTION,
+            Column.TEAM,
+            Column.OFFICIAL_POSITION,
+            Column.POSSESSION_TEAM,
+            Column.HEIGHT_CM,
+            Column.WEIGHT_KG,
+            self.graph_id_col,
+            self.label_col,
+        ]
+
+    def __compute(self, args: List[pl.Series]) -> dict:
+        d = {col: args[i].to_numpy() for i, col in enumerate(self.__exprs_variables)}
+
+        if not np.all(d[self.graph_id_col] == d[self.graph_id_col][0]):
+            raise Exception(
+                "GraphId selection contains multiple different values. Make sure each graph_id is unique by at least game_id and frame_id..."
+            )
+
+        if not self.prediction and not np.all(
+            d[self.label_col] == d[self.label_col][0]
+        ):
+            raise Exception(
+                """Label selection contains multiple different values for a single selection (group by) of game_id and frame_id, 
+                make sure this is not the case. Each group can only have 1 label."""
+            )
+
+        adjacency_matrix = compute_adjacency_matrix(
+            team=d[Column.TEAM],
+            possession_team=d[Column.POSSESSION_TEAM],
+            settings=self.settings,
+        )
+        edge_features = compute_edge_features(
+            adjacency_matrix=adjacency_matrix,
+            p=np.stack((d[Column.X], d[Column.Y]), axis=-1),
+            s=d[Column.SPEED],
+            a=d[Column.ACCELERATION],
+            dir=d[Column.DIRECTION],
+            o=d[Column.ORIENTATION],
+            team=d[Column.TEAM],
+            settings=self.settings,
+        )
+        node_features = compute_node_features(
+            x=d[Column.X],
+            y=d[Column.Y],
+            s=d[Column.SPEED],
+            a=d[Column.ACCELERATION],
+            dir=d[Column.DIRECTION],
+            o=d[Column.ORIENTATION],
+            team=d[Column.TEAM],
+            official_position=d[Column.OFFICIAL_POSITION],
+            possession_team=d[Column.POSSESSION_TEAM],
+            height=d[Column.HEIGHT_CM],
+            weight=d[Column.WEIGHT_KG],
+            settings=self.settings,
+        )
+        return {
+            "e": pl.Series(
+                [edge_features.tolist()], dtype=pl.List(pl.List(pl.Float64))
+            ),
+            "x": pl.Series(
+                [node_features.tolist()], dtype=pl.List(pl.List(pl.Float64))
+            ),
+            "a": pl.Series(
+                [adjacency_matrix.tolist()], dtype=pl.List(pl.List(pl.Int32))
+            ),
+            "e_shape_0": edge_features.shape[0],
+            "e_shape_1": edge_features.shape[1],
+            "x_shape_0": node_features.shape[0],
+            "x_shape_1": node_features.shape[1],
+            "a_shape_0": adjacency_matrix.shape[0],
+            "a_shape_1": adjacency_matrix.shape[1],
+            self.graph_id_col: d[self.graph_id_col][0],
+            self.label_col: d[self.label_col][0],
+        }
+
     def _convert(self):
-        def __compute(args: List[pl.Series]) -> dict:
-            x = args[0].to_numpy()
-            y = args[1].to_numpy()
-            s = args[2].to_numpy()
-            a = args[3].to_numpy()
-            dis = args[4].to_numpy()
-            o = args[5].to_numpy()
-            dir = args[6].to_numpy()
-            team = args[7].to_numpy()
-            official_position = args[8].to_numpy()
-            possession_team = args[9].to_numpy()
-            height = args[10].to_numpy()
-            weight = args[11].to_numpy()
-            graph_id = args[12].to_numpy()
-            label = args[13].to_numpy()
-
-            if not np.all(graph_id == graph_id[0]):
-                raise Exception(
-                    "GraphId selection contains multiple different values. Make sure each GraphId is unique by at least playId and frameId..."
-                )
-
-            if not np.all(label == label[0]):
-                raise Exception(
-                    "Label selection contains multiple different values for a single selection (group by) of playId and frameId, make sure this is not the case. Each group can only have 1 label."
-                )
-            adjacency_matrix = compute_adjacency_matrix(
-                team=team, possession_team=possession_team, settings=self.settings
+        # Group and aggregate in one step
+        return (
+            self.dataset.group_by(Group.BY_FRAME, maintain_order=True)
+            .agg(
+                pl.map_groups(
+                    exprs=self.__exprs_variables, function=self.__compute
+                ).alias("result_dict")
             )
-            edge_features = compute_edge_features(
-                adjacency_matrix=adjacency_matrix,
-                p=np.stack((x, y), axis=-1),
-                s=s,
-                a=a,
-                dir=dir,
-                o=o,  # Shape will be (N, 2)
-                team=team,
-                settings=self.settings,
+            .with_columns(
+                [
+                    *[
+                        pl.col("result_dict").struct.field(f).alias(f)
+                        for f in ["a", "e", "x", self.graph_id_col, self.label_col]
+                    ],
+                    *[
+                        pl.col("result_dict")
+                        .struct.field(f"{m}_shape_{i}")
+                        .alias(f"{m}_shape_{i}")
+                        for m in ["a", "e", "x"]
+                        for i in [0, 1]
+                    ],
+                ]
             )
-            node_features = compute_node_features(
-                x,
-                y,
-                s=s,
-                a=a,
-                dir=dir,
-                o=o,
-                team=team,
-                official_position=official_position,
-                possession_team=possession_team,
-                height=height,
-                weight=weight,
-                settings=self.settings,
-            )
-            return {
-                "e": pl.Series(
-                    [edge_features.tolist()], dtype=pl.List(pl.List(pl.Float64))
-                ),
-                "x": pl.Series(
-                    [node_features.tolist()], dtype=pl.List(pl.List(pl.Float64))
-                ),
-                "a": pl.Series(
-                    [adjacency_matrix.tolist()], dtype=pl.List(pl.List(pl.Int32))
-                ),
-                "e_shape_0": edge_features.shape[0],
-                "e_shape_1": edge_features.shape[1],
-                "x_shape_0": node_features.shape[0],
-                "x_shape_1": node_features.shape[1],
-                "a_shape_0": adjacency_matrix.shape[0],
-                "a_shape_1": adjacency_matrix.shape[1],
-                self.graph_id_col: graph_id[0],
-                self.label_col: label[0],
-            }
-
-        result_df = self.dataset.group_by(
-            ["gameId", "playId", "frameId"], maintain_order=True
-        ).agg(
-            pl.map_groups(
-                exprs=[
-                    "x",
-                    "y",
-                    "s",
-                    "a",
-                    "dis",
-                    "o",
-                    "dir",
-                    "team",
-                    "officialPosition",
-                    "possessionTeam",
-                    "height_cm",
-                    "weight_kg",
-                    self.graph_id_col,
-                    self.label_col,
-                ],
-                function=__compute,
-            ).alias("result_dict")
+            .drop("result_dict")
         )
-
-        graph_df = result_df.with_columns(
-            [
-                pl.col("result_dict").struct.field("a").alias("a"),
-                pl.col("result_dict").struct.field("e").alias("e"),
-                pl.col("result_dict").struct.field("x").alias("x"),
-                pl.col("result_dict").struct.field("e_shape_0").alias("e_shape_0"),
-                pl.col("result_dict").struct.field("e_shape_1").alias("e_shape_1"),
-                pl.col("result_dict").struct.field("x_shape_0").alias("x_shape_0"),
-                pl.col("result_dict").struct.field("x_shape_1").alias("x_shape_1"),
-                pl.col("result_dict").struct.field("a_shape_0").alias("a_shape_0"),
-                pl.col("result_dict").struct.field("a_shape_1").alias("a_shape_1"),
-                pl.col("result_dict")
-                .struct.field(self.graph_id_col)
-                .alias(self.graph_id_col),
-                pl.col("result_dict")
-                .struct.field(self.label_col)
-                .alias(self.label_col),
-            ]
-        )
-
-        return graph_df.drop("result_dict")
 
     def to_graph_frames(self) -> List[dict]:
-        def __convert_to_graph_data_list(df):
-            lazy_df = df.lazy()
-
-            graph_list = []
-
-            for chunk in lazy_df.collect().iter_slices(self.chunk_size):
-                chunk_graph_list = [
-                    {
-                        "a": make_sparse(
-                            flatten_to_reshaped_array(
-                                arr=chunk["a"][i],
-                                s0=chunk["a_shape_0"][i],
-                                s1=chunk["a_shape_1"][i],
-                            )
-                        ),
-                        "x": flatten_to_reshaped_array(
-                            arr=chunk["x"][i],
-                            s0=chunk["x_shape_0"][i],
-                            s1=chunk["x_shape_1"][i],
-                        ),
-                        "e": flatten_to_reshaped_array(
-                            arr=chunk["e"][i],
-                            s0=chunk["e_shape_0"][i],
-                            s1=chunk["e_shape_1"][i],
-                        ),
-                        "y": np.asarray([chunk[self.label_col][i]]),
-                        "id": chunk[self.graph_id_col][i],
-                    }
-                    for i in range(len(chunk["a"]))
-                ]
-                graph_list.extend(chunk_graph_list)
-
-            return graph_list
+        def process_chunk(chunk: pl.DataFrame) -> List[dict]:
+            return [
+                {
+                    "a": make_sparse(
+                        reshape_array(
+                            chunk["a"][i], chunk["a_shape_0"][i], chunk["a_shape_1"][i]
+                        )
+                    ),
+                    "x": reshape_array(
+                        chunk["x"][i], chunk["x_shape_0"][i], chunk["x_shape_1"][i]
+                    ),
+                    "e": reshape_array(
+                        chunk["e"][i], chunk["e_shape_0"][i], chunk["e_shape_1"][i]
+                    ),
+                    "y": np.asarray([chunk[self.label_col][i]]),
+                    "id": chunk[self.graph_id_col][i],
+                }
+                for i in range(len(chunk))
+            ]
 
         graph_df = self._convert()
-        self.graph_frames = __convert_to_graph_data_list(graph_df)
-
+        self.graph_frames = [
+            graph
+            for chunk in graph_df.lazy().collect().iter_slices(self.chunk_size)
+            for graph in process_chunk(chunk)
+        ]
         return self.graph_frames
 
     def to_spektral_graphs(self) -> List[Graph]:

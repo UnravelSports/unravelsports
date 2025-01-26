@@ -75,11 +75,6 @@ class TestKloppyPolarsData:
     def soccer_polars_converter(
         self, kloppy_polars_dataset: KloppyPolarsDataset
     ) -> SoccerGraphConverterPolars:
-        # TODO:
-        # check if
-        # - random_seed
-        # - padding needs to be per team_id otherwise stuff breaks
-        # all work as expected and/or should be moved to the KloppyPolarsDataset
 
         return SoccerGraphConverterPolars(
             dataset=kloppy_polars_dataset,
@@ -99,28 +94,6 @@ class TestKloppyPolarsData:
             verbose=False,
         )
 
-    # @pytest.fixture()
-    # def gnnc_padding_random(self, dataset: TrackingDataset) -> SoccerGraphConverter:
-    #     return SoccerGraphConverter(
-    #         dataset=dataset,
-    #         labels=dummy_labels(dataset),
-    #         # settings
-    #         ball_carrier_treshold=25.0,
-    #         max_player_speed=12.0,
-    #         max_ball_speed=28.0,
-    #         boundary_correction=None,
-    #         self_loop_ball=False,
-    #         adjacency_matrix_connect_type="ball",
-    #         adjacency_matrix_type="split_by_team",
-    #         label_type="binary",
-    #         defending_team_node_value=0.0,
-    #         non_potential_receiver_node_value=0.1,
-    #         infer_ball_ownership=True,
-    #         infer_goalkeepers=True,
-    #         random_seed=42,
-    #         pad=True,
-    #         verbose=False,
-    #     )
     def test_padding(self, spc_padding: SoccerGraphConverterPolars):
         spektral_graphs = spc_padding.to_spektral_graphs()
 
