@@ -73,9 +73,23 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         self.dataset = self._apply_filters()
 
         if self.pad:
-            self.dataset = self._apply_padding(df=self.dataset)
+            self.dataset = self._apply_padding()
 
-    def _apply_padding(self, df: pl.DataFrame) -> pl.DataFrame:
+        self._shuffle()
+
+    def _shuffle(self):
+        if isinstance(self.settings.random_seed, int):
+            self.dataset = self.dataset.sample(
+                fraction=1.0, seed=self.settings.random_seed
+            )
+        elif self.settings.random_seed == True:
+            self.dataset = self.dataset.sample(fraction=1.0)
+        else:
+            pass
+
+    def _apply_padding(self) -> pl.DataFrame:
+        df = self.dataset
+
         keep_columns = [
             Column.TIMESTAMP,
             Column.BALL_STATE,
@@ -342,6 +356,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             ball_carrier=d[Column.IS_BALL_CARRIER],
             settings=self.settings,
         )
+
         return {
             "e": pl.Series(
                 [edge_features.tolist()], dtype=pl.List(pl.List(pl.Float64))
@@ -362,75 +377,138 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             self.label_col: d[self.label_col][0],
         }
 
+    # def _convert(self):
+    #     result_df = self.dataset.group_by(Group.BY_FRAME, maintain_order=True).agg(
+    #         pl.map_groups(
+    #             exprs=self.__exprs_variables,
+    #             function=self.__compute,
+    #         ).alias("result_dict")
+    #     )
+
+    #     graph_df = result_df.with_columns(
+    #         [
+    #             pl.col("result_dict").struct.field("a").alias("a"),
+    #             pl.col("result_dict").struct.field("e").alias("e"),
+    #             pl.col("result_dict").struct.field("x").alias("x"),
+    #             pl.col("result_dict").struct.field("e_shape_0").alias("e_shape_0"),
+    #             pl.col("result_dict").struct.field("e_shape_1").alias("e_shape_1"),
+    #             pl.col("result_dict").struct.field("x_shape_0").alias("x_shape_0"),
+    #             pl.col("result_dict").struct.field("x_shape_1").alias("x_shape_1"),
+    #             pl.col("result_dict").struct.field("a_shape_0").alias("a_shape_0"),
+    #             pl.col("result_dict").struct.field("a_shape_1").alias("a_shape_1"),
+    #             pl.col("result_dict")
+    #             .struct.field(self.graph_id_col)
+    #             .alias(self.graph_id_col),
+    #             pl.col("result_dict")
+    #             .struct.field(self.label_col)
+    #             .alias(self.label_col),
+    #         ]
+    #     )
+
+    #     return graph_df.drop("result_dict")
+
+    # def to_graph_frames(self) -> List[dict]:
+    #     def __convert_to_graph_data_list(df):
+    #         lazy_df = df.lazy()
+
+    #         graph_list = []
+
+    #         for chunk in lazy_df.collect().iter_slices(self.chunk_size):
+    #             chunk_graph_list = [
+    #                 {
+    #                     "a": make_sparse(
+    #                         flatten_to_reshaped_array(
+    #                             arr=chunk["a"][i],
+    #                             s0=chunk["a_shape_0"][i],
+    #                             s1=chunk["a_shape_1"][i],
+    #                         )
+    #                     ),
+    #                     "x": flatten_to_reshaped_array(
+    #                         arr=chunk["x"][i],
+    #                         s0=chunk["x_shape_0"][i],
+    #                         s1=chunk["x_shape_1"][i],
+    #                     ),
+    #                     "e": flatten_to_reshaped_array(
+    #                         arr=chunk["e"][i],
+    #                         s0=chunk["e_shape_0"][i],
+    #                         s1=chunk["e_shape_1"][i],
+    #                     ),
+    #                     "y": np.asarray([chunk[self.label_col][i]]),
+    #                     "id": chunk[self.graph_id_col][i],
+    #                 }
+    #                 for i in range(len(chunk["a"]))
+    #             ]
+    #             graph_list.extend(chunk_graph_list)
+
+    #         return graph_list
+
+    #     graph_df = self._convert()
+    #     self.graph_frames = __convert_to_graph_data_list(graph_df)
+
+    #     return self.graph_frames
+
+    ###
     def _convert(self):
-        result_df = self.dataset.group_by(Group.BY_FRAME, maintain_order=True).agg(
-            pl.map_groups(
-                exprs=self.__exprs_variables,
-                function=self.__compute,
-            ).alias("result_dict")
+        # Group and aggregate in one step
+        return (
+            self.dataset.group_by(Group.BY_FRAME, maintain_order=True)
+            .agg(
+                pl.map_groups(
+                    exprs=self.__exprs_variables, function=self.__compute
+                ).alias("result_dict")
+            )
+            .with_columns(
+                [
+                    *[
+                        pl.col("result_dict").struct.field(f).alias(f)
+                        for f in ["a", "e", "x", self.graph_id_col, self.label_col]
+                    ],
+                    *[
+                        pl.col("result_dict")
+                        .struct.field(f"{m}_shape_{i}")
+                        .alias(f"{m}_shape_{i}")
+                        for m in ["a", "e", "x"]
+                        for i in [0, 1]
+                    ],
+                ]
+            )
+            .drop("result_dict")
         )
 
-        graph_df = result_df.with_columns(
-            [
-                pl.col("result_dict").struct.field("a").alias("a"),
-                pl.col("result_dict").struct.field("e").alias("e"),
-                pl.col("result_dict").struct.field("x").alias("x"),
-                pl.col("result_dict").struct.field("e_shape_0").alias("e_shape_0"),
-                pl.col("result_dict").struct.field("e_shape_1").alias("e_shape_1"),
-                pl.col("result_dict").struct.field("x_shape_0").alias("x_shape_0"),
-                pl.col("result_dict").struct.field("x_shape_1").alias("x_shape_1"),
-                pl.col("result_dict").struct.field("a_shape_0").alias("a_shape_0"),
-                pl.col("result_dict").struct.field("a_shape_1").alias("a_shape_1"),
-                pl.col("result_dict")
-                .struct.field(self.graph_id_col)
-                .alias(self.graph_id_col),
-                pl.col("result_dict")
-                .struct.field(self.label_col)
-                .alias(self.label_col),
-            ]
-        )
-
-        return graph_df.drop("result_dict")
+    @staticmethod
+    def _reshape_array(arr, s0, s1):
+        return np.array([item for sublist in arr for item in sublist]).reshape(s0, s1)
 
     def to_graph_frames(self) -> List[dict]:
-        def __convert_to_graph_data_list(df):
-            lazy_df = df.lazy()
-
-            graph_list = []
-
-            for chunk in lazy_df.collect().iter_slices(self.chunk_size):
-                chunk_graph_list = [
-                    {
-                        "a": make_sparse(
-                            flatten_to_reshaped_array(
-                                arr=chunk["a"][i],
-                                s0=chunk["a_shape_0"][i],
-                                s1=chunk["a_shape_1"][i],
-                            )
-                        ),
-                        "x": flatten_to_reshaped_array(
-                            arr=chunk["x"][i],
-                            s0=chunk["x_shape_0"][i],
-                            s1=chunk["x_shape_1"][i],
-                        ),
-                        "e": flatten_to_reshaped_array(
-                            arr=chunk["e"][i],
-                            s0=chunk["e_shape_0"][i],
-                            s1=chunk["e_shape_1"][i],
-                        ),
-                        "y": np.asarray([chunk[self.label_col][i]]),
-                        "id": chunk[self.graph_id_col][i],
-                    }
-                    for i in range(len(chunk["a"]))
-                ]
-                graph_list.extend(chunk_graph_list)
-
-            return graph_list
+        def process_chunk(chunk: pl.DataFrame) -> List[dict]:
+            return [
+                {
+                    "a": make_sparse(
+                        self._reshape_array(
+                            chunk["a"][i], chunk["a_shape_0"][i], chunk["a_shape_1"][i]
+                        )
+                    ),
+                    "x": self._reshape_array(
+                        chunk["x"][i], chunk["x_shape_0"][i], chunk["x_shape_1"][i]
+                    ),
+                    "e": self._reshape_array(
+                        chunk["e"][i], chunk["e_shape_0"][i], chunk["e_shape_1"][i]
+                    ),
+                    "y": np.asarray([chunk[self.label_col][i]]),
+                    "id": chunk[self.graph_id_col][i],
+                }
+                for i in range(len(chunk))
+            ]
 
         graph_df = self._convert()
-        self.graph_frames = __convert_to_graph_data_list(graph_df)
-
+        self.graph_frames = [
+            graph
+            for chunk in graph_df.lazy().collect().iter_slices(self.chunk_size)
+            for graph in process_chunk(chunk)
+        ]
         return self.graph_frames
+
+    ###
 
     def to_spektral_graphs(self) -> List[Graph]:
         if not self.graph_frames:

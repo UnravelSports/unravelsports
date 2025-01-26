@@ -2,6 +2,8 @@ import logging
 import sys
 from copy import deepcopy
 
+from scipy.spatial.qhull import QhullError
+
 import warnings
 
 from dataclasses import dataclass, field, asdict
@@ -238,15 +240,18 @@ class SoccerGraphConverter(DefaultGraphConverter):
             for frame in tqdm(self.dataset, desc="Processing frames"):
                 data, label, frame_id, graph_id = self._convert(frame)
                 if data.home_players and data.away_players:
-                    gnn_frame = GraphFrame(
-                        frame_id=frame_id,
-                        data=data,
-                        label=label,
-                        graph_id=graph_id,
-                        settings=self.settings,
-                    )
-                    if gnn_frame.graph_data:
-                        self.graph_frames.append(gnn_frame)
+                    try:
+                        gnn_frame = GraphFrame(
+                            frame_id=frame_id,
+                            data=data,
+                            label=label,
+                            graph_id=graph_id,
+                            settings=self.settings,
+                        )
+                        if gnn_frame.graph_data:
+                            self.graph_frames.append(gnn_frame)
+                    except QhullError:
+                        pass
 
         return self.graph_frames
 
