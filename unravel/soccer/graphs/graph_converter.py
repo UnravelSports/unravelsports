@@ -4,7 +4,7 @@ from copy import deepcopy
 
 from scipy.spatial.qhull import QhullError
 
-import warnings
+from warnings import warn, simplefilter
 
 from dataclasses import dataclass, field, asdict
 
@@ -32,6 +32,9 @@ from .graph_settings import SoccerGraphSettings
 from .graph_frame import GraphFrame
 
 from ...utils import *
+
+simplefilter("always", DeprecationWarning)
+
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -80,6 +83,14 @@ class SoccerGraphConverter(DefaultGraphConverter):
     non_potential_receiver_node_value: float = 0.1
 
     def __post_init__(self):
+        warn(
+            """
+            This class is deprecated and will be removed in a future release. Please use SoccerGraphConverterPolars for better performance.
+            Note: SoccerGraphConverterPolars is not one-to-one compatible with models and dataset created from SoccerGraphConverter due to breaking changes.
+            """,
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
         if not self.dataset:
             raise Exception("Please provide a 'kloppy' dataset.")
 
@@ -204,7 +215,7 @@ class SoccerGraphConverter(DefaultGraphConverter):
 
             if not self.prediction and label is None:
                 if self.settings.verbose:
-                    warnings.warn(
+                    warn(
                         f"""No label for frame={frame.frame_id} in 'labels'...""",
                         NoLabelWarning,
                     )
