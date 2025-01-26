@@ -125,7 +125,7 @@ class BigDataBowlDataset(DefaultDataset):
             separator=",",
             encoding="utf8",
             null_values=["NA", "NULL", ""],
-            dtypes={"birthDate": pl.Date},
+            schema_overrides={"birthDate": pl.Date},
             ignore_errors=True,
         )
         if "position" in players.columns:

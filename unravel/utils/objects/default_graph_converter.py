@@ -87,6 +87,9 @@ class DefaultGraphConverter:
     pad: bool = False
     verbose: bool = False
 
+    label_col: str = None
+    graph_id_col: str = None
+
     graph_frames: dict = field(init=False, repr=False, default=None)
     settings: DefaultGraphSettings = field(
         init=False, repr=False, default_factory=DefaultGraphSettings

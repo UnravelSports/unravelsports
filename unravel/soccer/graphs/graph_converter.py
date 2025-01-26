@@ -71,7 +71,6 @@ class SoccerGraphConverter(DefaultGraphConverter):
     dataset: TrackingDataset = None
     labels: dict = None
 
-    labels: dict = None
     graph_id: Union[str, int, dict] = None
     graph_ids: dict = None
 

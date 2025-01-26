@@ -48,8 +48,14 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
         if not isinstance(dataset, BigDataBowlDataset):
             raise Exception("'dataset' should be an instance of BigDataBowlDataset")
 
-        self.label_col = dataset._label_column
-        self.graph_id_col = dataset._graph_id_column
+        self.label_column: str = (
+            self.label_col if self.label_col is not None else dataset._label_column
+        )
+        self.graph_id_column: str = (
+            self.graph_id_col
+            if self.graph_id_col is not None
+            else dataset._graph_id_column
+        )
 
         self.dataset: pl.DataFrame = dataset.data
         self.pitch_dimensions: AmericanFootballPitchDimensions = (
@@ -64,21 +70,21 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
 
     def _sport_specific_checks(self):
 
-        if not isinstance(self.label_col, str):
+        if not isinstance(self.label_column, str):
             raise Exception("'label_col' should be of type string (str)")
 
-        if not isinstance(self.graph_id_col, str):
+        if not isinstance(self.graph_id_column, str):
             raise Exception("'graph_id_col' should be of type string (str)")
 
         if not isinstance(self.chunk_size, int):
             raise Exception("chunk_size should be of type integer (int)")
 
-        if not self.label_col in self.dataset.columns and not self.prediction:
+        if not self.label_column in self.dataset.columns and not self.prediction:
             raise Exception(
                 "Please specify a 'label_col' and add that column to your 'dataset' or set 'prediction=True' if you want to use the converted dataset to make predictions on."
             )
 
-        if not self.graph_id_col in self.dataset.columns:
+        if not self.graph_id_column in self.dataset.columns:
             raise Exception(
                 "Please specify a 'graph_id_col' and add that column to your 'dataset' ..."
             )
@@ -121,20 +127,20 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
             Column.POSSESSION_TEAM,
             Column.HEIGHT_CM,
             Column.WEIGHT_KG,
-            self.graph_id_col,
-            self.label_col,
+            self.graph_id_column,
+            self.label_column,
         ]
 
     def __compute(self, args: List[pl.Series]) -> dict:
         d = {col: args[i].to_numpy() for i, col in enumerate(self.__exprs_variables)}
 
-        if not np.all(d[self.graph_id_col] == d[self.graph_id_col][0]):
+        if not np.all(d[self.graph_id_column] == d[self.graph_id_column][0]):
             raise Exception(
                 "GraphId selection contains multiple different values. Make sure each graph_id is unique by at least game_id and frame_id..."
             )
 
         if not self.prediction and not np.all(
-            d[self.label_col] == d[self.label_col][0]
+            d[self.label_column] == d[self.label_column][0]
         ):
             raise Exception(
                 """Label selection contains multiple different values for a single selection (group by) of game_id and frame_id, 
@@ -186,8 +192,8 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
             "x_shape_1": node_features.shape[1],
             "a_shape_0": adjacency_matrix.shape[0],
             "a_shape_1": adjacency_matrix.shape[1],
-            self.graph_id_col: d[self.graph_id_col][0],
-            self.label_col: d[self.label_col][0],
+            self.graph_id_column: d[self.graph_id_column][0],
+            self.label_column: d[self.label_column][0],
         }
 
     def _convert(self):
@@ -203,7 +209,13 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
                 [
                     *[
                         pl.col("result_dict").struct.field(f).alias(f)
-                        for f in ["a", "e", "x", self.graph_id_col, self.label_col]
+                        for f in [
+                            "a",
+                            "e",
+                            "x",
+                            self.graph_id_column,
+                            self.label_column,
+                        ]
                     ],
                     *[
                         pl.col("result_dict")
@@ -232,8 +244,8 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
                     "e": reshape_array(
                         chunk["e"][i], chunk["e_shape_0"][i], chunk["e_shape_1"][i]
                     ),
-                    "y": np.asarray([chunk[self.label_col][i]]),
-                    "id": chunk[self.graph_id_col][i],
+                    "y": np.asarray([chunk[self.label_column][i]]),
+                    "id": chunk[self.graph_id_column][i],
                 }
                 for i in range(len(chunk))
             ]
