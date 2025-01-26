@@ -32,7 +32,7 @@ setup(
     python_requires="~=3.11",
     install_requires=[
         "spektral==1.2.0",
-        "kloppy==3.15.0",
+        "kloppy==3.16.0",
         "tensorflow>=2.14.0;platform_machine != 'arm64' or platform_system != 'Darwin'",
         "tensorflow-macos>=2.14.0;platform_machine == 'arm64' and platform_system == 'Darwin'",
         "keras==2.14.0",
