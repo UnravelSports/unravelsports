@@ -54,7 +54,7 @@ def node_features(
             ),
             (
                 0.0
-                if np.isnan(p.x1)
+                if np.isnan(p.y1)
                 else normalize_coords(p.y1, pitch_dimensions.y_dim.max)
             ),
             0.0 if np.isnan(p.x1) else unit_vector(p.velocity)[0],

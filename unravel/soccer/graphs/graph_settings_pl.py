@@ -6,10 +6,12 @@ from dataclasses import dataclass, field
 from kloppy.domain import Dimension, Unit, MetricPitchDimensions
 from typing import Optional
 
+from .dataset import Constant
+
 
 @dataclass
 class GraphSettingsPolars(DefaultGraphSettings):
-    ball_id: str = "ball"
+    ball_id: str = Constant.BALL
     goalkeeper_id: str = "GK"
     boundary_correction: float = None
     non_potential_receiver_node_value: float = 0.1
@@ -17,7 +19,6 @@ class GraphSettingsPolars(DefaultGraphSettings):
     pitch_dimensions: MetricPitchDimensions = field(
         init=False, repr=False, default_factory=MetricPitchDimensions
     )
-    _identifier_column: str = field(default="id", init=False)
 
     def __post_init__(self):
         self._sport_specific_checks()

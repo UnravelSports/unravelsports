@@ -204,7 +204,7 @@ def distance_to_ball(
 
 def get_ball_carrier_idx(x, y, z, team, possession_team, ball_id, threshold):
     _, _, dist_to_ball = distance_to_ball(x=x, y=y, z=z, team=team, ball_id=ball_id)
-
+    print(dist_to_ball)
     filtered_distances = np.where(
         (team != possession_team) | (dist_to_ball <= threshold), np.inf, dist_to_ball
     )

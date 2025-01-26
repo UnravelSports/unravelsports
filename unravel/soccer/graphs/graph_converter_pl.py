@@ -30,7 +30,7 @@ from .exceptions import (
 )
 
 from .graph_settings_pl import GraphSettingsPolars
-from .dataset import KloppyPolarsDataset
+from .dataset import KloppyPolarsDataset, Column, Group, Constant
 from .features import (
     compute_node_features_pl,
     compute_adjacency_matrix_pl,
@@ -52,17 +52,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
 
     Attributes:
         dataset (TrackingDataset): Kloppy TrackingDataset.
-        labels (dict): Dict with a key per frame_id, like so {frame_id: True/False/1/0}
-        graph_id (str, int): Set a single id for the whole Kloppy dataset.
-        graph_ids (dict): Frame level control over graph ids.
-
-        The graph_ids will be used to assign each graph an identifier. This identifier allows us to split the CustomSpektralDataset such that
-            all graphs with the same id are either all in the test, train or validation set to avoid leakage. It is recommended to either set graph_id (int, str) as
-            a match_id, or pass a dictionary into 'graph_ids' with exactly the same keys as 'labels' for more granualar control over the graph ids.
-        The latter can be useful when splitting graphs by possession or sequence id. In this case the dict would be {frame_id: sequence_id/possession_id}.
-        Note that sequence_id/possession_id should probably be unique for the whole dataset. Perhaps like so {frame_id: 'match_id-sequence_id'}. Defaults to None.
-
-        ball_carrier_threshold (float): The distance threshold to determine the ball carrier. Defaults to 25.0.
+        chunk_size (int): Determines how many Graphs get processed simultanously.
         non_potential_receiver_node_value (float): Value between 0 and 1 to assign to the defing team players
     """
 
@@ -75,145 +65,169 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         self.pitch_dimensions: MetricPitchDimensions = self.dataset.pitch_dimensions
         self.label_col = self.dataset._label_column
         self.graph_id_col = self.dataset._graph_id_column
-        
-        self.ball_carrier_threshold = self.dataset.ball_carrier_threshold
+
         self.dataset = self.dataset.data
 
         self._sport_specific_checks()
         self.settings = self._apply_settings()
         self.dataset = self._apply_filters()
-        
+
         if self.pad:
             self.dataset = self._apply_padding(df=self.dataset)
-    
-    @staticmethod   
-    def _apply_padding(df: pl.DataFrame) -> pl.DataFrame:
+
+    def _apply_padding(self, df: pl.DataFrame) -> pl.DataFrame:
         keep_columns = [
-            'timestamp',
-            'ball_state',
-            'position_name',
-            'label',
-            'graph_id'
+            Column.TIMESTAMP,
+            Column.BALL_STATE,
+            Column.POSITION_NAME,
+            self.label_col,
+            self.graph_id_col,
         ]
         empty_columns = [
-            'id', 'x', 'y', 'z', 'vx', 'vy',
-            'vz', 'v', 'ax', 'ay', 'az', 'a'
+            Column.OBJECT_ID,
+            Column.IS_BALL_CARRIER,
+            Column.X,
+            Column.Y,
+            Column.Z,
+            Column.VX,
+            Column.VY,
+            Column.VZ,
+            Column.V,
+            Column.AX,
+            Column.AY,
+            Column.AZ,
+            Column.A,
         ]
-        group_by_columns = ['game_id', 'period_id', 'frame_id', 'team_id', 'ball_owning_team_id']
-        
-        counts = (
-            df.group_by(group_by_columns)
-            .agg(
-                pl.len().alias('count'),
-                *[pl.first(col).alias(col) for col in keep_columns]
-            )
+        group_by_columns = [
+            Column.GAME_ID,
+            Column.PERIOD_ID,
+            Column.FRAME_ID,
+            Column.TEAM_ID,
+            Column.BALL_OWNING_TEAM_ID,
+        ]
+
+        counts = df.group_by(group_by_columns).agg(
+            pl.len().alias("count"), *[pl.first(col).alias(col) for col in keep_columns]
         )
-        
-        counts = counts.with_columns([
-            pl.when(pl.col('team_id') == "ball")
-            .then(1)
-            .when(pl.col('team_id') == pl.col('ball_owning_team_id'))
-            .then(11)
-            .otherwise(11)
-            .alias('target_length')
-        ])
-        
-        groups_to_pad = (
-            counts
-            .filter(pl.col('count') < pl.col('target_length'))
-            .with_columns(
-                (pl.col('target_length') - pl.col('count')).alias('repeats')
-            )
+
+        counts = counts.with_columns(
+            [
+                pl.when(pl.col(Column.TEAM_ID) == Constant.BALL)
+                .then(1)
+                .when(pl.col(Column.TEAM_ID) == pl.col(Column.BALL_OWNING_TEAM_ID))
+                .then(11)
+                .otherwise(11)
+                .alias("target_length")
+            ]
         )
-        
+
+        groups_to_pad = counts.filter(
+            pl.col("count") < pl.col("target_length")
+        ).with_columns((pl.col("target_length") - pl.col("count")).alias("repeats"))
+
         if len(groups_to_pad) == 0:
             return df
-            
+
         padding_rows = []
         for row in groups_to_pad.iter_rows(named=True):
             base_row = {col: row[col] for col in keep_columns + group_by_columns}
-            padding_rows.extend([base_row] * row['repeats'])
-        
+            padding_rows.extend([base_row] * row["repeats"])
+
         padding_df = pl.DataFrame(padding_rows)
-        
+
         schema = df.schema
-        padding_df = padding_df.with_columns([
-            pl.lit(0.0 if schema[col] != pl.String else "None").cast(schema[col]).alias(col)
-            for col in empty_columns
-        ])
-        
-        padding_df = padding_df.select(df.columns)
-        
-        result = pl.concat([df, padding_df], how='vertical')
-        
-        total_frames = (
-            result.select(['game_id', 'period_id', 'frame_id'])
-            .unique()
-            .height
+        padding_df = padding_df.with_columns(
+            [
+                pl.lit(0.0 if schema[col] != pl.String else "None")
+                .cast(schema[col])
+                .alias(col)
+                for col in empty_columns
+            ]
         )
-        
+
+        padding_df = padding_df.select(df.columns)
+
+        result = pl.concat([df, padding_df], how="vertical")
+
+        total_frames = result.select(Group.BY_FRAME).unique().height
+
         frame_completeness = (
-            result.group_by(['game_id', 'period_id', 'frame_id'])
-            .agg([
-                (pl.col('team_id').eq("ball").sum() == 1).alias('has_ball'),
-                (pl.col('team_id').eq(pl.col('ball_owning_team_id')).sum() == 11).alias('has_owning_team'),
-                ((~pl.col('team_id').eq("ball") & ~pl.col('team_id').eq(pl.col('ball_owning_team_id'))).sum() == 11).alias('has_other_team')
-            ])
+            result.group_by(Group.BY_FRAME)
+            .agg(
+                [
+                    (pl.col(Column.TEAM_ID).eq(Constant.BALL).sum() == 1).alias(
+                        "has_ball"
+                    ),
+                    (
+                        pl.col(Column.TEAM_ID)
+                        .eq(pl.col(Column.BALL_OWNING_TEAM_ID))
+                        .sum()
+                        == 11
+                    ).alias("has_owning_team"),
+                    (
+                        (
+                            ~pl.col(Column.TEAM_ID).eq(Constant.BALL)
+                            & ~pl.col(Column.TEAM_ID).eq(
+                                pl.col(Column.BALL_OWNING_TEAM_ID)
+                            )
+                        ).sum()
+                        == 11
+                    ).alias("has_other_team"),
+                ]
+            )
             .filter(
-                pl.col('has_ball') & pl.col('has_owning_team') & pl.col('has_other_team')
+                pl.col("has_ball")
+                & pl.col("has_owning_team")
+                & pl.col("has_other_team")
             )
         )
-        
+
         complete_frames = frame_completeness.height
-        
+
         dropped_frames = total_frames - complete_frames
         if dropped_frames > 0:
             import warnings
+
             warnings.warn(
                 f"""Setting pad=True drops frames that do not have at least 1 object for the attacking team, defending team or ball.
                 This operation dropped {dropped_frames} incomplete frames out of {total_frames} total frames ({(dropped_frames/total_frames)*100:.2f}%)
                 """
             )
-        
-        return result.join(
-            frame_completeness,
-            on=['game_id', 'period_id', 'frame_id'],
-            how='inner'
-        )
+
+        return result.join(frame_completeness, on=Group.BY_FRAME, how="inner")
 
     def _apply_filters(self):
         return self.dataset.with_columns(
             pl.when(
-                (pl.col(self.settings._identifier_column) == self.settings.ball_id)
-                & (pl.col("v") > self.settings.max_ball_speed)
+                (pl.col(Column.OBJECT_ID) == Constant.BALL)
+                & (pl.col(Column.V) > self.settings.max_ball_speed)
             )
             .then(self.settings.max_ball_speed)
             .when(
-                (pl.col(self.settings._identifier_column) != self.settings.ball_id)
-                & (pl.col("v") > self.settings.max_player_speed)
+                (pl.col(Column.OBJECT_ID) != Constant.BALL)
+                & (pl.col(Column.V) > self.settings.max_player_speed)
             )
             .then(self.settings.max_player_speed)
-            .otherwise(pl.col("v"))
-            .alias("v")
+            .otherwise(pl.col(Column.V))
+            .alias(Column.V)
         ).with_columns(
             pl.when(
-                (pl.col(self.settings._identifier_column) == self.settings.ball_id)
-                & (pl.col("a") > self.settings.max_ball_acceleration)
+                (pl.col(Column.OBJECT_ID) == Constant.BALL)
+                & (pl.col(Column.A) > self.settings.max_ball_acceleration)
             )
             .then(self.settings.max_ball_acceleration)
             .when(
-                (pl.col(self.settings._identifier_column) != self.settings.ball_id)
-                & (pl.col("a") > self.settings.max_player_acceleration)
+                (pl.col(Column.OBJECT_ID) != Constant.BALL)
+                & (pl.col(Column.A) > self.settings.max_player_acceleration)
             )
             .then(self.settings.max_player_acceleration)
-            .otherwise(pl.col("a"))
-            .alias("a")
+            .otherwise(pl.col(Column.A))
+            .alias(Column.A)
         )
 
     def _apply_settings(self):
         return GraphSettingsPolars(
             pitch_dimensions=self.pitch_dimensions,
-            ball_carrier_treshold=self.ball_carrier_threshold,
             max_player_speed=self.max_player_speed,
             max_ball_speed=self.max_ball_speed,
             max_player_acceleration=self.max_player_acceleration,
@@ -249,73 +263,83 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
                 "Please specify a 'graph_id_col' and add that column to your 'dataset' ..."
             )
 
-        if self.ball_carrier_threshold and not isinstance(
-            self.ball_carrier_threshold, float
-        ):
-            raise Exception("'ball_carrier_threshold' should be of type float")
-
         if self.non_potential_receiver_node_value and not isinstance(
             self.non_potential_receiver_node_value, float
         ):
             raise Exception(
                 "'non_potential_receiver_node_value' should be of type float"
             )
-            
+
     @property
     def __exprs_variables(self):
         return [
-            "x", "y", "z",
-            "v", "vx", "vy", "vz",
-            "a", "ax", "ay", "az",
-            "team_id", "position_name", "ball_owning_team_id",
+            Column.X,
+            Column.Y,
+            Column.Z,
+            Column.V,
+            Column.VX,
+            Column.VY,
+            Column.VZ,
+            Column.A,
+            Column.AX,
+            Column.AY,
+            Column.AZ,
+            Column.TEAM_ID,
+            Column.POSITION_NAME,
+            Column.BALL_OWNING_TEAM_ID,
+            Column.IS_BALL_CARRIER,
             self.graph_id_col,
             self.label_col,
         ]
-    
+
     def __compute(self, args: List[pl.Series]) -> dict:
         d = {col: args[i].to_numpy() for i, col in enumerate(self.__exprs_variables)}
-        
+
         if not np.all(d[self.graph_id_col] == d[self.graph_id_col][0]):
             raise Exception(
                 "GraphId selection contains multiple different values. Make sure each graph_id is unique by at least game_id and frame_id..."
             )
 
-        if not self.prediction and not np.all(d[self.label_col] == d[self.label_col][0]):
+        if not self.prediction and not np.all(
+            d[self.label_col] == d[self.label_col][0]
+        ):
             raise Exception(
                 """Label selection contains multiple different values for a single selection (group by) of game_id and frame_id, 
                 make sure this is not the case. Each group can only have 1 label."""
             )
-        
-        ball_carrier_idx = get_ball_carrier_idx(
-            x=d['x'], y=d['y'], z=d['z'],
-            team=d['team_id'],
-            possession_team=d['ball_owning_team_id'],
-            ball_id=self.settings.ball_id,
-            threshold=self.settings.ball_carrier_treshold,
-        )
+        ball_carriers = np.where(d[Column.IS_BALL_CARRIER] == True)[0]
+        if len(ball_carriers) == 0:
+            ball_carrier_idx = None
+        else:
+            ball_carrier_idx = ball_carriers[0]
+
         adjacency_matrix = compute_adjacency_matrix_pl(
-            team=d['team_id'],
-            possession_team=d['ball_owning_team_id'],
+            team=d[Column.TEAM_ID],
+            ball_owning_team=d[Column.BALL_OWNING_TEAM_ID],
             settings=self.settings,
             ball_carrier_idx=ball_carrier_idx,
         )
+
+        velocity = np.stack((d[Column.VX], d[Column.VY]), axis=-1)
         edge_features = compute_edge_features_pl(
             adjacency_matrix=adjacency_matrix,
-            p3d=np.stack((d['x'], d['y'], d['z']), axis=-1),
-            p2d=np.stack((d['x'], d['y']), axis=-1),
-            s=d['v'],
-            velocity=np.stack((d['vx'], d['vy']), axis=-1),
-            team=d['team_id'],
+            p3d=np.stack((d[Column.X], d[Column.Y], d[Column.Z]), axis=-1),
+            p2d=np.stack((d[Column.X], d[Column.Y]), axis=-1),
+            s=d[Column.V],
+            velocity=velocity,
+            team=d[Column.TEAM_ID],
             settings=self.settings,
         )
+
         node_features = compute_node_features_pl(
-            d['x'],
-            d['y'],
-            s=d['v'],
-            velocity=np.stack((d['vx'], d['vy']), axis=-1),
-            team=d['team_id'],
-            possession_team=d['ball_owning_team_id'],
-            is_gk=(d['position_name'] == self.settings.goalkeeper_id).astype(int),
+            d[Column.X],
+            d[Column.Y],
+            s=d[Column.V],
+            velocity=velocity,
+            team=d[Column.TEAM_ID],
+            possession_team=d[Column.BALL_OWNING_TEAM_ID],
+            is_gk=(d[Column.POSITION_NAME] == self.settings.goalkeeper_id).astype(int),
+            ball_carrier=d[Column.IS_BALL_CARRIER],
             settings=self.settings,
         )
         return {
@@ -337,11 +361,9 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             self.graph_id_col: d[self.graph_id_col][0],
             self.label_col: d[self.label_col][0],
         }
-    
+
     def _convert(self):
-        result_df = self.dataset.group_by(
-            ["game_id", "frame_id"], maintain_order=True
-        ).agg(
+        result_df = self.dataset.group_by(Group.BY_FRAME, maintain_order=True).agg(
             pl.map_groups(
                 exprs=self.__exprs_variables,
                 function=self.__compute,
@@ -369,8 +391,6 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         )
 
         return graph_df.drop("result_dict")
-    
-    
 
     def to_graph_frames(self) -> List[dict]:
         def __convert_to_graph_data_list(df):
@@ -406,10 +426,10 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
                 graph_list.extend(chunk_graph_list)
 
             return graph_list
-        
+
         graph_df = self._convert()
-        self.graph_frames = self.__convert_to_graph_data_list(graph_df)
-        
+        self.graph_frames = __convert_to_graph_data_list(graph_df)
+
         return self.graph_frames
 
     def to_spektral_graphs(self) -> List[Graph]:
