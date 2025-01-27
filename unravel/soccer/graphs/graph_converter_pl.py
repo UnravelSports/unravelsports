@@ -44,6 +44,9 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
     non_potential_receiver_node_value: float = 0.1
 
     def __post_init__(self):
+        if not isinstance(self.dataset, KloppyPolarsDataset):
+            raise ValueError("dataset should be of type KloppyPolarsDataset...")
+
         self.pitch_dimensions: MetricPitchDimensions = self.dataset.pitch_dimensions
         self.label_column: str = (
             self.label_col if self.label_col is not None else self.dataset._label_column
@@ -298,14 +301,14 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         d = {col: args[i].to_numpy() for i, col in enumerate(self.__exprs_variables)}
 
         if not np.all(d[self.graph_id_column] == d[self.graph_id_column][0]):
-            raise Exception(
-                "GraphId selection contains multiple different values. Make sure each graph_id is unique by at least game_id and frame_id..."
+            raise ValueError(
+                "graph_id selection contains multiple different values. Make sure each graph_id is unique by at least game_id and frame_id..."
             )
 
         if not self.prediction and not np.all(
             d[self.label_column] == d[self.label_column][0]
         ):
-            raise Exception(
+            raise ValueError(
                 """Label selection contains multiple different values for a single selection (group by) of game_id and frame_id, 
                 make sure this is not the case. Each group can only have 1 label."""
             )
