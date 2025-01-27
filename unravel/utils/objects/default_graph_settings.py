@@ -18,9 +18,6 @@ class DefaultGraphSettings:
     Attributes:
         infer_ball_ownership (bool):
             Infers 'attacking_team' if no 'ball_owning_team' (Kloppy) or 'attacking_team' (List[Dict]) is provided, by finding player closest to ball using ball xyz.
-            Also infers ball_carrier within ball_carrier_threshold
-        infer_goalkeepers (bool): set True if no GK label is provider, set False for incomplete (broadcast tracking) data that might not have a GK in every frame
-        ball_carrier_threshold (float): The distance threshold to determine the ball carrier. Defaults to 25.0.
         max_player_speed (float): The maximum speed of a player in meters per second. Defaults to 12.0.
         max_ball_speed (float): The maximum speed of the ball in meters per second. Defaults to 28.0.
         boundary_correction (float): A correction factor for boundary calculations, used to correct out of bounds as a percentages (Used as 1+boundary_correction, ie 0.05). Defaults to None.

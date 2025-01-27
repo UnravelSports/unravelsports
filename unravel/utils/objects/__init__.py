@@ -5,3 +5,4 @@ from .custom_spektral_dataset import CustomSpektralDataset
 from .default_graph_frame import DefaultGraphFrame
 from .default_graph_settings import DefaultGraphSettings
 from .default_graph_converter import DefaultGraphConverter
+from .default_dataset import DefaultDataset

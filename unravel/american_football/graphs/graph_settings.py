@@ -26,8 +26,6 @@ class AmericanFootballPitchDimensions:
 @dataclass
 class AmericanFootballGraphSettings(DefaultGraphSettings):
     pitch_dimensions: AmericanFootballPitchDimensions = None
-    ball_id: str = "football"
-    qb_id: str = "QB"
     attacking_non_qb_node_value: float = 0.1
     max_height: float = 225.0  # in cm
     min_height: float = 150.0

@@ -1,20 +1,23 @@
 import numpy as np
+from scipy.spatial import Delaunay
 
-from ....utils import AdjacencyMatrixType, AdjacenyMatrixConnectType
+
+from ....utils import AdjacencyMatrixType, AdjacenyMatrixConnectType, distance_to_ball
 from ..dataset import Constant
 
 
-def compute_adjacency_matrix(team, possession_team, settings):
+def compute_adjacency_matrix_pl(team, ball_owning_team, settings, ball_carrier_idx):
     adjacency_matrix_type = settings.adjacency_matrix_type
     adjacency_matrix_connect_type = settings.adjacency_matrix_connect_type
     ball_id = Constant.BALL
 
-    exclusion_ids = np.asarray([ball_id, *np.unique(possession_team)])
+    exclusion_ids = np.asarray([ball_id, *np.unique(ball_owning_team)])
+
     defensive_team = np.setdiff1d(team, exclusion_ids)[0]
     if adjacency_matrix_type == AdjacencyMatrixType.DENSE:
         adjacency_matrix = np.ones((team.shape[0], team.shape[0])).astype(np.int32)
     elif adjacency_matrix_type == AdjacencyMatrixType.DENSE_AP:
-        is_att = team == np.unique(possession_team)[0]
+        is_att = team == np.unique(ball_owning_team)[0]
         adjacency_matrix = np.outer(is_att, is_att).astype(int)
     elif adjacency_matrix_type == AdjacencyMatrixType.DENSE_DP:
         is_def = team == defensive_team
@@ -23,21 +26,19 @@ def compute_adjacency_matrix(team, possession_team, settings):
         # Create a pairwise team comparison matrix
         adjacency_matrix = np.equal(team[:, None], team[None, :]).astype(np.int32)
     elif adjacency_matrix_type == AdjacencyMatrixType.DELAUNAY:
-        raise NotImplementedError(
-            "Delaunay matrix not implemented for American Football..."
-        )
+        raise NotImplementedError("Delaunay matrix not implemented for Soccer...")
     else:
         raise NotImplementedError("Please specify an existing AdjacencyMatrixType...")
 
     if adjacency_matrix_connect_type:
+        # Create a mask where either team is "ball"
+        ball_mask = (team[:, None] == ball_id) | (team[None, :] == ball_id)
         if adjacency_matrix_connect_type == AdjacenyMatrixConnectType.BALL:
-            # Create a mask where either team is "football"
-            football_mask = (team[:, None] == ball_id) | (team[None, :] == ball_id)
-            # Set entries to 1 where either team is "football"
-            adjacency_matrix = np.where(football_mask, 1, adjacency_matrix)
+            # Set entries to 1 where either team is "ball"
+            adjacency_matrix = np.where(ball_mask, 1, adjacency_matrix)
         elif adjacency_matrix_connect_type == AdjacenyMatrixConnectType.BALL_CARRIER:
-            raise NotImplementedError(
-                "No ball carrier information exists in the BigDataBowl dataset, please choose a different AdjacenyMatrixConnectType..."
-            )
+            if ball_carrier_idx is not None:
+                adjacency_matrix[ball_carrier_idx, ball_mask[ball_carrier_idx, :]] = 1
+                adjacency_matrix[ball_mask[:, ball_carrier_idx], ball_carrier_idx] = 1
 
     return adjacency_matrix

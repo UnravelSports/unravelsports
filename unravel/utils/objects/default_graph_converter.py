@@ -87,6 +87,9 @@ class DefaultGraphConverter:
     pad: bool = False
     verbose: bool = False
 
+    label_col: str = None
+    graph_id_col: str = None
+
     graph_frames: dict = field(init=False, repr=False, default=None)
     settings: DefaultGraphSettings = field(
         init=False, repr=False, default_factory=DefaultGraphSettings
@@ -151,6 +154,9 @@ class DefaultGraphConverter:
 
         if not isinstance(self.verbose, bool):
             raise Exception("'verbose' should be of type boolean (bool)")
+
+    def _shuffle(self):
+        raise NotImplementedError()
 
     def _sport_specific_checks(self):
         raise NotImplementedError(

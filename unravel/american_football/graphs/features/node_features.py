@@ -12,6 +12,8 @@ from ....utils import (
     normalize_between,
 )
 
+from ..dataset import Constant
+
 
 def compute_node_features(
     x,
@@ -27,7 +29,7 @@ def compute_node_features(
     weight,
     settings,
 ):
-    ball_id = settings.ball_id
+    ball_id = Constant.BALL
 
     goal_mouth_position = (
         settings.pitch_dimensions.x_dim.max,
@@ -61,10 +63,12 @@ def compute_node_features(
         min_value=settings.pitch_dimensions.y_dim.min,
     )
     uv_sa = unit_vector_from_angle(value=s, angle_radians=dir)
-    s_normed = normalize_speeds_nfl(s, team, settings)
+    s_normed = normalize_speeds_nfl(s, team, ball_id=Constant.BALL, settings=settings)
 
     uv_aa = unit_vector_from_angle(value=a, angle_radians=dir)
-    a_normed = normalize_accelerations_nfl(a, team, settings)
+    a_normed = normalize_accelerations_nfl(
+        a, team, ball_id=Constant.BALL, settings=settings
+    )
 
     dir_sin_normed = normalize_sincos(np.nan_to_num(np.sin(dir)))
     dir_cos_normed = normalize_sincos(np.nan_to_num(np.cos(dir)))
@@ -92,7 +96,7 @@ def compute_node_features(
         team == possession_team, 1, settings.defending_team_node_value
     )
     is_qb = np.where(
-        official_position == settings.qb_id,  # First condition
+        official_position == Constant.QB,  # First condition
         1,  # If true, set to 1 (indicating the player is a QB)
         np.where(
             team == possession_team,  # Second condition inside the else of the first

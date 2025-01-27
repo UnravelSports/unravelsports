@@ -2,7 +2,9 @@ import logging
 import sys
 from copy import deepcopy
 
-import warnings
+from scipy.spatial.qhull import QhullError
+
+from warnings import warn, simplefilter
 
 from dataclasses import dataclass, field, asdict
 
@@ -30,6 +32,9 @@ from .graph_settings import SoccerGraphSettings
 from .graph_frame import GraphFrame
 
 from ...utils import *
+
+simplefilter("always", DeprecationWarning)
+
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -66,7 +71,6 @@ class SoccerGraphConverter(DefaultGraphConverter):
     dataset: TrackingDataset = None
     labels: dict = None
 
-    labels: dict = None
     graph_id: Union[str, int, dict] = None
     graph_ids: dict = None
 
@@ -78,6 +82,14 @@ class SoccerGraphConverter(DefaultGraphConverter):
     non_potential_receiver_node_value: float = 0.1
 
     def __post_init__(self):
+        warn(
+            """
+            This class is deprecated and will be removed in a future release. Please use SoccerGraphConverterPolars for better performance.
+            Note: SoccerGraphConverterPolars is not one-to-one compatible with models and dataset created from SoccerGraphConverter due to breaking changes.
+            """,
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
         if not self.dataset:
             raise Exception("Please provide a 'kloppy' dataset.")
 
@@ -202,7 +214,7 @@ class SoccerGraphConverter(DefaultGraphConverter):
 
             if not self.prediction and label is None:
                 if self.settings.verbose:
-                    warnings.warn(
+                    warn(
                         f"""No label for frame={frame.frame_id} in 'labels'...""",
                         NoLabelWarning,
                     )
@@ -238,15 +250,18 @@ class SoccerGraphConverter(DefaultGraphConverter):
             for frame in tqdm(self.dataset, desc="Processing frames"):
                 data, label, frame_id, graph_id = self._convert(frame)
                 if data.home_players and data.away_players:
-                    gnn_frame = GraphFrame(
-                        frame_id=frame_id,
-                        data=data,
-                        label=label,
-                        graph_id=graph_id,
-                        settings=self.settings,
-                    )
-                    if gnn_frame.graph_data:
-                        self.graph_frames.append(gnn_frame)
+                    try:
+                        gnn_frame = GraphFrame(
+                            frame_id=frame_id,
+                            data=data,
+                            label=label,
+                            graph_id=graph_id,
+                            settings=self.settings,
+                        )
+                        if gnn_frame.graph_data:
+                            self.graph_frames.append(gnn_frame)
+                    except QhullError:
+                        pass
 
         return self.graph_frames
 
