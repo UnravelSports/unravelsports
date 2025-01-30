@@ -115,7 +115,7 @@ class TestKloppyPolarsData:
 
         data = spektral_graphs
         assert data[0].id == "2417-1529"
-        assert len(data) == 489
+        assert len(data) == 384
         assert isinstance(data[0], Graph)
 
         x = data[0].x
@@ -143,7 +143,7 @@ class TestKloppyPolarsData:
         assert F == 15
         assert S == 6
         assert n_out == 1
-        assert n == 489
+        assert n == 384
 
         train, test, val = dataset.split_test_train_validation(
             split_train=4,
@@ -152,9 +152,9 @@ class TestKloppyPolarsData:
             by_graph_id=True,
             random_seed=42,
         )
-        assert train.n_graphs == 326
-        assert test.n_graphs == 81
-        assert val.n_graphs == 82
+        assert train.n_graphs == 256
+        assert test.n_graphs == 64
+        assert val.n_graphs == 64
 
         train, test, val = dataset.split_test_train_validation(
             split_train=4,
@@ -163,21 +163,21 @@ class TestKloppyPolarsData:
             by_graph_id=False,
             random_seed=42,
         )
-        assert train.n_graphs == 326
-        assert test.n_graphs == 81
-        assert val.n_graphs == 82
+        assert train.n_graphs == 256
+        assert test.n_graphs == 64
+        assert val.n_graphs == 64
 
         train, test = dataset.split_test_train(
             split_train=4, split_test=1, by_graph_id=False, random_seed=42
         )
-        assert train.n_graphs == 391
-        assert test.n_graphs == 98
+        assert train.n_graphs == 307
+        assert test.n_graphs == 77
 
         train, test = dataset.split_test_train(
             split_train=4, split_test=5, by_graph_id=False, random_seed=42
         )
-        assert train.n_graphs == 217
-        assert test.n_graphs == 272
+        assert train.n_graphs == 170
+        assert test.n_graphs == 214
 
         with pytest.raises(
             NotImplementedError,
