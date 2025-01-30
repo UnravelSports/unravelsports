@@ -130,8 +130,8 @@ class TestAmericanFootballDataset:
             "is_possession_team": 0.0,
             "is_qb": 0.0,
             "is_ball": 0.0,
-            "weight_normed": 0.21941714285714287,
-            "height_normed": 0.4722666666666665,
+            "weight_normed": 0.21428571428571427,
+            "height_normed": 0.5333333333333333,
         }
         return item_idx, assert_values
 

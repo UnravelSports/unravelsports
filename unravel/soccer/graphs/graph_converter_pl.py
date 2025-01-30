@@ -369,13 +369,33 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             self.label_column: d[self.label_column][0],
         }
 
+    @property
+    def return_dtypes(self):
+        return pl.Struct(
+            {
+                "e": pl.List(pl.List(pl.Float64)),
+                "x": pl.List(pl.List(pl.Float64)),
+                "a": pl.List(pl.List(pl.Float64)),
+                "e_shape_0": pl.Int64,
+                "e_shape_1": pl.Int64,
+                "x_shape_0": pl.Int64,
+                "x_shape_1": pl.Int64,
+                "a_shape_0": pl.Int64,
+                "a_shape_1": pl.Int64,
+                self.graph_id_column: pl.String,
+                self.label_column: pl.Int64,
+            }
+        )
+
     def _convert(self):
         # Group and aggregate in one step
         return (
             self.dataset.group_by(Group.BY_FRAME, maintain_order=True)
             .agg(
                 pl.map_groups(
-                    exprs=self.__exprs_variables, function=self.__compute
+                    exprs=self.__exprs_variables,
+                    function=self.__compute,
+                    return_dtype=self.return_dtypes,
                 ).alias("result_dict")
             )
             .with_columns(
@@ -446,7 +466,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             for d in self.graph_frames
         ]
 
-    def to_pickle(self, file_path: str) -> None:
+    def to_pickle(self, file_path: str, verbose: bool = False) -> None:
         """
         We store the 'dict' version of the Graphs to pickle each graph is now a dict with keys x, a, e, and y
         To use for training with Spektral feed the loaded pickle data to CustomDataset(data=pickled_data)
@@ -458,6 +478,9 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
 
         if not self.graph_frames:
             self.to_graph_frames()
+
+        if verbose:
+            print(f"Storing {len(self.graph_frames)} Graphs in {file_path}...")
 
         import pickle
         import gzip

@@ -17,6 +17,7 @@ import tensorflow as tf
 from collections.abc import Sequence
 
 from spektral.data import Dataset, Graph
+from spektral.data.utils import get_spec
 
 from .default_graph_frame import DefaultGraphFrame
 
@@ -39,8 +40,10 @@ class CustomSpektralDataset(Dataset, Sequence):
         """
         Constructor to load parameters.
         """
-        # super().__init__(**kwargs)
-        self._kwargs = kwargs  # Store kwargs for serialization
+        self._kwargs = kwargs
+
+        sample_rate = kwargs.get("sample_rate", 1.0)
+        self.sample = 1.0 / sample_rate
 
         if kwargs.get("pickle_folder", None):
             pickle_folder = Path(kwargs["pickle_folder"])
@@ -52,6 +55,17 @@ class CustomSpektralDataset(Dataset, Sequence):
                     self.graphs = self.__convert(data)
                 else:
                     self.add(data)
+
+        elif kwargs.get("pickle_file", None):
+            pickle_file = Path(kwargs["pickle_file"])
+            self.graphs = None
+            data = load_pickle_gz(pickle_file)
+
+            if not self.graphs:
+                self.graphs = self.__convert(data)
+            else:
+                self.add(data)
+
         elif kwargs.get("graphs", None):
             if not isinstance(kwargs["graphs"], list):
                 raise NotImplementedError("""data should be of type list""")
@@ -59,7 +73,7 @@ class CustomSpektralDataset(Dataset, Sequence):
             self.graphs = kwargs["graphs"]
         else:
             raise NotImplementedError(
-                "Please provide either 'pickle_folder' or 'graphs' as parameter to CustomSpektralDataset"
+                "Please provide either 'pickle_folder', 'pickle_file' or 'graphs' as parameter to CustomSpektralDataset"
             )
 
         super().__init__(**kwargs)
@@ -69,12 +83,18 @@ class CustomSpektralDataset(Dataset, Sequence):
         Convert incoming data to correct List[Graph] format
         """
         if isinstance(data[0], Graph):
-            return data
+            return [g for i, g in enumerate(data) if i % self.sample == 0]
         elif isinstance(data[0], DefaultGraphFrame):
-            return [g.to_spektral_graph() for g in self.data]
+            return [
+                g.to_spektral_graph()
+                for i, g in enumerate(self.data)
+                if i % self.sample == 0
+            ]
         elif isinstance(data[0], dict):
             return [
-                Graph(x=g["x"], a=g["a"], e=g["e"], y=g["y"], id=g["id"]) for g in data
+                Graph(x=g["x"], a=g["a"], e=g["e"], y=g["y"], id=g["id"])
+                for i, g in enumerate(data)
+                if i % self.sample == 0
             ]
         else:
             raise NotImplementedError()
@@ -242,3 +262,50 @@ class CustomSpektralDataset(Dataset, Sequence):
                 return self[train_idxs], self[test_idxs], self[validation_idxs]
             else:
                 return self[train_idxs], self[test_idxs]
+
+    @property
+    def signature(self):
+        """
+        This property computes the signature of the dataset, which can be
+        passed to `spektral.data.utils.to_tf_signature(signature)` to compute
+        the TensorFlow signature.
+
+        The signature includes TensorFlow TypeSpec, shape, and dtype for all
+        characteristic matrices of the graphs in the Dataset.
+        """
+        if len(self.graphs) == 0:
+            return None
+        signature = {}
+        graph = self.graphs[0]  # This is always non-empty
+
+        if graph.x is not None:
+            signature["x"] = dict()
+            signature["x"]["spec"] = get_spec(graph.x)
+            signature["x"]["shape"] = (None, self.n_node_features)
+            signature["x"]["dtype"] = tf.as_dtype(graph.x.dtype)
+
+        if graph.a is not None:
+            signature["a"] = dict()
+            signature["a"]["spec"] = get_spec(graph.a)
+            signature["a"]["shape"] = (None, None)
+            signature["a"]["dtype"] = tf.as_dtype(graph.a.dtype)
+
+        if graph.e is not None:
+            signature["e"] = dict()
+            signature["e"]["spec"] = get_spec(graph.e)
+            signature["e"]["shape"] = (None, self.n_edge_features)
+            signature["e"]["dtype"] = tf.as_dtype(graph.e.dtype)
+
+        if graph.y is not None:
+            signature["y"] = dict()
+            signature["y"]["spec"] = get_spec(graph.y)
+            signature["y"]["shape"] = (self.n_labels,)
+            signature["y"]["dtype"] = tf.as_dtype(np.array(graph.y).dtype)
+
+        if hasattr(graph, "g") and graph.g is not None:
+            signature["g"] = dict()
+            signature["g"]["spec"] = get_spec(graph.g)
+            signature["g"]["shape"] = graph.g.shape
+            signature["g"]["dtype"] = tf.as_dtype(np.array(graph.g).dtype)
+
+        return signature

@@ -27,6 +27,7 @@ def compute_node_features(
     possession_team,
     height,
     weight,
+    graph_features,
     settings,
 ):
     ball_id = Constant.BALL
@@ -140,5 +141,10 @@ def compute_node_features(
             axis=-1,
         )
     )
+
+    if graph_features is not None:
+        eg = np.ones((X.shape[0], graph_features.shape[0])) * 0.0
+        eg[ball_index] = graph_features
+        X = np.hstack((X, eg))
 
     return X

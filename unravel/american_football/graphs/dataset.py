@@ -49,19 +49,23 @@ class BigDataBowlDataset(DefaultDataset):
         tracking_file_path: str,
         players_file_path: str,
         plays_file_path: str,
+        sample_rate: float = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.tracking_file_path = tracking_file_path
         self.players_file_path = players_file_path
         self.plays_file_path = plays_file_path
+        self.sample_rate = 1 if sample_rate is None else sample_rate
         self.pitch_dimensions = AmericanFootballPitchDimensions()
 
     def load(self):
         pitch_length = self.pitch_dimensions.pitch_length
         pitch_width = self.pitch_dimensions.pitch_width
 
-        df = pl.read_csv(
+        sample = 1.0 / self.sample_rate
+
+        df = pl.scan_csv(
             self.tracking_file_path,
             separator=",",
             encoding="utf8",
@@ -71,7 +75,7 @@ class BigDataBowlDataset(DefaultDataset):
 
         play_direction = "left"
 
-        if "club" in df.columns:
+        if "club" in df.collect_schema().names():
             df = df.with_columns(pl.col(Column.CLUB).alias(Column.TEAM))
             df = df.drop(Column.CLUB)
 
@@ -119,7 +123,14 @@ class BigDataBowlDataset(DefaultDataset):
                     .alias(Column.OBJECT_ID),
                 ]
             )
-        )
+            .with_columns(
+                [
+                    pl.lit(play_direction).alias("playDirection"),
+                ]
+            )
+            .filter((pl.col(Column.FRAME_ID) % sample) == 0)
+        ).collect()
+
         players = pl.read_csv(
             self.players_file_path,
             separator=",",
@@ -206,14 +217,25 @@ class BigDataBowlDataset(DefaultDataset):
                 .alias("inches"),  # Extract inches and cast to float
             ]
         )
-        df = df.with_columns(
-            [
-                (pl.col("feet") * 30.48 + pl.col("inches") * 2.54).alias(
-                    Column.HEIGHT_CM
-                ),
-                (pl.col("weight") * 0.453592).alias(
-                    Column.WEIGHT_KG
-                ),  # Convert pounds to kilograms
-            ]
-        ).drop(["height", "feet", "inches", "weight"])
+        # Convert height and weight to centimeters and kilograms
+        # Round them to 0.1 to make sure we don't leak any player specific info
+        df = (
+            df.with_columns(
+                [
+                    ((pl.col("feet") * 30.48 + pl.col("inches") * 2.54) / 10)
+                    .round(0)
+                    .alias(Column.HEIGHT_CM),
+                    ((pl.col("weight") * 0.453592) / 10)
+                    .round(0)
+                    .alias(Column.WEIGHT_KG),
+                ]
+            )
+            .with_columns(
+                [
+                    (pl.col(Column.HEIGHT_CM) * 10).alias(Column.HEIGHT_CM),
+                    (pl.col(Column.WEIGHT_KG) * 10).alias(Column.WEIGHT_KG),
+                ]
+            )
+            .drop(["height", "feet", "inches", "weight"])
+        )
         return df
