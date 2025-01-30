@@ -65,6 +65,8 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
 
         if self.pad:
             self.dataset = self._apply_padding()
+        else:
+            self.dataset = self._remove_incomplete_frames()
 
         self._shuffle()
 
@@ -77,6 +79,22 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             self.dataset = self.dataset.sample(fraction=1.0)
         else:
             pass
+
+    def _remove_incomplete_frames(self) -> pl.DataFrame:
+        df = self.dataset
+        total_frames = len(df.unique(Group.BY_FRAME))
+
+        valid_frames = (
+            df.group_by(Group.BY_FRAME)
+            .agg(pl.col(Column.TEAM_ID).n_unique().alias("unique_teams"))
+            .filter(pl.col("unique_teams") == 3)
+            .select(Group.BY_FRAME)
+        )
+        dropped_frames = total_frames - len(valid_frames.unique(Group.BY_FRAME))
+        if dropped_frames > 0 and self.verbose:
+            self.__warn_dropped_frames(dropped_frames, total_frames)
+
+        return df.join(valid_frames, on=Group.BY_FRAME)
 
     def _apply_padding(self) -> pl.DataFrame:
         df = self.dataset
@@ -190,16 +208,20 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         complete_frames = frame_completeness.height
 
         dropped_frames = total_frames - complete_frames
-        if dropped_frames > 0:
-            import warnings
-
-            warnings.warn(
-                f"""Setting pad=True drops frames that do not have at least 1 object for the attacking team, defending team or ball.
-                This operation dropped {dropped_frames} incomplete frames out of {total_frames} total frames ({(dropped_frames/total_frames)*100:.2f}%)
-                """
-            )
+        if dropped_frames > 0 and self.verbose:
+            self.__warn_dropped_frames(dropped_frames, total_frames)
 
         return result.join(frame_completeness, on=Group.BY_FRAME, how="inner")
+
+    @staticmethod
+    def __warn_dropped_frames(dropped_frames, total_frames):
+        import warnings
+
+        warnings.warn(
+            f"""Setting pad=True drops frames that do not have at least 1 object for the attacking team, defending team or ball.
+            This operation dropped {dropped_frames} incomplete frames out of {total_frames} total frames ({(dropped_frames/total_frames)*100:.2f}%)
+            """
+        )
 
     def _apply_filters(self):
         return self.dataset.with_columns(
@@ -261,6 +283,11 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         if not self.label_column in self.dataset.columns and not self.prediction:
             raise Exception(
                 "Please specify a 'label_col' and add that column to your 'dataset' or set 'prediction=True' if you want to use the converted dataset to make predictions on."
+            )
+
+        if not self.label_column in self.dataset.columns and self.prediction:
+            self.dataset = self.dataset.with_columns(
+                pl.lit(None).alias(self.label_column)
             )
 
         if not self.graph_id_column in self.dataset.columns:
