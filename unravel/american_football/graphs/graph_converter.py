@@ -1,9 +1,11 @@
+from warnings import warn
+
 from dataclasses import dataclass
 
 import polars as pl
 import numpy as np
 
-from typing import List
+from typing import List, Optional
 
 from spektral.data import Graph
 
@@ -19,7 +21,7 @@ from .features import (
     compute_adjacency_matrix,
 )
 
-from ...utils import DefaultGraphConverter, reshape_array, make_sparse
+from ...utils import *
 
 
 @dataclass(repr=True)
@@ -28,12 +30,12 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
     Converts our dataset TrackingDataset into an internal structure
 
     Attributes:
-        dataset (TrackingDataset): Kloppy TrackingDataset.
-        label_col (str): Column name that contains labels in the dataset.data Polars dataframe
-        graph_id_col (str): Column name that contains graph ids in the dataset.data Polars dataframe
-
+        dataset (BigDataBowlDataset): BigDataBowlDataset.
         chunk_size (int): Used to batch convert Polars into Graphs
         attacking_non_qb_node_value (float): Value between 0 and 1 to assign any attacking team player who is not the QB
+        graph_features_as_node_features_columns (list):
+            List of columns in the dataset that are Graph level features (e.g. team strength rating, win probabilities etc)
+            we want to add to our model. They will be recorded as Node Features on the "football" node.
     """
 
     def __init__(
@@ -41,6 +43,7 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
         dataset: BigDataBowlDataset,
         chunk_size: int = 2_000,
         attacking_non_qb_node_value: float = 0.1,
+        graph_feature_cols: Optional[List[str]] = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -63,12 +66,51 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
         )
         self.chunk_size = chunk_size
         self.attacking_non_qb_node_value = attacking_non_qb_node_value
-
-        self._sport_specific_checks()
+        self.graph_feature_cols = graph_feature_cols
 
         self.settings = self._apply_settings()
 
+        self._sport_specific_checks()
+
     def _sport_specific_checks(self):
+        def __remove_with_missing_values(min_object_count: int = 10):
+            cs = (
+                self.dataset.group_by(Group.BY_FRAME)
+                .agg(pl.len().alias("size"))
+                .filter(
+                    pl.col("size") < min_object_count
+                )  # Step 2: Keep groups with size < 10
+            )
+
+            self.dataset = self.dataset.join(cs, on=Group.BY_FRAME, how="anti")
+            if len(cs) > 0:
+                warn(
+                    f"Removed {len(cs)} frames with less than {min_object_count} objects...",
+                    UserWarning,
+                )
+
+        def __remove_with_missing_football():
+            cs = (
+                self.dataset.group_by(Group.BY_FRAME)
+                .agg(
+                    [
+                        pl.len().alias("size"),  # Count total rows in each group
+                        pl.col(Column.TEAM)
+                        .filter(pl.col(Column.TEAM) == Constant.BALL)
+                        .count()
+                        .alias("football_count"),  # Count rows where team == 'football'
+                    ]
+                )
+                .filter(
+                    (pl.col("football_count") == 0)
+                )  # Step 2: Keep groups with size < 10 and no "football"
+            )
+            self.dataset = self.dataset.join(cs, on=Group.BY_FRAME, how="anti")
+            if len(cs) > 0:
+                warn(
+                    f"Removed {len(cs)} frames with a missing '{Constant.BALL}' object...",
+                    UserWarning,
+                )
 
         if not isinstance(self.label_column, str):
             raise Exception("'label_col' should be of type string (str)")
@@ -95,6 +137,9 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
                 "'attacking_non_qb_node_value' should be of type float or integer (int)"
             )
 
+        __remove_with_missing_values(min_object_count=10)
+        __remove_with_missing_football()
+
     def _apply_settings(self):
         return AmericanFootballGraphSettings(
             pitch_dimensions=self.pitch_dimensions,
@@ -115,7 +160,7 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
 
     @property
     def __exprs_variables(self):
-        return [
+        exprs_variables = [
             Column.X,
             Column.Y,
             Column.SPEED,
@@ -130,9 +175,21 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
             self.graph_id_column,
             self.label_column,
         ]
+        exprs = (
+            exprs_variables
+            if self.graph_feature_cols is None
+            else exprs_variables + self.graph_feature_cols
+        )
+        return exprs
 
     def __compute(self, args: List[pl.Series]) -> dict:
         d = {col: args[i].to_numpy() for i, col in enumerate(self.__exprs_variables)}
+
+        graph_features = (
+            np.asarray([d[col] for col in self.graph_feature_cols]).T[0]
+            if self.graph_feature_cols
+            else None
+        )
 
         if not np.all(d[self.graph_id_column] == d[self.graph_id_column][0]):
             raise Exception(
@@ -174,6 +231,7 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
             possession_team=d[Column.POSSESSION_TEAM],
             height=d[Column.HEIGHT_CM],
             weight=d[Column.WEIGHT_KG],
+            graph_features=graph_features,
             settings=self.settings,
         )
         return {
@@ -196,13 +254,33 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
             self.label_column: d[self.label_column][0],
         }
 
+    @property
+    def return_dtypes(self):
+        return pl.Struct(
+            {
+                "e": pl.List(pl.List(pl.Float64)),
+                "x": pl.List(pl.List(pl.Float64)),
+                "a": pl.List(pl.List(pl.Float64)),
+                "e_shape_0": pl.Int64,
+                "e_shape_1": pl.Int64,
+                "x_shape_0": pl.Int64,
+                "x_shape_1": pl.Int64,
+                "a_shape_0": pl.Int64,
+                "a_shape_1": pl.Int64,
+                self.graph_id_column: pl.String,
+                self.label_column: pl.Int64,
+            }
+        )
+
     def _convert(self):
         # Group and aggregate in one step
         return (
             self.dataset.group_by(Group.BY_FRAME, maintain_order=True)
             .agg(
                 pl.map_groups(
-                    exprs=self.__exprs_variables, function=self.__compute
+                    exprs=self.__exprs_variables,
+                    function=self.__compute,
+                    return_dtype=self.return_dtypes,
                 ).alias("result_dict")
             )
             .with_columns(
@@ -273,7 +351,7 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
             for d in self.graph_frames
         ]
 
-    def to_pickle(self, file_path: str) -> None:
+    def to_pickle(self, file_path: str, verbose: bool = False) -> None:
         """
         We store the 'dict' version of the Graphs to pickle each graph is now a dict with keys x, a, e, and y
         To use for training with Spektral feed the loaded pickle data to CustomDataset(data=pickled_data)
@@ -285,6 +363,9 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
 
         if not self.graph_frames:
             self.to_graph_frames()
+
+        if verbose:
+            print(f"Storing {len(self.graph_frames)} Graphs in {file_path}...")
 
         import pickle
         import gzip
