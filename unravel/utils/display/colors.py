@@ -63,33 +63,3 @@ class TeamColors:
 class GameColors:
     home_team: TeamColors
     away_team: TeamColors
-
-
-YlRd = ["#F7FBFF", "#FFEDA0", "#FEB24C", "#FD8D3C", "#E31A1C", "#BD0026", "#800026"]
-
-
-@dataclass
-class ColorMaps:
-    _YlRd = ["#FFFF00", "#FF0000"]  # Replace with actual YlRd values
-
-    @property
-    def YELLOW_RED(self):
-        try:
-            from matplotlib.colors import LinearSegmentedColormap
-
-            return LinearSegmentedColormap.from_list("", self._YlRd)
-        except ImportError:
-            raise ImportError(
-                "Seems like you don't have matplotlib installed. Please install it using: pip install matplotlib"
-            )
-
-    @property
-    def YELLOW_RED_R(self):
-        try:
-            from matplotlib.colors import LinearSegmentedColormap
-
-            return LinearSegmentedColormap.from_list("", list(reversed(self._YlRd)))
-        except ImportError:
-            raise ImportError(
-                "Seems like you don't have matplotlib installed. Please install it using: pip install matplotlib"
-            )
