@@ -26,11 +26,7 @@ This package currently supports:
 
 ⚽🏈 **Convert Tracking Data** into [Polars DataFrames](https://pola.rs/) for rapid data conversion and data processing. 
 
-For soccer we rely on [Kloppy](https://kloppy.pysport.org/) and as such we support _Sportec_$^1$, _SkillCorner_$^1$, _PFF_$^{1, 2}$, _Metrica_$^1$, _StatsPerform_, _Tracab (CyronHego)_ and _SecondSpectrum_ tracking data.
-
-For American Football we use [BigDataBowl Data](https://www.kaggle.com/competitions/nfl-big-data-bowl-2025/data) directly.
-
-⚽
+⚽ For soccer we rely on [Kloppy](https://kloppy.pysport.org/) and as such we support _Sportec_$^1$, _SkillCorner_$^1$, _PFF_$^{1, 2}$, _Metrica_$^1$, _StatsPerform_, _Tracab (CyronHego)_ and _SecondSpectrum_ tracking data.
 ```python
 from unravel.soccer import KloppyPolarsDataset
 
@@ -51,7 +47,8 @@ $^1$ <small>Open data available through kloppy.</small>
 
 $^2$ <small>Currently unreleased in kloppy, only available through kloppy master branch. [Click here for World Cup 2022 Dataset](https://www.blog.fc.pff.com/blog/enhanced-2022-world-cup-dataset)</small> 
 
-🏈 
+🏈 For American Football we use [BigDataBowl Data](https://www.kaggle.com/competitions/nfl-big-data-bowl-2025/data) directly.
+
 ```python
 from unravel.american_football import BigDataBowlDataset
 
