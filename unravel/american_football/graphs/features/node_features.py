@@ -12,7 +12,7 @@ from ....utils import (
     normalize_between,
 )
 
-from ..dataset import Constant
+from ...dataset import Constant
 
 
 def compute_node_features(
@@ -51,7 +51,8 @@ def compute_node_features(
         ball_index = np.where(team == ball_id)[0]
         ball_position = position[ball_index][0]
     else:
-        ball_position = np.sarray([np.nan, np.nan])
+        ball_position = np.asarray([np.nan, np.nan])
+        ball_index = 0
 
     x_normed = normalize_between(
         value=x,

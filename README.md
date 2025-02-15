@@ -14,24 +14,102 @@
 
 The **unravelsports** package aims to aid researchers, analysts and enthusiasts by providing intermediary steps in the complex process of converting raw sports data into meaningful information and actionable insights.
 
+This package currently supports:
+- ⚽🏈 [**Polars DataFrame Conversion**](#polars-dataframes) 
+- ⚽🏈 [**Graph Neural Network**](#graph-neural-networks) Training, Graph Conversion and Prediction
+- ⚽ [**Pressing Intensity**](#pressing-intensity) [[Bekkers (2025)](https://unravelsports.github.io/2024/12/12/pressing-intensity.html)]
+
 🌀 Features
 -----
 
-### **Convert**
+### **Polars DataFrames**
 
-⚽ **Soccer positional tracking data** into [Graphs](examples/graphs_faq.md) to train **graph neural networks** by leveraging the powerful [**Kloppy**](https://github.com/PySport/kloppy) data conversion standard for 
-  - _Metrica_
-  - _Sportec_
-  - _Tracab (CyronHego)_
-  - _SecondSpectrum_
-  - _SkillCorner_ 
-  - _StatsPerform_ 
-  
-🏈 **BigDataBowl American football positional tracking data** into [Graphs](examples/graphs_faq.md) to train **graph neural networks** by leveraging [**Polars**](https://github.com/pola-rs/polars).
+⚽🏈 **Convert Tracking Data** into [Polars DataFrames](https://pola.rs/) for rapid data conversion and data processing. 
+
+For soccer we rely on [Kloppy](https://kloppy.pysport.org/) and as such we support _Sportec_$^1$, _SkillCorner_$^1$, _PFF_$^{1, 2}$, _Metrica_$^1$, _StatsPerform_, _Tracab (CyronHego)_ and _SecondSpectrum_ tracking data.
+
+For American Football we use [BigDataBowl Data](https://www.kaggle.com/competitions/nfl-big-data-bowl-2025/data) directly.
+
+⚽
+```python
+from unravel.soccer import KloppyPolarsDataset
+
+from kloppy import skillcorner
+
+kloppy_dataset = skillcorner.load_open_data(
+    match_id=2068, 
+    include_empty_frames=False,
+    limit=500,
+)
+kloppy_polars_dataset = KloppyPolarsDataset(
+    kloppy_dataset=kloppy_dataset, 
+    ball_carrier_threshold=25.0
+)
+```
+
+$^1$ <small>Open data available through kloppy.</small>
+
+$^2$ <small>Currently unreleased in kloppy, only available through kloppy master branch. [Click here for World Cup 2022 Dataset](https://www.blog.fc.pff.com/blog/enhanced-2022-world-cup-dataset)</small> 
+
+🏈 
+```python
+from unravel.american_football import BigDataBowlDataset
+
+bdb = BigDataBowlDataset(
+    tracking_file_path="week1.csv",
+    players_file_path="players.csv",
+    plays_file_path="plays.csv",
+)
+```
 
 ### **Graph Neural Networks**
-These [Graphs](examples/graphs_faq.md) can be used with [**Spektral**](https://github.com/danielegrattarola/spektral) - a flexible framework for training graph neural networks. 
+
+⚽🏈 Convert **[Polars Dataframes](#polars-dataframes)** into [Graphs](examples/graphs_faq.md) to train **graph neural networks**. These [Graphs](examples/graphs_faq.md) can be used with [**Spektral**](https://github.com/danielegrattarola/spektral) - a flexible framework for training graph neural networks. 
 `unravelsports` allows you to **randomize** and **split** data into train, test and validation sets along matches, sequences or possessions to avoid leakage and improve model quality. And finally, **train**, **validate** and **test** your (custom) Graph model(s) and easily **predict** on new data.
+
+```python
+converter = SoccerGraphConverterPolars(
+    dataset=kloppy_polars_dataset,
+    max_player_speed=12.0,
+    max_ball_speed=28.0,
+    self_loop_ball=True,
+    adjacency_matrix_connect_type="ball",
+    adjacency_matrix_type="split_by_team",
+    label_type="binary",
+    defending_team_node_value=0.1,
+    non_potential_receiver_node_value=0.1,
+    random_seed=False,
+    pad=False,
+    verbose=False,
+)
+```
+
+### **Pressing Intensity**
+
+Compute [**Pressing Intensity**](https://arxiv.org/abs/2501.04712) for a whole game (or segment) of Soccer tracking data.
+
+See [**Pressing Intensity Jupyter Notebook**](examples/pressing_intensity.ipynb) for an example how to create mp4 videos.
+
+```python
+from unravel.soccer import PressingIntensity
+
+import polars as pl
+
+model = PressingIntensity(
+    dataset=kloppy_polars_dataset
+)
+model.fit(
+    start_time = pl.duration(minutes=1, seconds=53),
+    end_time = pl.duration(minutes=2, seconds=32),
+    period_id = 1,
+    method="teams",
+    ball_method="max",
+    orient="home_away",
+    speed_threshold=2.0,
+) 
+```
+
+![1. FC Köln vs. FC Bayern München (May 27th 2023)](assets/gif/preview.gif)
 
 ⌛ ***More to come soon...!***
 
@@ -42,6 +120,9 @@ These [Graphs](examples/graphs_faq.md) can be used with [**Spektral**](https://g
 📖 ⚽ The [**Graph Converter Tutorial Jupyter Notebook**](examples/1_kloppy_gnn_train.ipynb) gives an in-depth walkthrough.
 
 📖 🏈 The [**BigDataBowl Converter Tutorial Jupyter Notebook**](examples/2_big_data_bowl_guide.ipynb) gives an guide on how to convert the BigDataBowl data into Graphs.
+
+📖 ⚽ The [**Pressing Intensity Tutorial Jupyter Notebook**](examples/pressing_intensity.ipynb) gives a description on how to create Pressing Intensity videos.
+
 
 🌀 Documentation
 -----

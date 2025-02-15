@@ -43,8 +43,11 @@ class TestSpektral:
             tracking_file_path=coordinates,
             players_file_path=players,
             plays_file_path=plays,
+            max_player_speed=8.0,
+            max_ball_speed=28.0,
+            max_player_acceleration=10.0,
+            max_ball_acceleration=10.0,
         )
-        bdb_dataset.load()
         bdb_dataset.add_graph_ids(by=["gameId", "playId"])
         bdb_dataset.add_dummy_labels(by=["gameId", "playId", "frameId"])
         return bdb_dataset
@@ -120,10 +123,6 @@ class TestSpektral:
     ) -> AmericanFootballGraphConverter:
         return AmericanFootballGraphConverter(
             dataset=bdb_dataset,
-            max_player_speed=8.0,
-            max_ball_speed=28.0,
-            max_player_acceleration=10.0,
-            max_ball_acceleration=10.0,
             self_loop_ball=True,
             adjacency_matrix_connect_type="ball",
             adjacency_matrix_type="split_by_team",
@@ -141,10 +140,6 @@ class TestSpektral:
         return AmericanFootballGraphConverter(
             dataset=bdb_dataset,
             prediction=True,
-            max_player_speed=8.0,
-            max_ball_speed=28.0,
-            max_player_acceleration=10.0,
-            max_ball_acceleration=10.0,
             self_loop_ball=True,
             adjacency_matrix_connect_type="ball",
             adjacency_matrix_type="split_by_team",

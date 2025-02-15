@@ -8,7 +8,7 @@ from ....utils import (
     normalize_speed_differences_nfl,
     normalize_accelerations_nfl,
 )
-from ..dataset import Constant
+from ...dataset import Constant
 
 
 def compute_edge_features(adjacency_matrix, p, s, a, o, dir, team, settings):

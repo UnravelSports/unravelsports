@@ -9,7 +9,7 @@ from typing import List, Optional
 
 from spektral.data import Graph
 
-from .dataset import BigDataBowlDataset, Group, Column, Constant
+from ..dataset import BigDataBowlDataset, Group, Column, Constant
 
 from .graph_settings import (
     AmericanFootballGraphSettings,
@@ -36,6 +36,9 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
         graph_features_as_node_features_columns (list):
             List of columns in the dataset that are Graph level features (e.g. team strength rating, win probabilities etc)
             we want to add to our model. They will be recorded as Node Features on the "football" node.
+            They should be joined to the BigDataBowlDataset.data dataframe such that
+            each Group in the group_by has the same value per column. We take the first value of the group, and assign this as a
+            "graph level feature" to the ball node.
     """
 
     def __init__(
@@ -60,15 +63,12 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
             else dataset._graph_id_column
         )
 
-        self.dataset: pl.DataFrame = dataset.data
-        self.pitch_dimensions: AmericanFootballPitchDimensions = (
-            dataset.pitch_dimensions
-        )
         self.chunk_size = chunk_size
         self.attacking_non_qb_node_value = attacking_non_qb_node_value
         self.graph_feature_cols = graph_feature_cols
+        self.settings = self._apply_graph_settings(settings=dataset.settings)
 
-        self.settings = self._apply_settings()
+        self.dataset: pl.DataFrame = dataset.data
 
         self._sport_specific_checks()
 
@@ -140,13 +140,13 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
         __remove_with_missing_values(min_object_count=10)
         __remove_with_missing_football()
 
-    def _apply_settings(self):
+    def _apply_graph_settings(self, settings):
         return AmericanFootballGraphSettings(
-            pitch_dimensions=self.pitch_dimensions,
-            max_player_speed=self.max_player_speed,
-            max_ball_speed=self.max_ball_speed,
-            max_ball_acceleration=self.max_ball_acceleration,
-            max_player_acceleration=self.max_player_acceleration,
+            pitch_dimensions=settings.pitch_dimensions,
+            max_player_speed=settings.max_player_speed,
+            max_ball_speed=settings.max_ball_speed,
+            max_ball_acceleration=settings.max_ball_acceleration,
+            max_player_acceleration=settings.max_player_acceleration,
             self_loop_ball=self.self_loop_ball,
             adjacency_matrix_connect_type=self.adjacency_matrix_connect_type,
             adjacency_matrix_type=self.adjacency_matrix_type,
@@ -184,6 +184,17 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
 
     def __compute(self, args: List[pl.Series]) -> dict:
         d = {col: args[i].to_numpy() for i, col in enumerate(self.__exprs_variables)}
+
+        if self.graph_feature_cols is not None:
+            failed = [
+                col
+                for col in self.graph_feature_cols
+                if not np.all(d[col] == d[col][0])
+            ]
+            if failed:
+                raise ValueError(
+                    f"""graph_feature_cols contains multiple different values for a group in the groupby ({Group.BY_FRAME}) selection for the columns {failed}. Make sure each group has the same values per individual column."""
+                )
 
         graph_features = (
             np.asarray([d[col] for col in self.graph_feature_cols]).T[0]
@@ -312,14 +323,14 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
             return [
                 {
                     "a": make_sparse(
-                        reshape_array(
+                        reshape_from_size(
                             chunk["a"][i], chunk["a_shape_0"][i], chunk["a_shape_1"][i]
                         )
                     ),
-                    "x": reshape_array(
+                    "x": reshape_from_size(
                         chunk["x"][i], chunk["x_shape_0"][i], chunk["x_shape_1"][i]
                     ),
-                    "e": reshape_array(
+                    "e": reshape_from_size(
                         chunk["e"][i], chunk["e_shape_0"][i], chunk["e_shape_1"][i]
                     ),
                     "y": np.asarray([chunk[self.label_column][i]]),

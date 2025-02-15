@@ -1,7 +1,7 @@
 import numpy as np
 
 from ....utils import AdjacencyMatrixType, AdjacenyMatrixConnectType
-from ..dataset import Constant
+from ...dataset import Constant
 
 
 def compute_adjacency_matrix(team, possession_team, settings):

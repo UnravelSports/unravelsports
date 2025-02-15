@@ -1,26 +1,8 @@
-from ...utils import DefaultGraphSettings
+from ...utils import DefaultGraphSettings, AmericanFootballPitchDimensions
 
 from dataclasses import dataclass, field
 from kloppy.domain import Dimension, Unit
 from typing import Optional
-
-PITCH_LENGTH = 120.0
-PITCH_WIDTH = 53.3
-
-
-@dataclass
-class AmericanFootballPitchDimensions:
-    pitch_length: float = PITCH_LENGTH
-    pitch_width: float = PITCH_WIDTH
-    standardized: bool = False
-    unit: Unit = Unit.YARDS
-
-    x_dim: Dimension = field(default_factory=lambda: Dimension(min=0, max=PITCH_LENGTH))
-    y_dim: Dimension = field(default_factory=lambda: Dimension(min=0, max=PITCH_WIDTH))
-    end_zone: float = field(init=False)
-
-    def __post_init__(self):
-        self.end_zone = self.x_dim.max - 10  # Calculated value
 
 
 @dataclass

@@ -20,7 +20,7 @@ from unravel.american_football import (
     AmericanFootballGraphConverter,
     AmericanFootballPitchDimensions,
 )
-from unravel.american_football.graphs.dataset import Constant
+from unravel.american_football.dataset import Constant
 from unravel.utils import (
     flatten_to_reshaped_array,
     make_sparse,
@@ -45,13 +45,31 @@ class TestAmericanFootballDataset:
         return base_dir / "files" / "bdb_plays-1.csv"
 
     @pytest.fixture
-    def dataset(self, coordinates: str, players: str, plays: str):
+    def default_dataset(self, coordinates: str, players: str, plays: str):
         bdb_dataset = BigDataBowlDataset(
             tracking_file_path=coordinates,
             players_file_path=players,
             plays_file_path=plays,
+            max_player_speed=8.0,
+            max_ball_speed=28.0,
+            max_player_acceleration=10.0,
+            max_ball_acceleration=10.0,
         )
-        bdb_dataset.load()
+        bdb_dataset.add_graph_ids(by=["gameId", "playId"])
+        bdb_dataset.add_dummy_labels(by=["gameId", "playId", "frameId"])
+        return bdb_dataset
+
+    @pytest.fixture
+    def non_default_dataset(self, coordinates: str, players: str, plays: str):
+        bdb_dataset = BigDataBowlDataset(
+            tracking_file_path=coordinates,
+            players_file_path=players,
+            plays_file_path=plays,
+            max_player_speed=12.0,
+            max_ball_speed=24.0,
+            max_player_acceleration=11.0,
+            max_ball_acceleration=12.0,
+        )
         bdb_dataset.add_graph_ids(by=["gameId", "playId"])
         bdb_dataset.add_dummy_labels(by=["gameId", "playId", "frameId"])
         return bdb_dataset
@@ -138,10 +156,6 @@ class TestAmericanFootballDataset:
     @pytest.fixture
     def arguments(self):
         return dict(
-            max_player_speed=8.0,
-            max_ball_speed=28.0,
-            max_player_acceleration=10.0,
-            max_ball_acceleration=10.0,
             self_loop_ball=True,
             adjacency_matrix_connect_type="ball",
             adjacency_matrix_type="split_by_team",
@@ -156,10 +170,6 @@ class TestAmericanFootballDataset:
     @pytest.fixture
     def non_default_arguments(self):
         return dict(
-            max_player_speed=12.0,
-            max_ball_speed=24.0,
-            max_player_acceleration=11.0,
-            max_ball_acceleration=12.0,
             self_loop_ball=False,
             adjacency_matrix_connect_type="ball",
             adjacency_matrix_type="dense_ap",
@@ -171,12 +181,14 @@ class TestAmericanFootballDataset:
         )
 
     @pytest.fixture
-    def gnnc(self, dataset, arguments):
-        return AmericanFootballGraphConverter(dataset=dataset, **arguments)
+    def gnnc(self, default_dataset, arguments):
+        return AmericanFootballGraphConverter(dataset=default_dataset, **arguments)
 
     @pytest.fixture
-    def gnnc_non_default(self, dataset, non_default_arguments):
-        return AmericanFootballGraphConverter(dataset=dataset, **non_default_arguments)
+    def gnnc_non_default(self, non_default_dataset, non_default_arguments):
+        return AmericanFootballGraphConverter(
+            dataset=non_default_dataset, **non_default_arguments
+        )
 
     def test_settings(self, gnnc_non_default, non_default_arguments):
         settings = gnnc_non_default.settings
@@ -198,16 +210,7 @@ class TestAmericanFootballDataset:
         assert settings.min_height == 150.0
         assert settings.max_weight == 200.0
         assert settings.min_weight == 60.0
-        assert settings.max_ball_speed == non_default_arguments["max_ball_speed"]
-        assert settings.max_ball_speed == non_default_arguments["max_ball_speed"]
-        assert (
-            settings.max_player_acceleration
-            == non_default_arguments["max_player_acceleration"]
-        )
-        assert (
-            settings.max_ball_acceleration
-            == non_default_arguments["max_ball_acceleration"]
-        )
+
         assert settings.self_loop_ball == non_default_arguments["self_loop_ball"]
         assert (
             settings.adjacency_matrix_connect_type
@@ -246,19 +249,23 @@ class TestAmericanFootballDataset:
         assert row_10["o"] == pytest.approx(100.77, rel=1e-9)
         assert row_10["dir"] == pytest.approx(55.29, rel=1e-9)
 
-    def test_dataset_loader(self, dataset: tuple):
-        assert isinstance(dataset, BigDataBowlDataset)
-        assert isinstance(dataset.data, pl.DataFrame)
-        assert isinstance(dataset.pitch_dimensions, AmericanFootballPitchDimensions)
+    def test_dataset_loader(self, default_dataset: tuple):
+        assert isinstance(default_dataset, BigDataBowlDataset)
+        assert isinstance(default_dataset.data, pl.DataFrame)
+        assert isinstance(
+            default_dataset.settings.pitch_dimensions, AmericanFootballPitchDimensions
+        )
 
-        assert dataset.pitch_dimensions.pitch_length == 120.0
-        assert dataset.pitch_dimensions.pitch_width == 53.3
-        assert dataset.pitch_dimensions.x_dim.max == 60.0
-        assert dataset.pitch_dimensions.y_dim.max == 26.65
-        assert dataset.pitch_dimensions.standardized == False
-        assert dataset.pitch_dimensions.unit == Unit.YARDS
+        settings = default_dataset.settings
 
-        data = dataset.data
+        assert settings.pitch_dimensions.pitch_length == 120.0
+        assert settings.pitch_dimensions.pitch_width == 53.3
+        assert settings.pitch_dimensions.x_dim.max == 60.0
+        assert settings.pitch_dimensions.y_dim.max == 26.65
+        assert settings.pitch_dimensions.standardized == False
+        assert settings.pitch_dimensions.unit == Unit.YARDS
+
+        data = default_dataset.data
 
         assert len(data) == 6049
 

@@ -5,5 +5,3 @@ from .graph_settings_pl import GraphSettingsPolars
 from .graph_frame import GraphFrame
 from .exceptions import *
 from .features import *
-
-from .dataset import KloppyPolarsDataset

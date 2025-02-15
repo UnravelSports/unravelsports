@@ -3,7 +3,7 @@ import sys
 
 from dataclasses import dataclass
 
-from typing import List, Union, Dict, Literal, Any
+from typing import List, Union, Dict, Literal, Any, Optional
 
 from kloppy.domain import (
     MetricPitchDimensions,
@@ -12,7 +12,7 @@ from kloppy.domain import (
 from spektral.data import Graph
 
 from .graph_settings_pl import GraphSettingsPolars
-from .dataset import KloppyPolarsDataset, Column, Group, Constant
+from ..dataset.kloppy_polars import KloppyPolarsDataset, Column, Group, Constant
 from .features import (
     compute_node_features_pl,
     compute_adjacency_matrix_pl,
@@ -33,21 +33,29 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
     Converts our dataset TrackingDataset into an internal structure
 
     Attributes:
-        dataset (TrackingDataset): Kloppy TrackingDataset.
+        dataset (KloppyPolarsDataset): KloppyPolarsDataset created from a Kloppy dataset.
         chunk_size (int): Determines how many Graphs get processed simultanously.
         non_potential_receiver_node_value (float): Value between 0 and 1 to assign to the defing team players
+        graph_feature_cols (list[str]): List of columns in the dataset that are Graph level features (e.g. team strength rating, win probabilities etc)
+            we want to add to our model. A list of column names corresponding to the Polars dataframe within KloppyPolarsDataset.data
+            that are graph level features. They should be joined to the KloppyPolarsDataset.data dataframe such that
+            each Group in the group_by has the same value per column. We take the first value of the group, and assign this as a
+            "graph level feature" to the ball node.
     """
 
     dataset: KloppyPolarsDataset = None
 
     chunk_size: int = 2_0000
     non_potential_receiver_node_value: float = 0.1
+    graph_feature_cols: Optional[List[str]] = None
 
     def __post_init__(self):
         if not isinstance(self.dataset, KloppyPolarsDataset):
             raise ValueError("dataset should be of type KloppyPolarsDataset...")
 
-        self.pitch_dimensions: MetricPitchDimensions = self.dataset.pitch_dimensions
+        self.pitch_dimensions: MetricPitchDimensions = (
+            self.dataset.settings.pitch_dimensions
+        )
         self.label_column: str = (
             self.label_col if self.label_col is not None else self.dataset._label_column
         )
@@ -60,8 +68,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         self.dataset = self.dataset.data
 
         self._sport_specific_checks()
-        self.settings = self._apply_settings()
-        self.dataset = self._apply_filters()
+        self.settings = self._apply_graph_settings()
 
         if self.pad:
             self.dataset = self._apply_padding()
@@ -223,42 +230,13 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             """
         )
 
-    def _apply_filters(self):
-        return self.dataset.with_columns(
-            pl.when(
-                (pl.col(Column.OBJECT_ID) == Constant.BALL)
-                & (pl.col(Column.SPEED) > self.settings.max_ball_speed)
-            )
-            .then(self.settings.max_ball_speed)
-            .when(
-                (pl.col(Column.OBJECT_ID) != Constant.BALL)
-                & (pl.col(Column.SPEED) > self.settings.max_player_speed)
-            )
-            .then(self.settings.max_player_speed)
-            .otherwise(pl.col(Column.SPEED))
-            .alias(Column.SPEED)
-        ).with_columns(
-            pl.when(
-                (pl.col(Column.OBJECT_ID) == Constant.BALL)
-                & (pl.col(Column.ACCELERATION) > self.settings.max_ball_acceleration)
-            )
-            .then(self.settings.max_ball_acceleration)
-            .when(
-                (pl.col(Column.OBJECT_ID) != Constant.BALL)
-                & (pl.col(Column.ACCELERATION) > self.settings.max_player_acceleration)
-            )
-            .then(self.settings.max_player_acceleration)
-            .otherwise(pl.col(Column.ACCELERATION))
-            .alias(Column.ACCELERATION)
-        )
-
-    def _apply_settings(self):
+    def _apply_graph_settings(self):
         return GraphSettingsPolars(
             pitch_dimensions=self.pitch_dimensions,
-            max_player_speed=self.max_player_speed,
-            max_ball_speed=self.max_ball_speed,
-            max_player_acceleration=self.max_player_acceleration,
-            max_ball_acceleration=self.max_ball_acceleration,
+            max_player_speed=self.settings.max_player_speed,
+            max_ball_speed=self.settings.max_ball_speed,
+            max_player_acceleration=self.settings.max_player_acceleration,
+            max_ball_acceleration=self.settings.max_ball_acceleration,
             self_loop_ball=self.self_loop_ball,
             adjacency_matrix_connect_type=self.adjacency_matrix_connect_type,
             adjacency_matrix_type=self.adjacency_matrix_type,
@@ -304,7 +282,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
 
     @property
     def __exprs_variables(self):
-        return [
+        exprs_variables = [
             Column.X,
             Column.Y,
             Column.Z,
@@ -323,9 +301,32 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             self.graph_id_column,
             self.label_column,
         ]
+        exprs = (
+            exprs_variables
+            if self.graph_feature_cols is None
+            else exprs_variables + self.graph_feature_cols
+        )
+        return exprs
 
     def __compute(self, args: List[pl.Series]) -> dict:
         d = {col: args[i].to_numpy() for i, col in enumerate(self.__exprs_variables)}
+
+        if self.graph_feature_cols is not None:
+            failed = [
+                col
+                for col in self.graph_feature_cols
+                if not np.all(d[col] == d[col][0])
+            ]
+            if failed:
+                raise ValueError(
+                    f"""graph_feature_cols contains multiple different values for a group in the groupby ({Group.BY_FRAME}) selection for the columns {failed}. Make sure each group has the same values per individual column."""
+                )
+
+        graph_features = (
+            np.asarray([d[col] for col in self.graph_feature_cols]).T[0]
+            if self.graph_feature_cols
+            else None
+        )
 
         if not np.all(d[self.graph_id_column] == d[self.graph_id_column][0]):
             raise ValueError(
@@ -373,25 +374,14 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             possession_team=d[Column.BALL_OWNING_TEAM_ID],
             is_gk=(d[Column.POSITION_NAME] == self.settings.goalkeeper_id).astype(int),
             ball_carrier=d[Column.IS_BALL_CARRIER],
+            graph_features=graph_features,
             settings=self.settings,
         )
 
         return {
-            "e": pl.Series(
-                [edge_features.tolist()], dtype=pl.List(pl.List(pl.Float64))
-            ),
-            "x": pl.Series(
-                [node_features.tolist()], dtype=pl.List(pl.List(pl.Float64))
-            ),
-            "a": pl.Series(
-                [adjacency_matrix.tolist()], dtype=pl.List(pl.List(pl.Int32))
-            ),
-            "e_shape_0": edge_features.shape[0],
-            "e_shape_1": edge_features.shape[1],
-            "x_shape_0": node_features.shape[0],
-            "x_shape_1": node_features.shape[1],
-            "a_shape_0": adjacency_matrix.shape[0],
-            "a_shape_1": adjacency_matrix.shape[1],
+            "e": edge_features.tolist(),
+            "x": node_features.tolist(),
+            "a": adjacency_matrix.tolist(),
             self.graph_id_column: d[self.graph_id_column][0],
             self.label_column: d[self.label_column][0],
         }
@@ -403,12 +393,6 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
                 "e": pl.List(pl.List(pl.Float64)),
                 "x": pl.List(pl.List(pl.Float64)),
                 "a": pl.List(pl.List(pl.Float64)),
-                "e_shape_0": pl.Int64,
-                "e_shape_1": pl.Int64,
-                "x_shape_0": pl.Int64,
-                "x_shape_1": pl.Int64,
-                "a_shape_0": pl.Int64,
-                "a_shape_1": pl.Int64,
                 self.graph_id_column: pl.String,
                 self.label_column: pl.Int64,
             }
@@ -425,45 +409,16 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
                     return_dtype=self.return_dtypes,
                 ).alias("result_dict")
             )
-            .with_columns(
-                [
-                    *[
-                        pl.col("result_dict").struct.field(f).alias(f)
-                        for f in [
-                            "a",
-                            "e",
-                            "x",
-                            self.graph_id_column,
-                            self.label_column,
-                        ]
-                    ],
-                    *[
-                        pl.col("result_dict")
-                        .struct.field(f"{m}_shape_{i}")
-                        .alias(f"{m}_shape_{i}")
-                        for m in ["a", "e", "x"]
-                        for i in [0, 1]
-                    ],
-                ]
-            )
-            .drop("result_dict")
+            .unnest("result_dict")
         )
 
     def to_graph_frames(self) -> List[dict]:
         def process_chunk(chunk: pl.DataFrame) -> List[dict]:
             return [
                 {
-                    "a": make_sparse(
-                        reshape_array(
-                            chunk["a"][i], chunk["a_shape_0"][i], chunk["a_shape_1"][i]
-                        )
-                    ),
-                    "x": reshape_array(
-                        chunk["x"][i], chunk["x_shape_0"][i], chunk["x_shape_1"][i]
-                    ),
-                    "e": reshape_array(
-                        chunk["e"][i], chunk["e_shape_0"][i], chunk["e_shape_1"][i]
-                    ),
+                    "a": make_sparse(reshape_array(arr=chunk["a"][i])),
+                    "x": reshape_array(arr=chunk["x"][i]),
+                    "e": reshape_array(arr=chunk["e"][i]),
                     "y": np.asarray([chunk[self.label_column][i]]),
                     "id": chunk[self.graph_id_column][i],
                 }
