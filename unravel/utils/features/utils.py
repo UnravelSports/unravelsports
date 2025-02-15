@@ -183,7 +183,11 @@ def flatten_to_reshaped_array(arr, s0, s1, as_list=False):
     return result_array if not as_list else result_array.tolist()
 
 
-def reshape_array(arr, s0, s1):
+def reshape_array(arr):
+    return np.array([a for a in arr.to_numpy()])
+
+
+def reshape_from_size(arr, s0, s1):
     return np.array([item for sublist in arr for item in sublist]).reshape(s0, s1)
 
 

@@ -3,7 +3,7 @@ from scipy.spatial import Delaunay
 
 
 from ....utils import AdjacencyMatrixType, AdjacenyMatrixConnectType, distance_to_ball
-from ..dataset import Constant
+from ...dataset.kloppy_polars import Constant
 
 
 def compute_adjacency_matrix_pl(team, ball_owning_team, settings, ball_carrier_idx):

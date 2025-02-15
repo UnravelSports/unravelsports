@@ -63,6 +63,9 @@ class SoccerGraphConverter(DefaultGraphConverter):
             Infers 'attacking_team' if no 'ball_owning_team' (Kloppy) or 'attacking_team' (List[Dict]) is provided, by finding player closest to ball using ball xyz.
             Also infers ball_carrier within ball_carrier_threshold
         infer_goalkeepers (bool): set True if no GK label is provider, set False for incomplete (broadcast tracking) data that might not have a GK in every frame
+        max_ball_speed (float): The maximum speed of the ball in meters per second. Defaults to 28.0.
+        max_player_speed (float): The maximum speed of a player in meters per second. Defaults to 12.0.
+        max_ball_speed (float): The maximum speed of the ball in meters per second. Defaults to 28.0.
         ball_carrier_threshold (float): The distance threshold to determine the ball carrier. Defaults to 25.0.
         boundary_correction (float): A correction factor for boundary calculations, used to correct out of bounds as a percentages (Used as 1+boundary_correction, ie 0.05). Defaults to None.
         non_potential_receiver_node_value (float): Value between 0 and 1 to assign to the defing team players
@@ -77,6 +80,11 @@ class SoccerGraphConverter(DefaultGraphConverter):
     infer_goalkeepers: bool = True
     infer_ball_ownership: bool = True
     boundary_correction: float = None
+
+    max_player_speed: float = 12.0
+    max_ball_speed: float = 28.0
+    # max_player_acceleration: float = 6.0
+    # max_ball_acceleration: float = 13.5
     ball_carrier_treshold: float = 25.0
 
     non_potential_receiver_node_value: float = 0.1
@@ -167,6 +175,18 @@ class SoccerGraphConverter(DefaultGraphConverter):
 
         if self.boundary_correction and not isinstance(self.boundary_correction, float):
             raise Exception("'boundary_correction' should be of type float")
+
+        if not isinstance(self.max_player_speed, (float, int)):
+            raise Exception("'max_player_speed' should be of type float or int")
+
+        if not isinstance(self.max_ball_speed, (float, int)):
+            raise Exception("'max_ball_speed' should be of type float or int")
+
+        # if not isinstance(self.max_player_acceleration, (float, int)):
+        #     raise Exception("'max_player_acceleration' should be of type float or int")
+
+        # if not isinstance(self.max_ball_acceleration, (float, int)):
+        #     raise Exception("'max_ball_acceleration' should be of type float or int")
 
         if self.ball_carrier_treshold and not isinstance(
             self.ball_carrier_treshold, float

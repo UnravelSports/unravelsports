@@ -46,9 +46,8 @@ class DefaultGraphConverter:
         The latter can be useful when splitting graphs by possession or sequence id. In this case the dict would be {frame_id: sequence_id/possession_id}.
         Note that sequence_id/possession_id should probably be unique for the whole dataset. Perhaps like so {frame_id: 'match_id-sequence_id'}. Defaults to None.
 
-        max_player_speed (float): The maximum speed of a player in meters per second. Defaults to 12.0.
-        max_ball_speed (float): The maximum speed of the ball in meters per second. Defaults to 28.0.
-        boundary_correction (float): A correction factor for boundary calculations, used to correct out of bounds as a percentages (Used as 1+boundary_correction, ie 0.05). Defaults to None.
+
+         boundary_correction (float): A correction factor for boundary calculations, used to correct out of bounds as a percentages (Used as 1+boundary_correction, ie 0.05). Defaults to None.
         self_loop_ball (bool): Flag to indicate if the ball node should have a self-loop. Defaults to True.
         adjacency_matrix_connect_type (AdjacencyMatrixConnectType): The type of connection used in the adjacency matrix, typically related to the ball. Defaults to AdjacenyMatrixConnectType.BALL.
         adjacency_matrix_type (AdjacencyMatrixType): The type of adjacency matrix, indicating how connections are structured, such as split by team. Defaults to AdjacencyMatrixType.SPLIT_BY_TEAM.
@@ -65,10 +64,6 @@ class DefaultGraphConverter:
 
     prediction: bool = False
 
-    max_player_speed: float = 12.0
-    max_ball_speed: float = 28.0
-    max_player_acceleration: float = 6.0
-    max_ball_acceleration: float = 13.5
     self_loop_ball: bool = False
     adjacency_matrix_connect_type: Union[
         Literal["ball"], Literal["ball_carrier"], Literal["no_connection"]
@@ -126,18 +121,6 @@ class DefaultGraphConverter:
         if not isinstance(self.prediction, bool):
             raise Exception("'prediction' should be of type boolean (bool)")
 
-        if not isinstance(self.max_player_speed, (float, int)):
-            raise Exception("'max_player_speed' should be of type float or int")
-
-        if not isinstance(self.max_ball_speed, (float, int)):
-            raise Exception("'max_ball_speed' should be of type float or int")
-
-        if not isinstance(self.max_player_acceleration, (float, int)):
-            raise Exception("'max_player_acceleration' should be of type float or int")
-
-        if not isinstance(self.max_ball_acceleration, (float, int)):
-            raise Exception("'max_ball_acceleration' should be of type float or int")
-
         if not isinstance(self.self_loop_ball, bool):
             raise Exception("'self_loop_ball' should be of type boolean (bool)")
 
@@ -163,7 +146,7 @@ class DefaultGraphConverter:
             "No sport specific checks implementend... Make sure to check for existens of labels of some sort, and graph ids of some sort..."
         )
 
-    def _apply_settings(self):
+    def _apply_graph_settings(self):
         raise NotImplementedError()
 
     def _convert(self):

@@ -3,10 +3,9 @@ from dataclasses import dataclass
 from ...utils import DefaultGraphSettings
 
 from dataclasses import dataclass, field
-from kloppy.domain import Dimension, Unit, MetricPitchDimensions
-from typing import Optional
+from kloppy.domain import MetricPitchDimensions
 
-from .dataset import Constant
+from ..dataset import Constant
 
 
 @dataclass

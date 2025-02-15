@@ -18,7 +18,7 @@ from ....utils import (
     normalize_speed,
     distance_to_ball,
 )
-from ..dataset import Constant
+from ...dataset.kloppy_polars import Constant
 
 
 def compute_node_features_pl(
@@ -30,9 +30,19 @@ def compute_node_features_pl(
     possession_team,
     is_gk,
     ball_carrier,
+    graph_features,
     settings,
 ):
     ball_id = Constant.BALL
+
+    position = np.stack((x, y), axis=-1)
+
+    if len(np.where(team == ball_id)) >= 1:
+        ball_index = np.where(team == ball_id)[0]
+        ball_position = position[ball_index][0]
+    else:
+        ball_position = np.asarray([np.nan, np.nan])
+        ball_index = 0
 
     goal_mouth_position = (
         settings.pitch_dimensions.x_dim.max,
@@ -61,7 +71,7 @@ def compute_node_features_pl(
         max_value=settings.pitch_dimensions.y_dim.max,
         min_value=settings.pitch_dimensions.y_dim.min,
     )
-    s_normed = normalize_speeds_nfl(s, team, ball_id=Constant.BALL, settings=settings)
+    s_normed = normalize_speeds_nfl(s, team, ball_id=ball_id, settings=settings)
     uv_velocity = unit_vectors(velocity)
 
     angles = normalize_angles(np.arctan2(uv_velocity[:, 1], uv_velocity[:, 0]))
@@ -115,4 +125,10 @@ def compute_node_features_pl(
             axis=-1,
         )
     )
+
+    if graph_features is not None:
+        eg = np.ones((X.shape[0], graph_features.shape[0])) * 0.0
+        eg[ball_index] = graph_features
+        X = np.hstack((X, eg))
+
     return X
