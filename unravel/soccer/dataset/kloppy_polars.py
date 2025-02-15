@@ -9,7 +9,7 @@ from kloppy.domain import (
     Provider,
 )
 
-from typing import List, Dict, Union, Literal
+from typing import List, Dict, Union, Literal, Tuple
 
 from dataclasses import field, dataclass
 
@@ -56,6 +56,7 @@ class KloppyPolarsDataset(DefaultDataset):
         max_ball_speed: float = 28.0,
         max_player_acceleration: float = 6.0,
         max_ball_acceleration: float = 13.5,
+        orient_ball_owning: bool = True,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -66,7 +67,7 @@ class KloppyPolarsDataset(DefaultDataset):
         self._max_ball_speed = max_ball_speed
         self._max_player_acceleration = max_player_acceleration
         self._max_ball_acceleration = max_ball_acceleration
-        self._overwrite_orientation: bool = False
+        self._orient_ball_owning = orient_ball_owning
         self._infer_goalkeepers: bool = False
 
         if not isinstance(self.kloppy_dataset, TrackingDataset):
@@ -75,29 +76,50 @@ class KloppyPolarsDataset(DefaultDataset):
         if not isinstance(self._ball_carrier_threshold, float):
             raise Exception("'ball_carrier_threshold' should be of type float")
 
+        self.load()
+
     def __repr__(self) -> str:
         n_frames = (
             self.data[Column.FRAME_ID].n_unique() if hasattr(self, "data") else None
         )
         return f"KloppyPolarsDataset(n_frames={n_frames})"
 
-    def __transform_orientation(self):
-        if not self.kloppy_dataset.metadata.flags & DatasetFlag.BALL_OWNING_TEAM:
-            self._overwrite_orientation = True
-            # In this package attacking is always left to right, so if this is not giving in Kloppy, overwrite it
-            to_orientation = Orientation.STATIC_HOME_AWAY
-        else:
-            to_orientation = Orientation.BALL_OWNING_TEAM
+    def __transform_orientation(
+        self,
+    ) -> Tuple[TrackingDataset, Union[None, TrackingDataset]]:
+        """
+        We create orientation transformed kloppy datasets.
+        We set it to Orientation.STATIC_HOME_AWAY if it is currently BALL_OWNING to compute speed and accelerations correctly using Polars.
+        If we set it Orientation.BALL_OWNING directly, as we did previously, the coordinates can flip by *-1.0 in the middle of a sequence, this breaks the
+        speed and acceleration computations.
 
-        self.kloppy_dataset = DatasetTransformer.transform_dataset(
-            dataset=self.kloppy_dataset,
-            to_orientation=to_orientation,
-            to_coordinate_system=SecondSpectrumCoordinateSystem(
-                pitch_length=self.kloppy_dataset.metadata.pitch_dimensions.pitch_length,
-                pitch_width=self.kloppy_dataset.metadata.pitch_dimensions.pitch_width,
-            ),
+        We flip it to BALL_OWNING later using __fix_orientation_to_ball_owning, if needed
+
+        We keep the provided kloppy orientation if we set orient_ball_owning to False
+        """
+        secondspectrum_coordinate_system = SecondSpectrumCoordinateSystem(
+            pitch_length=self.kloppy_dataset.metadata.pitch_dimensions.pitch_length,
+            pitch_width=self.kloppy_dataset.metadata.pitch_dimensions.pitch_width,
         )
-        return self.kloppy_dataset
+
+        if self.kloppy_dataset.metadata.orientation not in [
+            Orientation.STATIC_HOME_AWAY,
+            Orientation.STATIC_AWAY_HOME,
+            Orientation.HOME_AWAY,
+            Orientation.AWAY_HOME,
+        ]:
+            kloppy_static = DatasetTransformer.transform_dataset(
+                dataset=self.kloppy_dataset,
+                to_orientation=Orientation.STATIC_HOME_AWAY,
+                to_coordinate_system=secondspectrum_coordinate_system,
+            )
+        else:
+            kloppy_static = DatasetTransformer.transform_dataset(
+                dataset=self.kloppy_dataset,
+                to_coordinate_system=secondspectrum_coordinate_system,
+            )
+
+        return kloppy_static
 
     def __get_objects(self):
         def __artificial_game_id() -> str:
@@ -172,10 +194,10 @@ class KloppyPolarsDataset(DefaultDataset):
             game_id = __artificial_game_id()
         return (home_players, away_players, ball_object, game_id)
 
-    def __unpivot(self, object, coordinate):
+    def __unpivot(self, df, object, coordinate):
         column = f"{object.id}_{coordinate}"
 
-        return self.data.unpivot(
+        return df.unpivot(
             index=[
                 Column.PERIOD_ID,
                 Column.TIMESTAMP,
@@ -369,13 +391,14 @@ class KloppyPolarsDataset(DefaultDataset):
 
     def __melt(
         self,
+        df: pl.DataFrame,
         home_players: List[SoccerObject],
         away_players: List[SoccerObject],
         ball_object: SoccerObject,
         game_id: Union[int, str],
     ):
         melted_dfs = []
-        columns = self.data.columns
+        columns = df.columns
 
         for object in [ball_object] + home_players + away_players:
             melted_object_dfs = []
@@ -385,7 +408,7 @@ class KloppyPolarsDataset(DefaultDataset):
                 if not any(object.id in column for column in columns):
                     continue
 
-                melted_df = self.__unpivot(object, coordinate)
+                melted_df = self.__unpivot(df, object, coordinate)
 
                 if object.id == Constant.BALL and coordinate == Column.Z:
                     if melted_df[coordinate].is_null().all():
@@ -599,11 +622,11 @@ class KloppyPolarsDataset(DefaultDataset):
     def __fix_orientation_to_ball_owning(
         self, df: pl.DataFrame, home_team_id: Union[str, int]
     ):
-        # When _overwrite_orientation is True, it means the orientation is "STATIC_HOME_AWAY"
+        # When orient_ball_owning is True, it means the orientation has to flip from "STATIC_HOME_AWAY" to "BALL_OWNING" in the Polars dataframe
         # This means that when away is the attacking team we can flip all coordinates by -1.0
-
         flip_columns = [Column.X, Column.Y, Column.VX, Column.VY, Column.AX, Column.AY]
 
+        self.settings.orientation = Orientation.BALL_OWNING_TEAM
         return df.with_columns(
             [
                 pl.when(
@@ -621,6 +644,7 @@ class KloppyPolarsDataset(DefaultDataset):
         home_team, away_team = self.kloppy_dataset.metadata.teams
         return DefaultSettings(
             provider="secondspectrum",
+            orientation=self.kloppy_dataset.metadata.orientation,
             home_team_id=home_team.team_id,
             away_team_id=away_team.team_id,
             pitch_dimensions=pitch_dimensions,
@@ -633,8 +657,6 @@ class KloppyPolarsDataset(DefaultDataset):
 
     def load(
         self,
-        player_smoothing_params: Union[dict, None] = DEFAULT_PLAYER_SMOOTHING_PARAMS,
-        ball_smoothing_params: Union[dict, None] = DEFAULT_BALL_SMOOTHING_PARAMS,
     ):
         if self.kloppy_dataset.metadata.orientation == Orientation.NOT_SET:
             raise ValueError(
@@ -647,16 +669,17 @@ class KloppyPolarsDataset(DefaultDataset):
             pitch_dimensions=self.kloppy_dataset.metadata.pitch_dimensions
         )
 
-        self.data = self.kloppy_dataset.to_df(engine="polars")
-
         (self.home_players, self.away_players, self._ball_object, self._game_id) = (
             self.__get_objects()
         )
-        df = self.__melt(
-            self.home_players, self.away_players, self._ball_object, self._game_id
-        )
 
-        df = self.__add_velocity(df, player_smoothing_params, ball_smoothing_params)
+        df = self.kloppy_dataset.to_df(engine="polars")
+        df = self.__melt(
+            df, self.home_players, self.away_players, self._ball_object, self._game_id
+        )
+        df = self.__add_velocity(
+            df, DEFAULT_PLAYER_SMOOTHING_PARAMS, DEFAULT_BALL_SMOOTHING_PARAMS
+        )
         df = self.__add_acceleration(df)
         df = apply_speed_acceleration_filters(
             df,
@@ -666,7 +689,6 @@ class KloppyPolarsDataset(DefaultDataset):
             max_ball_acceleration=self.settings.max_ball_acceleration,
         )
         df = df.drop(["dx", "dy", "dz", "dt", "dvx", "dvy", "dvz"])
-
         df = df.filter(~(pl.col(Column.X).is_null() & pl.col(Column.Y).is_null()))
 
         if (
@@ -679,7 +701,10 @@ class KloppyPolarsDataset(DefaultDataset):
 
         df = self.__infer_ball_carrier(df)
 
-        if self._overwrite_orientation:
+        if (
+            self._orient_ball_owning
+            and self.settings.orientation != Orientation.BALL_OWNING_TEAM
+        ):
             home_team, _ = self.kloppy_dataset.metadata.teams
             df = self.__fix_orientation_to_ball_owning(
                 df, home_team_id=home_team.team_id

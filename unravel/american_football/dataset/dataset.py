@@ -6,7 +6,7 @@ import polars as pl
 
 import numpy as np
 
-from kloppy.domain import Dimension, Unit
+from kloppy.domain import Dimension, Unit, Orientation
 
 from ...utils import (
     DefaultSettings,
@@ -31,6 +31,7 @@ class BigDataBowlDataset(DefaultDataset):
         max_ball_speed: float = 28.0,
         max_player_acceleration: float = 6.0,
         max_ball_acceleration: float = 13.5,
+        orient_ball_owning: bool = True,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -43,6 +44,9 @@ class BigDataBowlDataset(DefaultDataset):
         self._max_ball_speed = max_ball_speed
         self._max_player_acceleration = max_player_acceleration
         self._max_ball_acceleration = max_ball_acceleration
+        self._orient_ball_owning = orient_ball_owning
+
+        self.load()
 
     def __apply_settings(
         self,
@@ -52,6 +56,11 @@ class BigDataBowlDataset(DefaultDataset):
             home_team_id=None,
             away_team_id=None,
             pitch_dimensions=AmericanFootballPitchDimensions(),
+            orientation=(
+                Orientation.BALL_OWNING_TEAM
+                if self._orient_ball_owning
+                else Orientation.NOT_SET
+            ),
             max_player_speed=self._max_player_speed,
             max_ball_speed=self._max_ball_speed,
             max_player_acceleration=self._max_player_acceleration,
@@ -81,57 +90,63 @@ class BigDataBowlDataset(DefaultDataset):
             df = df.with_columns(pl.col(Column.CLUB).alias(Column.TEAM))
             df = df.drop(Column.CLUB)
 
-        df = (
-            df.with_columns(
-                pl.when(pl.col("playDirection") == play_direction)
-                .then(pl.col(Column.ORIENTATION) + 180)  # rotate 180 degrees
-                .otherwise(pl.col(Column.ORIENTATION))
-                .alias(Column.ORIENTATION),
-                pl.when(pl.col("playDirection") == play_direction)
-                .then(pl.col(Column.DIRECTION) + 180)  # rotate 180 degrees
-                .otherwise(pl.col(Column.DIRECTION))
-                .alias(Column.DIRECTION),
-            )
-            .with_columns(
-                [
-                    (pl.col(Column.X) - (pitch_length / 2)).alias(Column.X),
-                    (pl.col(Column.Y) - (pitch_width / 2)).alias(Column.Y),
-                    # convert to radian on (-pi, pi) range
-                    (
-                        ((pl.col(Column.ORIENTATION) * np.pi / 180) + np.pi)
-                        % (2 * np.pi)
-                        - np.pi
-                    ).alias(Column.ORIENTATION),
-                    (
-                        ((pl.col(Column.DIRECTION) * np.pi / 180) + np.pi) % (2 * np.pi)
-                        - np.pi
-                    ).alias(Column.DIRECTION),
-                ]
-            )
-            .with_columns(
-                [
+        if self._orient_ball_owning:
+            df = (
+                df.with_columns(
                     pl.when(pl.col("playDirection") == play_direction)
-                    .then(pl.col(Column.X) * -1.0)
-                    .otherwise(pl.col(Column.X))
-                    .alias(Column.X),
+                    .then(pl.col(Column.ORIENTATION) + 180)  # rotate 180 degrees
+                    .otherwise(pl.col(Column.ORIENTATION))
+                    .alias(Column.ORIENTATION),
                     pl.when(pl.col("playDirection") == play_direction)
-                    .then(pl.col(Column.Y) * -1.0)
-                    .otherwise(pl.col(Column.Y))
-                    .alias(Column.Y),
-                    # set "football" to nflId -9999 for ordering purposes
-                    pl.when(pl.col(Column.TEAM) == Constant.BALL)
-                    .then(-9999.9)
-                    .otherwise(pl.col(Column.OBJECT_ID))
-                    .alias(Column.OBJECT_ID),
-                ]
+                    .then(pl.col(Column.DIRECTION) + 180)  # rotate 180 degrees
+                    .otherwise(pl.col(Column.DIRECTION))
+                    .alias(Column.DIRECTION),
+                )
+                .with_columns(
+                    [
+                        (pl.col(Column.X) - (pitch_length / 2)).alias(Column.X),
+                        (pl.col(Column.Y) - (pitch_width / 2)).alias(Column.Y),
+                        # convert to radian on (-pi, pi) range
+                        (
+                            ((pl.col(Column.ORIENTATION) * np.pi / 180) + np.pi)
+                            % (2 * np.pi)
+                            - np.pi
+                        ).alias(Column.ORIENTATION),
+                        (
+                            ((pl.col(Column.DIRECTION) * np.pi / 180) + np.pi)
+                            % (2 * np.pi)
+                            - np.pi
+                        ).alias(Column.DIRECTION),
+                    ]
+                )
+                .with_columns(
+                    [
+                        pl.when(pl.col("playDirection") == play_direction)
+                        .then(pl.col(Column.X) * -1.0)
+                        .otherwise(pl.col(Column.X))
+                        .alias(Column.X),
+                        pl.when(pl.col("playDirection") == play_direction)
+                        .then(pl.col(Column.Y) * -1.0)
+                        .otherwise(pl.col(Column.Y))
+                        .alias(Column.Y),
+                        # set "football" to nflId -9999 for ordering purposes
+                        pl.when(pl.col(Column.TEAM) == Constant.BALL)
+                        .then(-9999.9)
+                        .otherwise(pl.col(Column.OBJECT_ID))
+                        .alias(Column.OBJECT_ID),
+                    ]
+                )
+                .with_columns(
+                    [
+                        pl.lit(play_direction).alias("playDirection"),
+                    ]
+                )
+                .filter((pl.col(Column.FRAME_ID) % sample) == 0)
+            ).collect()
+        else:
+            raise NotImplementedError(
+                "Currently, BigDataBowlDataset only allows Orientation.BALL_OWNING"
             )
-            .with_columns(
-                [
-                    pl.lit(play_direction).alias("playDirection"),
-                ]
-            )
-            .filter((pl.col(Column.FRAME_ID) % sample) == 0)
-        ).collect()
 
         players = pl.read_csv(
             self.players_file_path,

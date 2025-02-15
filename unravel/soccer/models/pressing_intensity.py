@@ -20,18 +20,6 @@ from matplotlib.figure import Figure
 from .utils import time_to_intercept, probability_to_intercept
 
 
-# TODO:
-# - [ ] Overwrite orient in KloppyPolars (default = True)
-# - [ ] Transforming orientation before adding speed / acceleration will cause issues in smoothing
-# - [ ] Release post
-# - [ ] One thread at a time fade out
-# - [ ] README
-# - [ ] Jupyter Notebook
-# - [ ] Unnest BDB gives issues in testing
-# - [ ] Rename SoccerPolars and remove
-# - [ ] PressingIntensity.to_video()
-
-
 @dataclass
 class PressingIntensity:
     dataset: KloppyPolarsDataset
@@ -313,7 +301,7 @@ class PressingIntensity:
                 "Please specificy all of start_time, end_time and period_id or none of them..."
             )
 
-        sort_descending = [True] * len(Group.BY_TIMESTAMP)
+        sort_descending = [False] * len(Group.BY_TIMESTAMP)
         if self._orient in ["home_away", "away_home"]:
             alias = "is_home"
             sort_by = Group.BY_TIMESTAMP + [alias]

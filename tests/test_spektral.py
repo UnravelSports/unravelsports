@@ -48,7 +48,6 @@ class TestSpektral:
             max_player_acceleration=10.0,
             max_ball_acceleration=10.0,
         )
-        bdb_dataset.load()
         bdb_dataset.add_graph_ids(by=["gameId", "playId"])
         bdb_dataset.add_dummy_labels(by=["gameId", "playId", "frameId"])
         return bdb_dataset

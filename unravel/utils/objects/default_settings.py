@@ -2,7 +2,7 @@ import numpy as np
 from dataclasses import dataclass, field
 from typing import Union
 
-from kloppy.domain import Dimension, Unit, MetricPitchDimensions, Provider
+from kloppy.domain import Dimension, Unit, MetricPitchDimensions, Provider, Orientation
 
 from ..features import (
     AdjacencyMatrixType,
@@ -36,6 +36,7 @@ class DefaultSettings:
     away_team_id: Union[str, int]
     provider: Union[Provider, str]
     pitch_dimensions: Union[MetricPitchDimensions, AmericanFootballPitchDimensions]
+    orientation: Orientation
     max_player_speed: float = 12.0
     max_ball_speed: float = 28.0
     max_player_acceleration: float = 6.0

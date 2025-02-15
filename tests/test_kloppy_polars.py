@@ -72,7 +72,6 @@ class TestKloppyPolarsData:
         self, kloppy_dataset_sportec: TrackingDataset
     ) -> KloppyPolarsDataset:
         dataset = KloppyPolarsDataset(kloppy_dataset=kloppy_dataset_sportec)
-        dataset.load()
         return dataset
 
     @pytest.fixture()
@@ -87,7 +86,6 @@ class TestKloppyPolarsData:
             max_ball_speed=13.5,
             max_ball_acceleration=100,
         )
-        dataset.load()
         dataset.add_dummy_labels(by=["game_id", "frame_id"])
         dataset.add_graph_ids(by=["game_id", "frame_id"])
         return dataset
@@ -216,7 +214,7 @@ class TestKloppyPolarsData:
         )
         assert (
             pytest.approx(reshape_array(row["time_to_intercept"][0])[0][0], abs=1e-5)
-            == 2.6036126120225016
+            == 2.6428493704618106
         )
 
     def test_pi_teams_include_home_away(
@@ -253,7 +251,7 @@ class TestKloppyPolarsData:
 
         arr = reshape_array(row["probability_to_intercept"][0])
         count = np.count_nonzero(np.isclose(arr, 0.0, atol=1e-5))
-        assert count == 112
+        assert count == 121
 
         assert reshape_array(row["rows"][0]).shape == (11,)
         assert reshape_array(row["columns"][0]).shape == (11,)
@@ -345,7 +343,7 @@ class TestKloppyPolarsData:
         row = model.output[0]
         arr = reshape_array(row["probability_to_intercept"][0])
         count = np.count_nonzero(np.isclose(arr, 0.0, atol=1e-5))
-        assert count == 484
+        assert count == 527
 
         assert reshape_array(row["rows"][0]).shape == (23,)
         assert reshape_array(row["columns"][0]).shape == (23,)
@@ -444,7 +442,7 @@ class TestKloppyPolarsData:
 
         arr = reshape_array(row["probability_to_intercept"][0])
         count = np.count_nonzero(np.isclose(arr, 0.0, atol=1e-5))
-        assert count == 163
+        assert count == 117
 
     def test_padding(self, spc_padding: SoccerGraphConverterPolars):
         spektral_graphs = spc_padding.to_spektral_graphs()
@@ -473,7 +471,8 @@ class TestKloppyPolarsData:
         x = data[0].x
         n_players = x.shape[0]
         assert x.shape == (n_players, 15)
-        assert 0.4524340998288571 == pytest.approx(x[0, 0], abs=1e-5)
+        print(">>>", x[0, 0])
+        assert 0.5475659001711429 == pytest.approx(x[0, 0], abs=1e-5)
         assert 0.9948105277764999 == pytest.approx(x[0, 4], abs=1e-5)
         assert 0.2941671698429814 == pytest.approx(x[8, 2], abs=1e-5)
 
@@ -569,8 +568,8 @@ class TestKloppyPolarsData:
         x = data[0].x
         n_players = x.shape[0]
         assert x.shape == (n_players, 17)
-        assert 0.4524340998288571 == pytest.approx(x[0, 0], abs=1e-5)
-        assert 0.9948105277764999 == pytest.approx(x[0, 4], abs=1e-5)
+        assert 0.5475659001711429 == pytest.approx(x[0, 0], abs=1e-5)
+        assert 0.8997899683121747 == pytest.approx(x[0, 4], abs=1e-5)
         assert 0.2941671698429814 == pytest.approx(x[8, 2], abs=1e-5)
         assert 1 == pytest.approx(x[ball_index, 15])
         assert 0.12 == pytest.approx(x[ball_index, 16])
