@@ -142,7 +142,7 @@ Due to compatibility issues **unravelsports** currently only works on Python 3.1
 spektral==1.20.0 
 tensorflow==2.14.0 
 keras==2.14.0
-kloppy==3.15.0
+kloppy==3.16.0
 polars==1.2.1
 ```
 These dependencies come pre-installed with the package. It is advised to create a [virtual environment](https://virtualenv.pypa.io/en/latest/).
