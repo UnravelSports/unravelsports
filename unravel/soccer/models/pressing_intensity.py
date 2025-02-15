@@ -13,10 +13,6 @@ from ..dataset.kloppy_polars import (
     Constant,
 )
 
-from mplsoccer import VerticalPitch, Pitch
-from matplotlib.axes import Axes
-from matplotlib.figure import Figure
-
 from .utils import time_to_intercept, probability_to_intercept
 
 
