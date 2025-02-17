@@ -37,6 +37,14 @@ kloppy_polars_dataset = KloppyPolarsDataset(
     kloppy_dataset=kloppy_dataset
 )
 ```
+|    |   period_id | timestamp       |   frame_id | ball_state   | id             |      x |     y |   z | team_id        | position_name   | game_id        |     vx |     vy |   vz |     v |   ax |   ay |   az |   a | ball_owning_team_id   | is_ball_carrier   |
+|---:|------------:|:----------------|-----------:|:-------------|:---------------|-------:|------:|----:|:---------------|:----------------|:---------------|-------:|-------:|-----:|------:|-----:|-----:|-----:|----:|:----------------------|:------------------|
+|  0 |           1 | 0 days 00:00:00 |      10000 | alive        | DFL-OBJ-00008F | -20.67 | -4.56 |   0 | DFL-CLU-000005 | RCB             | DFL-MAT-J03WPY |  0.393 | -0.214 |    0 | 0.447 |    0 |    0 |    0 |   0 | DFL-CLU-00000P        | False             |
+|  1 |           1 | 0 days 00:00:00 |      10000 | alive        | DFL-OBJ-0000EJ |  -8.86 | -0.94 |   0 | DFL-CLU-000005 | UNK             | DFL-MAT-J03WPY | -0.009 |  0.018 |    0 | 0.02  |    0 |    0 |    0 |   0 | DFL-CLU-00000P        | False             |
+|  2 |           1 | 0 days 00:00:00 |      10000 | alive        | DFL-OBJ-0000F8 |  -2.12 |  9.85 |   0 | DFL-CLU-00000P | RM              | DFL-MAT-J03WPY |  0     |  0     |    0 | 0     |    0 |    0 |    0 |   0 | DFL-CLU-00000P        | False             |
+|  3 |           1 | 0 days 00:00:00 |      10000 | alive        | DFL-OBJ-0000NZ |   0.57 | 23.23 |   0 | DFL-CLU-00000P | RB              | DFL-MAT-J03WPY |  0.179 | -0.134 |    0 | 0.223 |    0 |    0 |    0 |   0 | DFL-CLU-00000P        | False             |
+|  4 |           1 | 0 days 00:00:00 |      10000 | alive        | DFL-OBJ-0001HW | -46.26 |  0.08 |   0 | DFL-CLU-000005 | GK              | DFL-MAT-J03WPY |  0.357 |  0.071 |    0 | 0.364 |    0 |    0 |    0 |   0 | DFL-CLU-00000P        | False             |
+
 
 $^1$ <small>Open data available through kloppy.</small>
 
