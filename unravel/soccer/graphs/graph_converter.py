@@ -92,7 +92,7 @@ class SoccerGraphConverter(DefaultGraphConverter):
     def __post_init__(self):
         warn(
             """
-            This class is deprecated and will be removed in a future release. Please use SoccerGraphConverterPolars for better performance.
+            This class is deprecated and will be removed in a future release. Please use SoccerGraphConverterPolars instead.
             Note: SoccerGraphConverterPolars is not one-to-one compatible with models and dataset created from SoccerGraphConverter due to breaking changes.
             """,
             category=DeprecationWarning,
