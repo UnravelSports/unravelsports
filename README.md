@@ -30,16 +30,11 @@ This package currently supports:
 ```python
 from unravel.soccer import KloppyPolarsDataset
 
-from kloppy import skillcorner
+from kloppy import sportec
 
-kloppy_dataset = skillcorner.load_open_data(
-    match_id=2068, 
-    include_empty_frames=False,
-    limit=500,
-)
+kloppy_dataset = sportec.load_open_tracking_data()
 kloppy_polars_dataset = KloppyPolarsDataset(
-    kloppy_dataset=kloppy_dataset, 
-    ball_carrier_threshold=25.0
+    kloppy_dataset=kloppy_dataset
 )
 ```
 
@@ -67,8 +62,6 @@ bdb = BigDataBowlDataset(
 ```python
 converter = SoccerGraphConverterPolars(
     dataset=kloppy_polars_dataset,
-    max_player_speed=12.0,
-    max_ball_speed=28.0,
     self_loop_ball=True,
     adjacency_matrix_connect_type="ball",
     adjacency_matrix_type="split_by_team",
