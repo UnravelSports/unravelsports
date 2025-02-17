@@ -164,12 +164,17 @@ class KloppyPolarsDataset(DefaultDataset):
                 SoccerObject(
                     id=p.player_id,
                     team_id=p.team.team_id,
-                    position_name=p.starting_position.code,
+                    position_name=(
+            p.starting_position
+            if isinstance(p.starting_position, str)
+            else p.starting_position.code
+        ),
                     number=p.jersey_no,
                     name=p.last_name,
                     team_name=p.team.name,
                     is_home=True,
-                    is_gk=True if p.starting_position.code == "GK" else False,
+                    is_gk=(p.starting_position == "GK" if isinstance(p.starting_position, str)
+               else p.starting_position.code == "GK"),
                     object_type="player",
                 )
                 for p in home_team.players
@@ -178,12 +183,17 @@ class KloppyPolarsDataset(DefaultDataset):
                 SoccerObject(
                     id=p.player_id,
                     team_id=p.team.team_id,
-                    position_name=p.starting_position.code,
+                    position_name=(
+            p.starting_position
+            if isinstance(p.starting_position, str)
+            else p.starting_position.code
+        ),
                     number=p.jersey_no,
                     name=p.last_name,
                     team_name=p.team.name,
                     is_home=False,
-                    is_gk=True if p.starting_position.code == "GK" else False,
+                    is_gk=(p.starting_position == "GK" if isinstance(p.starting_position, str)
+               else p.starting_position.code == "GK"),
                     object_type="player",
                 )
                 for p in away_team.players
