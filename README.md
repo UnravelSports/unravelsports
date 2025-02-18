@@ -167,7 +167,7 @@ If you use this repository for any educational purposes, research, project etc.,
 @software{unravelsports2024repository,
   author = {Bekkers, Joris},
   title = {unravelsports},
-  version = {0.1.0},
+  version = {0.3.0},
   year = {2024},
   publisher = {GitHub},
   url = {https://github.com/unravelsports/unravelsports}
@@ -177,7 +177,7 @@ If you use this repository for any educational purposes, research, project etc.,
 
 <br>
 
-📎 [Sahasrabudhe, A., & Bekkers, J. (2023). A graph neural network deep-dive into successful counterattacks. MIT Sloan Sports Analytics Conference.](https://ussf-ssac-23-soccer-gnn.s3.us-east-2.amazonaws.com/public/Sahasrabudhe_Bekkers_SSAC23.pdf)
+📎 [Bekkers, J., & Sahasrabudhe, A. (2024). A Graph Neural Network deep-dive into successful counterattacks. arXiv preprint arXiv:2411.17450.](https://arxiv.org/pdf/2411.17450)
 <details>
 <summary>BibTex</summary>
 <pre>
@@ -187,6 +187,20 @@ If you use this repository for any educational purposes, research, project etc.,
   booktitle={17th Annual MIT Sloan Sports Analytics Conference. Boston, MA, USA: MIT},
   pages={15},
   year={2023}
+}
+</pre>
+</details>
+<br>
+
+📎 [Bekkers, J. (2024). Pressing Intensity: An Intuitive Measure for Pressing in Soccer. arXiv preprint arXiv:2501.04712.](https://arxiv.org/pdf/2501.04712)
+<details>
+<summary>BibTex</summary>
+<pre>
+@article{bekkers2024pressing,
+  title={Pressing Intensity: An Intuitive Measure for Pressing in Soccer},
+  author={Bekkers, Joris},
+  journal={arXiv preprint arXiv:2501.04712},
+  year={2024}
 }
 </pre>
 </details>
