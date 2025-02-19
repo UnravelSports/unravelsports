@@ -17,7 +17,7 @@ The **unravelsports** package aims to aid researchers, analysts and enthusiasts 
 This package currently supports:
 - ⚽🏈 [**Polars DataFrame Conversion**](#polars-dataframes) 
 - ⚽🏈 [**Graph Neural Network**](#graph-neural-networks) Training, Graph Conversion and Prediction
-- ⚽ [**Pressing Intensity**](#pressing-intensity) [[Bekkers (2025)](https://unravelsports.github.io/2024/12/12/pressing-intensity.html)]
+- ⚽ [**Pressing Intensity**](#pressing-intensity) [[Bekkers (2024)](https://unravelsports.github.io/2024/12/12/pressing-intensity.html)]
 
 🌀 Features
 -----
