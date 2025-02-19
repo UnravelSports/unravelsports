@@ -90,7 +90,7 @@ class DefaultGraphConverter:
         init=False, repr=False, default_factory=DefaultGraphSettings
     )
     
-    feature_specs: dict = field(init=False, repr=False, default=None)
+    feature_specs: dict = field(default_factory=dict, repr=False)
 
     def __post_init__(self):
         if hasattr(
