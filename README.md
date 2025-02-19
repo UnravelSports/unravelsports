@@ -156,6 +156,8 @@ All contributions, bug reports, bug fixes, documentation improvements, enhanceme
 
 An overview on how to contribute can be found in the [**contributing guide**](CONTRIBUTING.md).
 
+I try to keep an up-to-date list of [Open Issues](https://github.com/UnravelSports/unravelsports/issues). If you would like to work on any of these, or have ideas of your own that could be added, send me a message on [LinkedIn](https://www.linkedin.com/in/joris-bekkers-33138288/) or [BlueSky](https://bsky.app/profile/unravelsports.com)
+
 🌀 Citation
 ----
 If you use this repository for any educational purposes, research, project etc., please reference both:
@@ -205,8 +207,9 @@ If you use this repository for any educational purposes, research, project etc.,
 </pre>
 </details>
 <br>
-and let me know on
 
+🌀 Social Media
+----
 [<img alt="alt_text" width="40px" src="https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png"/>](https://www.linkedin.com/in/joris-bekkers-33138288/)
 [<img alt="alt_text" width="40px" src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Bluesky_Logo.svg/2319px-Bluesky_Logo.svg.png"/>](https://bsky.app/profile/unravelsports.com)
 
