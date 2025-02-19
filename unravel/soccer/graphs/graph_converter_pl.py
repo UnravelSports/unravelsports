@@ -75,6 +75,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         else:
             self.dataset = self._remove_incomplete_frames()
 
+        self.feature_specs = {'node_features': {}, 'edge_features': {}}
         self._shuffle()
 
     def _shuffle(self):
@@ -363,6 +364,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             velocity=velocity,
             team=d[Column.TEAM_ID],
             settings=self.settings,
+            feature_dict=self.feature_specs['edge_features']
         )
 
         node_features = compute_node_features_pl(
@@ -376,6 +378,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             ball_carrier=d[Column.IS_BALL_CARRIER],
             graph_features=graph_features,
             settings=self.settings,
+            feature_dict=self.feature_specs['node_features']
         )
 
         return {
