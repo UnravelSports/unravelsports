@@ -75,7 +75,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         else:
             self.dataset = self._remove_incomplete_frames()
 
-        self.feature_specs = {'node_features': {}, 'edge_features': {}}
+        #self.feature_specs = {'node_features': {}, 'edge_features': {}}
         self._shuffle()
 
     def _shuffle(self):
@@ -380,7 +380,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             settings=self.settings,
             feature_dict=self.feature_specs['node_features']
         )
-
+        #print(edge_features.tolist())
         return {
             "e": edge_features.tolist(),
             "x": node_features.tolist(),
