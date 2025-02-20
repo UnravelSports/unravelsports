@@ -23,7 +23,7 @@ from ....utils import (
 from ...dataset.kloppy_polars import Constant
 
 
-def compute_edge_features_pl(adjacency_matrix, p3d, p2d, s, velocity, team, settings):
+def compute_edge_features_pl(adjacency_matrix, p3d, p2d, s, velocity, team, settings, feature_dict):
     # Compute pairwise distances using broadcasting
     max_dist_to_player = np.sqrt(
         settings.pitch_dimensions.pitch_length**2

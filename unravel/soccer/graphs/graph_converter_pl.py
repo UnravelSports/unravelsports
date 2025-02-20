@@ -380,7 +380,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             settings=self.settings,
             feature_dict=self.feature_specs['node_features']
         )
-        #print(edge_features.tolist())
+
         return {
             "e": edge_features.tolist(),
             "x": node_features.tolist(),
