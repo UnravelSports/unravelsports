@@ -104,5 +104,5 @@ def compute_node_features_pl(
         eg[ball_index] = graph_features
         X = np.hstack((X, eg))
 
-    print(X)
+    #print(X)
     return X
