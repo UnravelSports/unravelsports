@@ -70,6 +70,15 @@ def compute_node_features_pl(
         's': {'func': lambda value: value, 'defaults': {'value': s}},
         's_normed': {'func': normalize_speeds_nfl, 'defaults': {'s': s, 'team': team, 'ball_id': ball_id, 'settings': settings}},
         'velocity': {'func': lambda value: value, 'defaults': {'value': velocity}},
+        
+        '''
+            uv_velocity = unit_vectors(velocity)
+            angles = normalize_angles(np.arctan2(uv_velocity[:, 1], uv_velocity[:, 0]))
+            
+            v_sin_normed = normalize_sincos(np.sin(angles))
+            v_cos_normed = normalize_sincos(np.cos(angles))
+        '''
+        
         'v_sin_normed': {'func': normalize_sincos, 'defaults': {'value': np.sin(normalize_angles(np.arctan2(unit_vectors(velocity)[:, 1],  unit_vectors(velocity)[:, 0])))}},
         'v_cos_normed': {'func': normalize_sincos, 'defaults': {'value': np.cos(normalize_angles(np.arctan2(unit_vectors(velocity)[:, 1],  unit_vectors(velocity)[:, 0])))}},
         'dist_to_goal': {'func': lambda value: value, 'defaults': {'value': np.linalg.norm(position - goal_mouth_position, axis=1)}},
