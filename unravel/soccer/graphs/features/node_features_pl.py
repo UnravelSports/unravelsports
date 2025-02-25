@@ -95,7 +95,6 @@ def compute_node_features_pl(
         # """
         #     uv_velocity = unit_vectors(velocity)
         #     angles = normalize_angles(np.arctan2(uv_velocity[:, 1], uv_velocity[:, 0]))
-            
         #     v_sin_normed = normalize_sincos(np.sin(angles))
         #     v_cos_normed = normalize_sincos(np.cos(angles))
         # """
@@ -244,5 +243,5 @@ def compute_node_features_pl(
         eg[ball_index] = graph_features
         X = np.hstack((X, eg))
 
-    #print(X.shape)
+    # print(X.shape)
     return X
