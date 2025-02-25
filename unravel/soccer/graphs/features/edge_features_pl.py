@@ -76,17 +76,17 @@ def compute_edge_features_pl(
     # pos_cos_matrix[nan_mask] = 0
     # pos_sin_matrix[nan_mask] = 0
     feature_func_map = {
-        """
-            distances_between_players = np.linalg.norm(
-                p3d[:, None, :] - p3d[None, :, :], axis=-1
-            )
+        # """
+        #     distances_between_players = np.linalg.norm(
+        #         p3d[:, None, :] - p3d[None, :, :], axis=-1
+        #     )
             
-            dist_matrix_normed = normalize_distance(
-                distances_between_players, max_distance=max_dist_to_player
-                )  # 11x11
+        #     dist_matrix_normed = normalize_distance(
+        #         distances_between_players, max_distance=max_dist_to_player
+        #         )  # 11x11
             
-            dist_matrix_normed[nan_mask] = 0
-        """
+        #     dist_matrix_normed[nan_mask] = 0
+        # """
         "dist_matrix": {
             "func": lambda value: value,
             "defaults": {
@@ -102,18 +102,18 @@ def compute_edge_features_pl(
                 "max_distance": max_dist_to_player,
             },
         },
-        """
-            speed_diff_matrix = np.nan_to_num(s[None, :] - s[:, None])  # NxNx1
+        # """
+        #     speed_diff_matrix = np.nan_to_num(s[None, :] - s[:, None])  # NxNx1
             
-            speed_diff_matrix_normed = normalize_speed_differences_nfl(
-                s=speed_diff_matrix,
-                team=team,
-                ball_id=Constant.BALL,
-                settings=settings,
-            )
+        #     speed_diff_matrix_normed = normalize_speed_differences_nfl(
+        #         s=speed_diff_matrix,
+        #         team=team,
+        #         ball_id=Constant.BALL,
+        #         settings=settings,
+        #     )
             
-            speed_diff_matrix_normed[nan_mask] = 0
-        """
+        #     speed_diff_matrix_normed[nan_mask] = 0
+        # """
         "speed_diff_matrix": {
             "func": lambda value: value,
             "defaults": {"value": np.nan_to_num(s[None, :] - s[:, None])},
@@ -129,22 +129,22 @@ def compute_edge_features_pl(
                 "settings": settings,
             },
         },
-        """
-            vect_to_player_matrix = (
-                p2d[:, None, :] - p2d[None, :, :]
-            )  # 11x11x2 the vector between two players
+        # """
+        #     vect_to_player_matrix = (
+        #         p2d[:, None, :] - p2d[None, :, :]
+        #     )  # 11x11x2 the vector between two players
     
-            # Angles between players in sin and cos
-            angle_pos_matrix = np.nan_to_num(
-                np.arctan2(vect_to_player_matrix[:, :, 1], vect_to_player_matrix[:, :, 0])
-            )
+        #     # Angles between players in sin and cos
+        #     angle_pos_matrix = np.nan_to_num(
+        #         np.arctan2(vect_to_player_matrix[:, :, 1], vect_to_player_matrix[:, :, 0])
+        #     )
     
-            pos_cos_matrix = normalize_sincos(np.nan_to_num(np.cos(angle_pos_matrix)))
-            pos_sin_matrix = normalize_sincos(np.nan_to_num(np.sin(angle_pos_matrix)))
+        #     pos_cos_matrix = normalize_sincos(np.nan_to_num(np.cos(angle_pos_matrix)))
+        #     pos_sin_matrix = normalize_sincos(np.nan_to_num(np.sin(angle_pos_matrix)))
             
-            pos_cos_matrix[nan_mask] = 0
-            pos_sin_matrix[nan_mask] = 0
-        """
+        #     pos_cos_matrix[nan_mask] = 0
+        #     pos_sin_matrix[nan_mask] = 0
+        # """
         "angle_pos_matrix": {
             "func": lambda vect_to_player_matrix: np.where(
                 nan_mask,
@@ -179,18 +179,18 @@ def compute_edge_features_pl(
                 )
             },
         },
-        """
-            v_normed_matrix = velocity[None, :, :] - velocity[:, None, :]  # 11x11x2
-            vect_to_player_matrix = (
-                    p2d[:, None, :] - p2d[None, :, :]
-                )  # 11x11x2 the vector between two players
+        # """
+        #     v_normed_matrix = velocity[None, :, :] - velocity[:, None, :]  # 11x11x2
+        #     vect_to_player_matrix = (
+        #             p2d[:, None, :] - p2d[None, :, :]
+        #         )  # 11x11x2 the vector between two players
 
-            combined_matrix = np.concatenate((vect_to_player_matrix, v_normed_matrix), axis=2)
-            angle_vel_matrix = np.apply_along_axis(angle_between, 2, combined_matrix)
+        #     combined_matrix = np.concatenate((vect_to_player_matrix, v_normed_matrix), axis=2)
+        #     angle_vel_matrix = np.apply_along_axis(angle_between, 2, combined_matrix)
             
-            vel_cos_matrix = normalize_sincos(np.nan_to_num(np.cos(angle_vel_matrix)))
-            vel_sin_matrix = normalize_sincos(np.nan_to_num(np.sin(angle_vel_matrix)))
-        """
+        #     vel_cos_matrix = normalize_sincos(np.nan_to_num(np.cos(angle_vel_matrix)))
+        #     vel_sin_matrix = normalize_sincos(np.nan_to_num(np.sin(angle_vel_matrix)))
+        # """
         "angle_vel_matrix": {
             "func": lambda angle_between, combined_matrix: np.where(
                 nan_mask, 0, np.apply_along_axis(angle_between, 2, combined_matrix)

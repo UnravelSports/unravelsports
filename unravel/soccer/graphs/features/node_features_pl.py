@@ -92,13 +92,13 @@ def compute_node_features_pl(
             },
         },
         "velocity": {"func": lambda value: value, "defaults": {"value": velocity}},
-        """
-            uv_velocity = unit_vectors(velocity)
-            angles = normalize_angles(np.arctan2(uv_velocity[:, 1], uv_velocity[:, 0]))
+        # """
+        #     uv_velocity = unit_vectors(velocity)
+        #     angles = normalize_angles(np.arctan2(uv_velocity[:, 1], uv_velocity[:, 0]))
             
-            v_sin_normed = normalize_sincos(np.sin(angles))
-            v_cos_normed = normalize_sincos(np.cos(angles))
-        """
+        #     v_sin_normed = normalize_sincos(np.sin(angles))
+        #     v_cos_normed = normalize_sincos(np.cos(angles))
+        # """
         "v_sin_normed": {
             "func": normalize_sincos,
             "defaults": {
@@ -235,7 +235,8 @@ def compute_node_features_pl(
             params = feature_func_map[feature]["defaults"].copy()
             params.update(custom_params)
             computed_features.append(feature_func_map[feature]["func"](**params))
-
+        else:
+            print("Error in feature", feature)
     X = np.nan_to_num(np.stack(computed_features, axis=-1))
 
     if graph_features is not None:
@@ -243,5 +244,5 @@ def compute_node_features_pl(
         eg[ball_index] = graph_features
         X = np.hstack((X, eg))
 
-    # print(X)
+    #print(X.shape)
     return X
