@@ -140,8 +140,8 @@ class DefaultGraphConverter:
         if not isinstance(self.verbose, bool):
             raise Exception("'verbose' should be of type boolean (bool)")
 
-        if not isinstance(self.feature_specs, dict):
-            raise ValueError("feature_specs must be a dictionary")
+        if self.feature_specs is not None and not isinstance(self.feature_specs, dict):
+            raise ValueError("feature_specs must be a dictionary or None")
 
     def _shuffle(self):
         raise NotImplementedError()
