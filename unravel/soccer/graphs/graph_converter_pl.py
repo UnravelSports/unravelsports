@@ -75,7 +75,34 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         else:
             self.dataset = self._remove_incomplete_frames()
 
-        #self.feature_specs = {'node_features': {}, 'edge_features': {}}
+        if self.feature_specs == None:
+            self.feature_specs = {
+                "node_features": {
+                    "x_normed": {},
+                    "y_normed": {},
+                    "s_normed": {},
+                    "v_sin_normed": {},
+                    "v_cos_normed": {},
+                    "normed_dist_to_goal": {},
+                    "normed_dist_to_ball": {},
+                    "is_possession_team": {},
+                    "is_gk": {},
+                    "is_ball": {},
+                    "goal_sin_normed": {},
+                    "goal_cos_normed": {},
+                    "ball_sin_normed": {},
+                    "ball_cos_normed": {},
+                    "ball_carrier": {},
+                },
+                "edge_features": {
+                    "dist_matrix_normed": {},
+                    "speed_diff_matrix_normed": {},
+                    "pos_cos_matrix": {},
+                    "pos_sin_matrix": {},
+                    "vel_cos_matrix": {},
+                    "vel_sin_matrix": {},
+                },
+            }
         self._shuffle()
 
     def _shuffle(self):
@@ -364,7 +391,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             velocity=velocity,
             team=d[Column.TEAM_ID],
             settings=self.settings,
-            feature_dict=self.feature_specs['edge_features']
+            feature_dict=self.feature_specs["edge_features"],
         )
 
         node_features = compute_node_features_pl(
@@ -378,7 +405,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             ball_carrier=d[Column.IS_BALL_CARRIER],
             graph_features=graph_features,
             settings=self.settings,
-            feature_dict=self.feature_specs['node_features']
+            feature_dict=self.feature_specs["node_features"],
         )
 
         return {
