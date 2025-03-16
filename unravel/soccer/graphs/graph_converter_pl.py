@@ -18,7 +18,9 @@ from .features import (
     compute_adjacency_matrix_pl,
     compute_edge_features_pl,
     get_node_feature_func_map,
+    get_edge_feature_func_map,
     NodeFeatureDefaults,
+    EdgeFeatureDefaults,
 )
 
 from ...utils import *
@@ -106,25 +108,38 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
                 },
             }
 
-        self._validate_feature_specs(self.feature_specs)
+        self._validate_feature_specs(
+            self.feature_specs,
+            get_node_feature_func_map,
+            NodeFeatureDefaults,
+            "node_features",
+        )
+        self._validate_feature_specs(
+            self.feature_specs,
+            get_edge_feature_func_map,
+            EdgeFeatureDefaults,
+            "edge_features",
+        )
         self._shuffle()
 
-    def _validate_feature_specs(self, feature_specs: dict):
-        # errors = []
-        node_feature_map = get_node_feature_func_map(settings=self.settings)
-        for feature in feature_specs["node_features"]:
-            if feature not in node_feature_map:
+    def _validate_feature_specs(
+        self, feature_specs: dict, feature_func, feature_defaults, feature_tag
+    ):
+        # validate features
+        feature_map = feature_func(settings=self.settings)
+        for feature in feature_specs[feature_tag]:
+            if feature not in feature_map:
                 raise ValueError(
-                    f"Feature {feature} is not a valid node feature. Valid features are {list(node_feature_map.keys())}"
+                    f"feature {feature} is not a valid {feature_tag[:4]} feature. Valid features are {list(feature_map.keys())}"
                 )
-            for key, value in feature_specs["node_features"][feature].items():
-                if key not in node_feature_map[feature]["defaults"]:
+            for key, value in feature_specs[feature_tag][feature].items():
+                if key not in feature_map[feature]["defaults"]:
                     raise ValueError(
-                        f"Feature {feature} does not have a key '{key}'. Valid keys are {list(node_feature_map[feature]['defaults'].keys())}"
+                        f"{feature_tag[:4]} feature {feature} does not have a key '{key}'. Valid keys are {list(feature_map[feature]['defaults'].keys())}"
                     )
 
                 # expected_type = type(node_feature_map[feature]['defaults'][key])
-                expected_type = NodeFeatureDefaults.__annotations__.get(key)
+                expected_type = feature_defaults.__annotations__.get(key)
                 if not isinstance(value, expected_type):
                     raise TypeError(
                         f"Feature {feature} key '{key}' should be of type {expected_type}"
