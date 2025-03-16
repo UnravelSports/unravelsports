@@ -18,7 +18,7 @@ from .features import (
     compute_adjacency_matrix_pl,
     compute_edge_features_pl,
     get_node_feature_func_map,
-    NodeFeatureDefaults
+    NodeFeatureDefaults,
 )
 
 from ...utils import *
@@ -105,31 +105,31 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
                     "vel_sin_matrix": {},
                 },
             }
-        
+
         self._validate_feature_specs(self.feature_specs)
         self._shuffle()
 
     def _validate_feature_specs(self, feature_specs: dict):
-        #errors = []
-        node_feature_map = get_node_feature_func_map()
-        for feature in feature_specs['node_features']:
+        # errors = []
+        node_feature_map = get_node_feature_func_map(settings=self.settings)
+        for feature in feature_specs["node_features"]:
             if feature not in node_feature_map:
                 raise ValueError(
                     f"Feature {feature} is not a valid node feature. Valid features are {list(node_feature_map.keys())}"
                 )
-            for key, value in feature_specs['node_features'][feature].items():
-                if key not in node_feature_map[feature]['defaults']:
+            for key, value in feature_specs["node_features"][feature].items():
+                if key not in node_feature_map[feature]["defaults"]:
                     raise ValueError(
                         f"Feature {feature} does not have a key '{key}'. Valid keys are {list(node_feature_map[feature]['defaults'].keys())}"
                     )
-                
-                #expected_type = type(node_feature_map[feature]['defaults'][key])
+
+                # expected_type = type(node_feature_map[feature]['defaults'][key])
                 expected_type = NodeFeatureDefaults.__annotations__.get(key)
                 if not isinstance(value, expected_type):
                     raise TypeError(
                         f"Feature {feature} key '{key}' should be of type {expected_type}"
                     )
-                    
+
     def _shuffle(self):
         if isinstance(self.settings.random_seed, int):
             self.dataset = self.dataset.sample(
