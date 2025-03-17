@@ -113,17 +113,20 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
                 raise ValueError(
                     f"feature_specs should only contain 'node_features' or 'edge_features' as keys. You provided {key}"
                 )
-                
-        if 'node_features' not in self.feature_specs:
-            self.feature_specs['node_features'] = {}
-        if 'edge_features' not in self.feature_specs:
-            self.feature_specs['edge_features'] = {}
-        
-        if self.feature_specs["node_features"] == {} and self.feature_specs["edge_features"] == {}:
+
+        if "node_features" not in self.feature_specs:
+            self.feature_specs["node_features"] = {}
+        if "edge_features" not in self.feature_specs:
+            self.feature_specs["edge_features"] = {}
+
+        if (
+            self.feature_specs["node_features"] == {}
+            and self.feature_specs["edge_features"] == {}
+        ):
             raise ValueError(
                 "Please provide feature_specs for either 'node_features' or 'edge_features' or both..."
             )
-            
+
         self._validate_feature_specs(
             self.feature_specs,
             get_node_feature_func_map,
