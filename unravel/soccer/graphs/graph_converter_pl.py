@@ -1,5 +1,8 @@
 import logging
 import sys
+import os
+import json
+from dataclasses import asdict
 
 from dataclasses import dataclass
 
@@ -139,8 +142,18 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             EdgeFeatureDefaults,
             "edge_features",
         )
+        self.populate_feature_specs(get_node_feature_func_map, "node_features")
+        self.populate_feature_specs(get_edge_feature_func_map, "edge_features")
         self._shuffle()
-
+    
+    def populate_feature_specs(self, feature_func, feature_tag):
+        feature_map = feature_func(settings=self.settings)
+        for feature, custom_params in self.feature_specs[feature_tag].items():
+            params = feature_map[feature]["defaults"].copy()
+            params.update(custom_params)
+            params = {k: v for k, v in params.items() if v is not None}
+            self.feature_specs[feature_tag][feature] = params
+            
     def _validate_feature_specs(
         self, feature_specs: dict, feature_func, feature_defaults, feature_tag
     ):
@@ -566,3 +579,35 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
 
         with gzip.open(file_path, "wb") as file:
             pickle.dump(self.graph_frames, file)
+    
+    def save(self, file_path: str) -> None:
+        package_version = self._get_package_version()
+        print(self.feature_specs)
+        data_to_save = {
+            "package_version": package_version,
+            "feature_specs": self.feature_specs,
+           # "node_feature_map": get_node_feature_func_map(settings=self.settings),
+            # "edge_feature_map": get_edge_feature_func_map(settings=self.settings),
+        }
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        with open(file_path, 'w') as f:
+            json.dump(data_to_save, f, indent=4)
+
+        print(f"Configuration saved to {file_path}")
+    
+    def _get_package_version(self):
+        version_file_path = os.path.join(os.path.dirname(__file__), "../../__init__.py")
+
+        if not os.path.exists(version_file_path):
+            raise FileNotFoundError(f"__init__.py not found at {version_file_path}")
+
+        with open(version_file_path, 'r') as f:
+            lines = f.readlines()
+
+        for line in lines:
+            if line.startswith('__version__'):
+                # Extract the version value
+                version = line.split('=')[-1].strip().strip('"')
+                return version
+        
+        raise ValueError("Version not found in __init__.py")

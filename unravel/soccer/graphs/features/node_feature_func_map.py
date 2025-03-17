@@ -145,7 +145,7 @@ def get_node_feature_func_map(
                 "s": s if s is not None else None,
                 "team": team if team is not None else None,
                 "ball_id": ball_id,
-                "settings": settings if settings is not None else None,
+                "settings": settings if s is not None and team is not None else None,
             },
         },
         "velocity": {
@@ -344,7 +344,7 @@ def get_node_feature_func_map(
         "is_ball": {
             "func": lambda value: value,
             "defaults": (
-                {"value": np.where(team == ball_id, 1, 0)} if team is not None else None
+                {"value": np.where(team == ball_id, 1, 0) if team is not None else None}
             ),
         },
         "is_gk": {"func": lambda value: value, "defaults": {"value": is_gk}},

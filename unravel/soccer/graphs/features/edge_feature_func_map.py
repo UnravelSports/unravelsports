@@ -136,7 +136,7 @@ def get_edge_feature_func_map(
                 "s": np.nan_to_num(s[None, :] - s[:, None]) if s is not None else None,
                 "team": team if team is not None else None,
                 "ball_id": Constant.BALL,
-                "settings": settings if settings is not None else None,
+                "settings": settings if s is not None and team is not None else None,
             },
         },
         # """
