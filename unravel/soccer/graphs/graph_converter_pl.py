@@ -79,7 +79,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         else:
             self.dataset = self._remove_incomplete_frames()
 
-        if self.feature_specs == None:
+        if self.feature_specs == None or self.feature_specs == {}:
             self.feature_specs = {
                 "node_features": {
                     "x_normed": {},
@@ -108,6 +108,22 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
                 },
             }
 
+        for key in self.feature_specs.keys():
+            if key not in ["node_features", "edge_features"]:
+                raise ValueError(
+                    f"feature_specs should only contain 'node_features' or 'edge_features' as keys. You provided {key}"
+                )
+                
+        if 'node_features' not in self.feature_specs:
+            self.feature_specs['node_features'] = {}
+        if 'edge_features' not in self.feature_specs:
+            self.feature_specs['edge_features'] = {}
+        
+        if self.feature_specs["node_features"] == {} and self.feature_specs["edge_features"] == {}:
+            raise ValueError(
+                "Please provide feature_specs for either 'node_features' or 'edge_features' or both..."
+            )
+            
         self._validate_feature_specs(
             self.feature_specs,
             get_node_feature_func_map,
@@ -126,6 +142,8 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         self, feature_specs: dict, feature_func, feature_defaults, feature_tag
     ):
         # validate features
+        if feature_tag not in feature_specs:
+            return
         feature_map = feature_func(settings=self.settings)
         for feature in feature_specs[feature_tag]:
             if feature not in feature_map:
