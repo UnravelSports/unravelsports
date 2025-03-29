@@ -72,6 +72,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             else self.dataset._graph_id_column
         )
 
+        self.dataset_checkpoint = self.dataset
         self.dataset = self.dataset.data
 
         self._sport_specific_checks()
@@ -586,6 +587,8 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         data_to_save = {
             "package_version": package_version,
             "feature_specs": self.feature_specs,
+            "dataset_features": self.dataset_checkpoint.get_features(),
+            "graph_settings": self.settings.to_dict()
             # "node_feature_map": get_node_feature_func_map(settings=self.settings),
             # "edge_feature_map": get_edge_feature_func_map(settings=self.settings),
         }
