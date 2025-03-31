@@ -581,16 +581,28 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         with gzip.open(file_path, "wb") as file:
             pickle.dump(self.graph_frames, file)
 
+    def to_dict(self):
+        def _transform_empty_dicts(d):
+            if isinstance(d, dict):
+                return {k: _transform_empty_dicts(v) if v != {} else None for k, v in d.items()}
+            return d
+        result = {}
+        for attr, value in self.__dict__.items():
+            try:
+                json.dumps(value)  # Check if value is JSON serializable
+                result[attr] = value
+            except (TypeError, OverflowError):
+                pass  # Skip non-serializable attributes
+        return _transform_empty_dicts(result)
+    
     def save(self, file_path: str) -> None:
         package_version = self._get_package_version()
-        print(self.feature_specs)
         data_to_save = {
             "package_version": package_version,
-            "feature_specs": self.feature_specs,
+            "graph_converter_attributes": self.to_dict(),
+            "graph_settings": self.settings.to_dict(),
+            "graph_feature_cols": self.dataset_checkpoint.data.columns + (self.graph_feature_cols or []),
             "dataset_features": self.dataset_checkpoint.get_features(),
-            "graph_settings": self.settings.to_dict()
-            # "node_feature_map": get_node_feature_func_map(settings=self.settings),
-            # "edge_feature_map": get_edge_feature_func_map(settings=self.settings),
         }
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         with open(file_path, "w") as f:
