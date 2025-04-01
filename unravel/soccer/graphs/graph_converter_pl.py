@@ -25,6 +25,7 @@ from .features import (
     NodeFeatureDefaults,
     EdgeFeatureDefaults,
 )
+from .exceptions import VersionChecker
 
 from ...utils import *
 
@@ -143,11 +144,11 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             EdgeFeatureDefaults,
             "edge_features",
         )
-        self.populate_feature_specs(get_node_feature_func_map, "node_features")
-        self.populate_feature_specs(get_edge_feature_func_map, "edge_features")
+        self._populate_feature_specs(get_node_feature_func_map, "node_features")
+        self._populate_feature_specs(get_edge_feature_func_map, "edge_features")
         self._shuffle()
 
-    def populate_feature_specs(self, feature_func, feature_tag):
+    def _populate_feature_specs(self, feature_func, feature_tag):
         feature_map = feature_func(settings=self.settings)
         for feature, custom_params in self.feature_specs[feature_tag].items():
             params = feature_map[feature]["defaults"].copy()
@@ -155,6 +156,38 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             params = {k: v for k, v in params.items() if v is not None}
             self.feature_specs[feature_tag][feature] = params
 
+    def load_from_json(self, file_path: str) -> None:
+        """
+        Load the configuration from a JSON file.
+        Args:
+            file_path (str): Path to the JSON file.
+        """
+        
+        # Read configuration file
+        configuration = None
+        with open(file_path, "r") as f:
+            configuration = json.load(f)
+        if configuration is None:
+            raise ValueError("Configuration file is empty or invalid.")
+        
+        # Validate version
+        config_version = configuration.get("package_version")
+        if not config_version:
+            raise ValueError("Configuration file does not specify a version.")
+
+        VersionChecker.check_versioning(config_version)
+        
+        #Set converter attributes
+        for key, value in configuration["graph_converter_attributes"].items():
+            if hasattr(self, key):
+                setattr(self, key, value)
+            else:
+                raise ValueError(f"Invalid attribute '{key}' in configuration file.")
+        
+        if configuration.get("graph_settings"):
+            self.settings = configuration.get("graph_settings")
+        self.__post_init__()
+        
     def _validate_feature_specs(
         self, feature_specs: dict, feature_func, feature_defaults, feature_tag
     ):
