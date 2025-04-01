@@ -3,6 +3,7 @@ import sys
 import os
 import json
 from dataclasses import asdict
+from inspect import signature
 
 from dataclasses import dataclass
 
@@ -162,32 +163,60 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         Args:
             file_path (str): Path to the JSON file.
         """
-        
+
+        def transform_empty_dicts(d):
+            if isinstance(d, dict):
+                return {
+                    k: transform_empty_dicts(v) if v is not None else {}
+                    for k, v in d.items()
+                }
+            return d
+
         # Read configuration file
         configuration = None
         with open(file_path, "r") as f:
             configuration = json.load(f)
         if configuration is None:
             raise ValueError("Configuration file is empty or invalid.")
-        
+
         # Validate version
         config_version = configuration.get("package_version")
         if not config_version:
             raise ValueError("Configuration file does not specify a version.")
 
         VersionChecker.check_versioning(config_version)
-        
-        #Set converter attributes
+
+        # Set converter attributes
+        if "graph_converter_attributes" in configuration:
+            if "feature_specs" in configuration["graph_converter_attributes"]:
+                configuration["graph_converter_attributes"]["feature_specs"] = (
+                    transform_empty_dicts(
+                        configuration["graph_converter_attributes"]["feature_specs"]
+                    )
+                )
+
+        configuration["graph_converter_attributes"].pop("label_column", None)
+        configuration["graph_converter_attributes"].pop("graph_id_column", None)
+
         for key, value in configuration["graph_converter_attributes"].items():
+            if key == "dataset":
+                print("Dataset is not settable from JSON file.")
             if hasattr(self, key):
                 setattr(self, key, value)
             else:
                 raise ValueError(f"Invalid attribute '{key}' in configuration file.")
-        
-        if configuration.get("graph_settings"):
-            self.settings = configuration.get("graph_settings")
+
+        if "graph_settings" in configuration:
+            graph_settings_dict = configuration["graph_settings"]
+            valid_keys = signature(DefaultGraphSettings).parameters.keys()
+            filtered_settings = {
+                k: v for k, v in graph_settings_dict.items() if k in valid_keys
+            }
+            self.settings = DefaultGraphSettings(**filtered_settings)
+
+        self.dataset = self.dataset_checkpoint
         self.__post_init__()
-        
+
     def _validate_feature_specs(
         self, feature_specs: dict, feature_func, feature_defaults, feature_tag
     ):
@@ -210,7 +239,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
                 expected_type = feature_defaults.__annotations__.get(key)
                 if not isinstance(value, expected_type):
                     raise TypeError(
-                        f"Feature {feature} key '{key}' should be of type {expected_type}"
+                        f"Feature {feature} key '{key}' should be of type {expected_type}. Instead got {type(value)}"
                     )
 
     def _shuffle(self):
@@ -617,8 +646,12 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
     def to_dict(self):
         def _transform_empty_dicts(d):
             if isinstance(d, dict):
-                return {k: _transform_empty_dicts(v) if v != {} else None for k, v in d.items()}
+                return {
+                    k: _transform_empty_dicts(v) if v != {} else None
+                    for k, v in d.items()
+                }
             return d
+
         result = {}
         for attr, value in self.__dict__.items():
             try:
@@ -627,14 +660,15 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             except (TypeError, OverflowError):
                 pass  # Skip non-serializable attributes
         return _transform_empty_dicts(result)
-    
+
     def save(self, file_path: str) -> None:
         package_version = self._get_package_version()
         data_to_save = {
             "package_version": package_version,
             "graph_converter_attributes": self.to_dict(),
             "graph_settings": self.settings.to_dict(),
-            "graph_feature_cols": self.dataset_checkpoint.data.columns + (self.graph_feature_cols or []),
+            "graph_feature_cols": self.dataset_checkpoint.data.columns
+            + (self.graph_feature_cols or []),
             "dataset_features": self.dataset_checkpoint.get_features(),
         }
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
