@@ -36,30 +36,3 @@ class GraphSettingsPolars(DefaultGraphSettings):
             self.non_potential_receiver_node_value = 1
         elif self.non_potential_receiver_node_value < 0:
             self.non_potential_receiver_node_value = 0
-
-    def to_dict(self):
-        """Custom serialization method that skips Enum fields (like 'unit') and serializes others."""
-        
-        def make_serializable(obj):
-            if isinstance(obj, Enum):
-                return None
-            elif isinstance(obj, (int, float, str, bool, type(None), list, dict)):
-                return obj
-            elif isinstance(obj, MetricPitchDimensions):  
-                return {
-                    key: make_serializable(value)
-                    for key, value in obj.__dict__.items()
-                    if not isinstance(value, Enum)
-                }
-            elif hasattr(obj, "__dict__"):  
-                return {key: make_serializable(value) for key, value in obj.__dict__.items()}
-            return None
-
-        return {key: make_serializable(value) for key, value in self.__dict__.items()}
-
-    @classmethod
-    def from_dict(cls, data):
-        """Custom deserialization method"""
-        if "pitch_dimensions" in data:
-            data["pitch_dimensions"] = MetricPitchDimensions(**data["pitch_dimensions"])
-        return cls(**data)

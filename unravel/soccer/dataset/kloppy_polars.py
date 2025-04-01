@@ -82,6 +82,7 @@ class KloppyPolarsDataset(DefaultDataset):
         """
         Returns the features of the dataset.
         """
+        
         return {
             "ball_carrier_threshold": self._ball_carrier_threshold,
             "max_player_speed": self._max_player_speed,
@@ -89,10 +90,11 @@ class KloppyPolarsDataset(DefaultDataset):
             "max_player_acceleration": self._max_player_acceleration,
             "max_ball_acceleration": self._max_ball_acceleration,
             "orient_ball_owning": self._orient_ball_owning,
+            "settings": self.settings.to_dict(),
             # "pitch_dimensions": self.kloppy_dataset.metadata.pitch_dimensions,
             # "orientation": self.kloppy_dataset.metadata.orientation,
         }
-        
+
     def __repr__(self) -> str:
         n_frames = (
             self.data[Column.FRAME_ID].n_unique() if hasattr(self, "data") else None

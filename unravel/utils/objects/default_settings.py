@@ -1,6 +1,7 @@
 import numpy as np
 from dataclasses import dataclass, field
 from typing import Union
+from enum import Enum
 
 from kloppy.domain import Dimension, Unit, MetricPitchDimensions, Provider, Orientation
 
@@ -42,3 +43,30 @@ class DefaultSettings:
     max_player_acceleration: float = 6.0
     max_ball_acceleration: float = 13.5
     ball_carrier_threshold: float = 25.0
+    
+    def to_dict(self):
+        """Custom serialization method that skips Enum fields (like 'unit') and serializes others."""
+        
+        def make_serializable(obj):
+            if isinstance(obj, Enum):
+                return obj.value
+            elif isinstance(obj, (int, float, str, bool, type(None), list, dict)):
+                return obj
+            elif isinstance(obj, MetricPitchDimensions):  
+                return {
+                    key: make_serializable(value)
+                    for key, value in obj.__dict__.items()
+                    if not isinstance(value, Enum)
+                }
+            elif hasattr(obj, "__dict__"):  
+                return {key: make_serializable(value) for key, value in obj.__dict__.items()}
+            return None
+
+        return {key: make_serializable(value) for key, value in self.__dict__.items()}
+
+    @classmethod
+    def from_dict(cls, data):
+        """Custom deserialization method"""
+        if "pitch_dimensions" in data:
+            data["pitch_dimensions"] = MetricPitchDimensions(**data["pitch_dimensions"])
+        return cls(**data)
