@@ -82,7 +82,7 @@ class KloppyPolarsDataset(DefaultDataset):
         """
         Returns the features of the dataset.
         """
-        
+
         return {
             "ball_carrier_threshold": self._ball_carrier_threshold,
             "max_player_speed": self._max_player_speed,
