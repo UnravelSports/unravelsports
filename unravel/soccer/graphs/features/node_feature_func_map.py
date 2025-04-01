@@ -30,7 +30,7 @@ class NodeFeatureDefaults(TypedDict):
     min_value: Optional[float]
     max_distance: Optional[float]
     team: Optional[int]
-    ball_id: Optional[int]
+    ball_id: Optional[str]
     s: Optional[Union[float, np.ndarray]]
     goal_mouth_position: Optional[np.ndarray]
     ball_position: Optional[np.ndarray]

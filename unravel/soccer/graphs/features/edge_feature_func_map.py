@@ -25,7 +25,7 @@ class EdgeFeatureDefaults(TypedDict):
     max_distance: float
     s: Optional[Union[float, np.ndarray]]
     team: Optional[int]
-    ball_id: Optional[int]
+    ball_id: Optional[str]
 
 
 class FeatureFuncMap(TypedDict):
