@@ -1,5 +1,6 @@
 import pytest
 from pathlib import Path
+import json
 from kloppy import skillcorner, sportec
 from kloppy.domain import Ground, TrackingDataset, Orientation
 from unravel.soccer import (
@@ -21,6 +22,14 @@ class TestPolarFlex:
     @pytest.fixture
     def structured_data(self, base_dir: Path) -> str:
         return base_dir / "files" / "skillcorner_structured_data.json.gz"
+
+    @pytest.fixture
+    def feature_specs_file(self, base_dir: Path) -> str:
+        return base_dir / "files" / "default_feature_specs.json"
+
+    @pytest.fixture()
+    def new_feature_specs_file(self, base_dir: Path) -> str:
+        return base_dir / "files" / "new_feature_specs.json"
 
     @pytest.fixture()
     def kloppy_dataset(self, match_data: str, structured_data: str) -> TrackingDataset:
@@ -145,6 +154,26 @@ class TestPolarFlex:
             },
         )
 
+    @pytest.fixture()
+    def default_loaded_converter(
+        self, kloppy_polars_dataset: KloppyPolarsDataset, feature_specs_file: str
+    ) -> SoccerGraphConverterPolars:
+        converter = SoccerGraphConverterPolars(
+            dataset=kloppy_polars_dataset,
+            chunk_size=2_0000,
+            non_potential_receiver_node_value=0.1,
+            self_loop_ball=True,
+            adjacency_matrix_connect_type="ball",
+            adjacency_matrix_type="split_by_team",
+            label_type="binary",
+            defending_team_node_value=0.0,
+            random_seed=False,
+            pad=False,
+            verbose=False,
+        )
+        converter.load_from_json(feature_specs_file)
+        return converter
+
     def test_default_features(self, default_converter: SoccerGraphConverterPolars):
         spektral_graphs = default_converter.to_spektral_graphs()
 
@@ -178,6 +207,49 @@ class TestPolarFlex:
         self, default_overriden_converter: SoccerGraphConverterPolars
     ):
         spektral_graphs = default_overriden_converter.to_spektral_graphs()
+
+        data = spektral_graphs
+        assert data[0].id == "2417-1529"
+        assert len(data) == 384
+        assert isinstance(data[0], Graph)
+
+        x = data[0].x
+        n_players = x.shape[0]
+        assert x.shape == (n_players, 15)
+        print(">>>", x[0, 0])
+        assert 0.5475659001711429 == pytest.approx(x[0, 0], abs=1e-5)
+        assert 0.8997899683121747 == pytest.approx(x[0, 4], abs=1e-5)
+        assert 0.2941671698429814 == pytest.approx(x[8, 2], abs=1e-5)
+
+        e = data[0].e
+        assert e.shape == (129, 6)
+        assert 0.0 == pytest.approx(e[0, 0], abs=1e-5)
+        assert 0.5 == pytest.approx(e[0, 4], abs=1e-5)
+        assert 0.28591171233629764 == pytest.approx(e[8, 2], abs=1e-5)
+
+        a = data[0].a
+        assert a.shape == (n_players, n_players)
+        assert 1.0 == pytest.approx(a[0, 0], abs=1e-5)
+        assert 1.0 == pytest.approx(a[0, 4], abs=1e-5)
+        assert 0.0 == pytest.approx(a[8, 2], abs=1e-5)
+
+    def test_valid_features(self, valid_feature_converter: SoccerGraphConverterPolars):
+        spektral_graphs = valid_feature_converter.to_spektral_graphs()
+        data = spektral_graphs
+        assert data[0].id == "2417-1529"
+        assert len(data) == 384
+        assert isinstance(data[0], Graph)
+
+        x = data[0].x
+        assert x.shape[1] == 4
+        assert 0.5475659001711429 == pytest.approx(x[0, 0], abs=1e-5)
+        assert 0.2280424804491045 == pytest.approx(x[0, 1], abs=1e-5)
+        assert 0.8997899683121747 == pytest.approx(x[0, 2], abs=1e-5)
+
+    def test_default_loaded_features(
+        self, default_loaded_converter: SoccerGraphConverterPolars
+    ):
+        spektral_graphs = default_loaded_converter.to_spektral_graphs()
 
         data = spektral_graphs
         assert data[0].id == "2417-1529"
@@ -313,3 +385,20 @@ class TestPolarFlex:
                     }
                 },
             )
+
+    def test_default_load_feature_specs(
+        self,
+        default_overriden_converter: SoccerGraphConverterPolars,
+        default_loaded_converter: SoccerGraphConverterPolars,
+        feature_specs_file: str,
+        new_feature_specs_file: str,
+    ):
+        default_overriden_converter.save(feature_specs_file)
+        default_loaded_converter.save(new_feature_specs_file)
+
+        with open(feature_specs_file, "r") as f1, open(
+            new_feature_specs_file, "r"
+        ) as f2:
+            default_overriden_specs = json.load(f1)
+            new_specs = json.load(f2)
+            assert default_overriden_specs == new_specs
