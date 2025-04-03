@@ -19,28 +19,13 @@
                     "min_value": -52.5
                 },
                 "y_normed": {
-                    "max_value": 34.0,
+                    "max_value": 100.0,
                     "min_value": -34.0
                 },
-                "s_normed": {
-                    "ball_id": "ball"
-                },
-                "v_sin_normed": null,
                 "v_cos_normed": null,
                 "normed_dist_to_goal": {
-                    "max_distance": 125.0959631642844
-                },
-                "normed_dist_to_ball": {
-                    "max_distance": 125.0959631642844
-                },
-                "is_possession_team": null,
-                "is_gk": null,
-                "is_ball": null,
-                "goal_sin_normed": null,
-                "goal_cos_normed": null,
-                "ball_sin_normed": null,
-                "ball_cos_normed": null,
-                "ball_carrier": null
+                    "max_distance": 50.0
+                }
             },
             "edge_features": {
                 "dist_matrix_normed": {
@@ -48,11 +33,7 @@
                 },
                 "speed_diff_matrix_normed": {
                     "ball_id": "ball"
-                },
-                "pos_cos_matrix": null,
-                "pos_sin_matrix": null,
-                "vel_cos_matrix": null,
-                "vel_sin_matrix": null
+                }
             }
         },
         "chunk_size": 20000,

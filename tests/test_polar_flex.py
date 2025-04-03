@@ -3,14 +3,7 @@ from pathlib import Path
 import json
 from kloppy import skillcorner, sportec
 from kloppy.domain import Ground, TrackingDataset, Orientation
-from unravel.soccer import (
-    SoccerGraphConverterPolars,
-    KloppyPolarsDataset,
-    PressingIntensity,
-    Constant,
-    Column,
-    Group,
-)
+from unravel.soccer import SoccerGraphConverterPolars, KloppyPolarsDataset
 from spektral.data import Graph
 
 
@@ -124,6 +117,18 @@ class TestPolarFlex:
         )
 
     @pytest.fixture()
+    def default_loaded_converter(
+        self,
+        kloppy_polars_dataset: KloppyPolarsDataset,
+        feature_specs_file: str,
+        default_converter: SoccerGraphConverterPolars,
+    ) -> SoccerGraphConverterPolars:
+        default_converter.save(feature_specs_file)
+        converter = SoccerGraphConverterPolars(dataset=kloppy_polars_dataset)
+        converter.load_from_json(feature_specs_file)
+        return converter
+
+    @pytest.fixture()
     def valid_feature_converter(
         self, kloppy_polars_dataset: KloppyPolarsDataset
     ) -> SoccerGraphConverterPolars:
@@ -153,26 +158,6 @@ class TestPolarFlex:
                 },
             },
         )
-
-    @pytest.fixture()
-    def default_loaded_converter(
-        self, kloppy_polars_dataset: KloppyPolarsDataset, feature_specs_file: str
-    ) -> SoccerGraphConverterPolars:
-        converter = SoccerGraphConverterPolars(
-            dataset=kloppy_polars_dataset,
-            chunk_size=2_0000,
-            non_potential_receiver_node_value=0.1,
-            self_loop_ball=True,
-            adjacency_matrix_connect_type="ball",
-            adjacency_matrix_type="split_by_team",
-            label_type="binary",
-            defending_team_node_value=0.0,
-            random_seed=False,
-            pad=False,
-            verbose=False,
-        )
-        converter.load_from_json(feature_specs_file)
-        return converter
 
     def test_default_features(self, default_converter: SoccerGraphConverterPolars):
         spektral_graphs = default_converter.to_spektral_graphs()
@@ -388,13 +373,51 @@ class TestPolarFlex:
 
     def test_default_load_feature_specs(
         self,
-        default_overriden_converter: SoccerGraphConverterPolars,
+        default_converter: SoccerGraphConverterPolars,
         default_loaded_converter: SoccerGraphConverterPolars,
         feature_specs_file: str,
         new_feature_specs_file: str,
     ):
-        default_overriden_converter.save(feature_specs_file)
+        default_converter.save(feature_specs_file)
         default_loaded_converter.save(new_feature_specs_file)
+
+        with open(feature_specs_file, "r") as f1, open(
+            new_feature_specs_file, "r"
+        ) as f2:
+            default_overriden_specs = json.load(f1)
+            new_specs = json.load(f2)
+            assert default_overriden_specs == new_specs
+
+    def test_overriden_load_feature_specs(
+        self,
+        kloppy_polars_dataset: KloppyPolarsDataset,
+        default_overriden_converter: SoccerGraphConverterPolars,
+        feature_specs_file: str,
+        new_feature_specs_file: str,
+    ):
+        default_overriden_converter.save(feature_specs_file)
+        converter = SoccerGraphConverterPolars(dataset=kloppy_polars_dataset)
+        converter.load_from_json(feature_specs_file)
+        converter.save(new_feature_specs_file)
+
+        with open(feature_specs_file, "r") as f1, open(
+            new_feature_specs_file, "r"
+        ) as f2:
+            default_overriden_specs = json.load(f1)
+            new_specs = json.load(f2)
+            assert default_overriden_specs == new_specs
+
+    def test_valid_load_feature_specs(
+        self,
+        kloppy_polars_dataset: KloppyPolarsDataset,
+        valid_feature_converter: SoccerGraphConverterPolars,
+        feature_specs_file: str,
+        new_feature_specs_file: str,
+    ):
+        valid_feature_converter.save(feature_specs_file)
+        converter = SoccerGraphConverterPolars(dataset=kloppy_polars_dataset)
+        converter.load_from_json(feature_specs_file)
+        converter.save(new_feature_specs_file)
 
         with open(feature_specs_file, "r") as f1, open(
             new_feature_specs_file, "r"
