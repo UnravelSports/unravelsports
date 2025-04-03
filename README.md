@@ -138,7 +138,7 @@ The easiest way to get started is:
 pip install unravelsports
 ```
 
-Due to compatibility issues **unravelsports** currently only works on Python 3.11 with:
+⚠️ Due to compatibility issues **unravelsports** currently only works on Python 3.11 with:
 ```
 spektral==1.20.0 
 tensorflow==2.14.0 

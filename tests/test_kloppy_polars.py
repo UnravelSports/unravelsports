@@ -6,6 +6,7 @@ from unravel.soccer import (
     Constant,
     Column,
     Group,
+    rotate_around_line,
 )
 from unravel.utils import (
     dummy_labels,
@@ -453,7 +454,7 @@ class TestKloppyPolarsData:
         assert len(data) == 384
         assert isinstance(data[0], Graph)
 
-    def test_to_spektral_graph(
+    def spektral_graph(
         self, soccer_polars_converter: SoccerGraphConverterPolars
     ):
         """
@@ -575,3 +576,37 @@ class TestKloppyPolarsData:
         assert 0.12 == pytest.approx(x[ball_index, 16])
         assert 0 == pytest.approx(x[0, 15])
         assert 0 == pytest.approx(x[13, 16])
+
+    def test_line_method(self):
+        positions = np.array([[1.0, 1.0], [2.0, 3.0], [0.5, 2.5], [4.0, 1.0]])
+
+        velocities = np.array([[3.0, 2.0], [2.0, 1.0], [1.0, 3.0], [-2.0, 1.5]])
+
+        # Define line (vertical line from (6, 0) to (6, 7))
+        line_start = np.array([6.0, 0.0])
+        line_end = np.array([6.0, 7.0])
+
+        # Perform the rotation for all vectors
+        new_positions, new_velocities, intersections, valid_mask = rotate_around_line(
+            positions, velocities, line_start, line_end
+        )
+
+        assert new_positions == pytest.approx(
+            np.array([[11.0, 7.666666666666668], [10.0, 7.0], [0.5, 2.5], [4.0, 1.0]]),
+            rel=1e-5,
+            abs=1e-8,
+        )
+
+        assert new_velocities == pytest.approx(
+            np.array([[-3.0, -2.0], [-2.0, -1.0], [1.0, 3.0], [-2.0, 1.5]]),
+            rel=1e-5,
+            abs=1e-8,
+        )
+
+        assert intersections == pytest.approx(
+            np.array([[6.0, 4.333333333333334], [6.0, 5.0], [0.0, 0.0], [0.0, 0.0]]),
+            rel=1e-5,
+            abs=1e-8,
+        )
+
+        assert np.array_equal(valid_mask, np.array([True, True, False, False]))

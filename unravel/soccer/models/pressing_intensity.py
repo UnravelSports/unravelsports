@@ -28,6 +28,7 @@ class PressingIntensity:
     _sigma: float = field(init=False, repr=False, default=0.45)
     _time_threshold: float = field(init=False, repr=False, default=1.5)
     _orient: str = field(init=False, repr=False, default="ball_owning")
+    _line_method: str = field(init=False, repr=False, default=None)
 
     def __post_init__(self):
         if not isinstance(self.dataset, KloppyPolarsDataset):
@@ -163,6 +164,21 @@ class PressingIntensity:
             column_objects = np.delete(column_objects, ball_idx, axis=0)
             if self._speed_threshold:
                 column_mask = np.delete(column_mask, ball_idx, axis=0)
+        
+        print(list(xs1))
+        print(list(ys1))
+        print(list(vxs1))
+        print(list(vys1))
+        print(self.settings.pitch_dimensions)
+        print('---')
+
+        if self._line_method is not None:
+            if self._line_method == "touchline":
+                pass
+            elif self._line_method == "byline":
+                pass
+            elif self._line_method == "all":
+                pass
 
         p1 = np.stack((xs1, ys1, zs1), axis=-1)
         p2 = np.stack((xs2, ys2, zs2), axis=-1)
@@ -240,6 +256,7 @@ class PressingIntensity:
         orient: Literal[
             "ball_owning", "pressing", "home_away", "away_home"
         ] = "ball_owning",
+        line_method: Union[None, Literal["touchline", "byline", "all"]] = None
     ):
         """
         method: str ["teams", "full"]
@@ -264,7 +281,11 @@ class PressingIntensity:
             raise ValueError("ball_method should be 'include', 'exclude' or 'max'")
         if orient not in ["ball_owning", "pressing", "home_away", "away_home"]:
             raise ValueError(
-                "method should be 'ball_owning', 'pressing', 'home_away', 'away_home'"
+                "orient should be 'ball_owning', 'pressing', 'home_away', 'away_home'"
+            )
+        if line_method is not None and line_method not in ["touchline", "byline", "all"]:
+            raise ValueError(
+                "line_method should be 'touchline', 'byline', 'all' or None"
             )
         if not isinstance(reaction_time, Union[float, int]):
             raise TypeError("reaction_time should be of type float")
@@ -284,6 +305,7 @@ class PressingIntensity:
         self._time_threshold = time_threshold
         self._sigma = sigma
         self._orient = orient
+        self._line_method = line_method
 
         if all(x is None for x in [start_time, end_time, period_id]):
             df = self.dataset
