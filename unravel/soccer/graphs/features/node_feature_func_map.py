@@ -53,6 +53,9 @@ def get_node_feature_func_map(
     graph_features=None,
     settings=None,
 ):
+    """
+    Returns a dictionary of feature functions for node features.
+    """
 
     ball_id = Constant.BALL
 

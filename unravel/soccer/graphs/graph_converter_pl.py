@@ -2,7 +2,6 @@ import logging
 import sys
 import os
 import json
-from dataclasses import asdict
 from inspect import signature
 
 from dataclasses import dataclass
@@ -85,6 +84,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         else:
             self.dataset = self._remove_incomplete_frames()
 
+        # Override the feature specs to the default version if they are not provided
         if self.feature_specs == None or self.feature_specs == {}:
             self.feature_specs = {
                 "node_features": {
@@ -150,6 +150,9 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         self._shuffle()
 
     def _populate_feature_specs(self, feature_func, feature_tag):
+        """
+        Populates the feature specs with custom parameters.
+        """
         feature_map = feature_func(settings=self.settings)
         for feature, custom_params in self.feature_specs[feature_tag].items():
             params = feature_map[feature]["defaults"].copy()
@@ -195,6 +198,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
                     )
                 )
 
+        # Do not load label_column and graph_id_column from JSON file
         configuration["graph_converter_attributes"].pop("label_column", None)
         configuration["graph_converter_attributes"].pop("graph_id_column", None)
 
@@ -220,7 +224,9 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
     def _validate_feature_specs(
         self, feature_specs: dict, feature_func, feature_defaults, feature_tag
     ):
-        # validate features
+        """
+        Validate feature specs for correct feature names, parameter names and types
+        """
         if feature_tag not in feature_specs:
             return
         feature_map = feature_func(settings=self.settings)
@@ -645,6 +651,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
 
     def to_dict(self):
         def _transform_empty_dicts(d):
+            # Function to transform empty dicts to None
             if isinstance(d, dict):
                 return {
                     k: _transform_empty_dicts(v) if v != {} else None
@@ -662,6 +669,12 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         return _transform_empty_dicts(result)
 
     def save(self, file_path: str) -> None:
+        """
+        Function to save the configuration of the graph converter to a JSON file.
+        Args:
+            file_path (str): Path to the JSON file.
+        """
+
         package_version = self._get_package_version()
         data_to_save = {
             "package_version": package_version,

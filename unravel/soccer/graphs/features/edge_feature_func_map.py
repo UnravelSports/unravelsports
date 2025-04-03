@@ -35,6 +35,9 @@ class FeatureFuncMap(TypedDict):
 def get_edge_feature_func_map(
     p3d=None, p2d=None, s=None, velocity=None, team=None, settings=None
 ):
+    """
+    Returns a dictionary of feature functions for edge features.
+    """
 
     # Compute pairwise distances using broadcasting
     max_dist_to_player = (

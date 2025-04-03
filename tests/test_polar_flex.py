@@ -54,6 +54,9 @@ class TestPolarFlex:
     def default_converter(
         self, kloppy_polars_dataset: KloppyPolarsDataset
     ) -> SoccerGraphConverterPolars:
+        """
+        SoccerGraphConverter without any feature specs overriden. The default feature specs are used.
+        """
 
         return SoccerGraphConverterPolars(
             dataset=kloppy_polars_dataset,
@@ -73,6 +76,9 @@ class TestPolarFlex:
     def default_overriden_converter(
         self, kloppy_polars_dataset: KloppyPolarsDataset
     ) -> SoccerGraphConverterPolars:
+        """
+        SoccerGraphConverter with feature specs overriden. All the default feature specs are used except that max_distance of dist_matrix_normed is set to 100.0.
+        """
         my_feature_specs = {
             "node_features": {
                 "x_normed": {},
@@ -123,6 +129,9 @@ class TestPolarFlex:
         feature_specs_file: str,
         default_converter: SoccerGraphConverterPolars,
     ) -> SoccerGraphConverterPolars:
+        """
+        SoccerGraphConverter with feature specs loaded from a json file. The default_converter is saved to a json file and then loaded to create a new converter.
+        """
         default_converter.save(feature_specs_file)
         converter = SoccerGraphConverterPolars(dataset=kloppy_polars_dataset)
         converter.load_from_json(feature_specs_file)
@@ -132,7 +141,9 @@ class TestPolarFlex:
     def valid_feature_converter(
         self, kloppy_polars_dataset: KloppyPolarsDataset
     ) -> SoccerGraphConverterPolars:
-
+        """
+        SoccerGraphConverter with a subset of valid feature specs overriden.
+        """
         return SoccerGraphConverterPolars(
             dataset=kloppy_polars_dataset,
             chunk_size=2_0000,
@@ -292,6 +303,9 @@ class TestPolarFlex:
             )
 
     def test_incorrect_feature_tag(self, kloppy_polars_dataset: KloppyPolarsDataset):
+        """
+        Tests if the converter raises a Value error when the feature_specs contain an incorrect tag. Here player_features is not a valid tag.
+        """
         with pytest.raises(ValueError):
             SoccerGraphConverterPolars(
                 dataset=kloppy_polars_dataset,
@@ -309,6 +323,9 @@ class TestPolarFlex:
             )
 
     def test_invalid_features(self, kloppy_polars_dataset: KloppyPolarsDataset):
+        """
+        Tests if the converter raises a Value error when the feature_specs contain an invalid feature. Here x_velocity is not a valid feature.
+        """
         with pytest.raises(ValueError):
             SoccerGraphConverterPolars(
                 dataset=kloppy_polars_dataset,
@@ -330,6 +347,9 @@ class TestPolarFlex:
             )
 
     def test_invalid_params(self, kloppy_polars_dataset: KloppyPolarsDataset):
+        """
+        Tests if the converter raises a Value error when the feature_specs contain an invalid parameter. Here max_value is an incorrect parameter for dist_matrix_normed.
+        """
         with pytest.raises(ValueError):
             SoccerGraphConverterPolars(
                 dataset=kloppy_polars_dataset,
@@ -351,6 +371,9 @@ class TestPolarFlex:
             )
 
     def test_invalid_param_type(self, kloppy_polars_dataset: KloppyPolarsDataset):
+        """
+        Tests if the converter raises a TypeError when the feature_specs contain an invalid parameter type. Here max_distance should be a string instead of a float.
+        """
         with pytest.raises(TypeError):
             SoccerGraphConverterPolars(
                 dataset=kloppy_polars_dataset,
@@ -378,6 +401,9 @@ class TestPolarFlex:
         feature_specs_file: str,
         new_feature_specs_file: str,
     ):
+        """
+        Tests if the default feature specs are saved correctly from a json file.
+        """
         default_converter.save(feature_specs_file)
         default_loaded_converter.save(new_feature_specs_file)
 
@@ -395,6 +421,9 @@ class TestPolarFlex:
         feature_specs_file: str,
         new_feature_specs_file: str,
     ):
+        """
+        Tests if the default overriden converter is saved and loaded correctly.
+        """
         default_overriden_converter.save(feature_specs_file)
         converter = SoccerGraphConverterPolars(dataset=kloppy_polars_dataset)
         converter.load_from_json(feature_specs_file)
@@ -414,6 +443,9 @@ class TestPolarFlex:
         feature_specs_file: str,
         new_feature_specs_file: str,
     ):
+        """
+        Tests if the valid feature converter is saved and loaded correctly.
+        """
         valid_feature_converter.save(feature_specs_file)
         converter = SoccerGraphConverterPolars(dataset=kloppy_polars_dataset)
         converter.load_from_json(feature_specs_file)

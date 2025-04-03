@@ -80,7 +80,7 @@ class KloppyPolarsDataset(DefaultDataset):
 
     def get_features(self) -> Dict[str, float]:
         """
-        Returns the features of the dataset.
+        Returns the dataset features.
         """
 
         return {
@@ -91,8 +91,6 @@ class KloppyPolarsDataset(DefaultDataset):
             "max_ball_acceleration": self._max_ball_acceleration,
             "orient_ball_owning": self._orient_ball_owning,
             "settings": self.settings.to_dict(),
-            # "pitch_dimensions": self.kloppy_dataset.metadata.pitch_dimensions,
-            # "orientation": self.kloppy_dataset.metadata.orientation,
         }
 
     def __repr__(self) -> str:
