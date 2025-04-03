@@ -14,7 +14,7 @@ class Color:
 
     @staticmethod
     def to_hex(
-        color: Union[str, Tuple[int, int, int], Tuple[int, int, int, float]]
+        color: Union[str, Tuple[int, int, int], Tuple[int, int, int, float]],
     ) -> str:
         if isinstance(color, str):
             try:

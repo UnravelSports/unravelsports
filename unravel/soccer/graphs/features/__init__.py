@@ -5,3 +5,5 @@ from .node_features import node_features
 from .adjacency_matrix_pl import compute_adjacency_matrix_pl
 from .edge_features_pl import compute_edge_features_pl
 from .node_features_pl import compute_node_features_pl
+from .node_feature_func_map import get_node_feature_func_map, NodeFeatureDefaults
+from .edge_feature_func_map import get_edge_feature_func_map, EdgeFeatureDefaults

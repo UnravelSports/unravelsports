@@ -1,6 +1,7 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 
 from ...utils import DefaultGraphSettings
+from enum import Enum
 
 from dataclasses import dataclass, field
 from kloppy.domain import MetricPitchDimensions
