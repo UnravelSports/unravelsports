@@ -15,9 +15,11 @@
 The **unravelsports** package aims to aid researchers, analysts and enthusiasts by providing intermediary steps in the complex process of converting raw sports data into meaningful information and actionable insights.
 
 This package currently supports:
-- ⚽🏈 [**Polars DataFrame Conversion**](#polars-dataframes) 
-- ⚽🏈 [**Graph Neural Network**](#graph-neural-networks) Training, Graph Conversion and Prediction
-- ⚽ [**Pressing Intensity**](#pressing-intensity) [[Bekkers (2024)](https://unravelsports.github.io/2024/12/12/pressing-intensity.html)]
+- ⚽ 🏈 [**Polars DataFrame Conversion**](#polars-dataframes) 
+- ⚽ 🏈 [**Graph Neural Network**](#graph-neural-networks) Training, Graph Conversion and Prediction <small>
+  [[Bekkers & Sahasrabudhe (2023)](https://arxiv.org/pdf/2411.17450)]</small>
+- ⚽ [**Pressing Intensity**](#pressing-intensity) 
+  <small>[[Bekkers (2024)](https://arxiv.org/pdf/2501.04712)]</small>
 
 🌀 Features
 -----
@@ -138,7 +140,7 @@ The easiest way to get started is:
 pip install unravelsports
 ```
 
-Due to compatibility issues **unravelsports** currently only works on Python 3.11 with:
+⚠️ Due to compatibility issues **unravelsports** currently only works on Python 3.11 with:
 ```
 spektral==1.20.0 
 tensorflow==2.14.0 

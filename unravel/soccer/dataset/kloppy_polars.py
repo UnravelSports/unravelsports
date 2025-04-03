@@ -405,7 +405,9 @@ class KloppyPolarsDataset(DefaultDataset):
             for k, coordinate in enumerate([Column.X, Column.Y, Column.Z]):
                 if object.id != Constant.BALL and coordinate == Column.Z:
                     continue
-                if not any(object.id in column for column in columns):
+                if not any(
+                    object.id + "_" + coordinate == column for column in columns
+                ):
                     continue
 
                 melted_df = self.__unpivot(df, object, coordinate)
