@@ -34,6 +34,34 @@ logger.setLevel(logging.DEBUG)
 stdout_handler = logging.StreamHandler(sys.stdout)
 logger.addHandler(stdout_handler)
 
+DEFAULT_SOCCER_FEATURE_SPECS = {
+    "node_features": {
+        "x_normed": {},
+        "y_normed": {},
+        "s_normed": {},
+        "v_sin_normed": {},
+        "v_cos_normed": {},
+        "normed_dist_to_goal": {},
+        "normed_dist_to_ball": {},
+        "is_possession_team": {},
+        "is_gk": {},
+        "is_ball": {},
+        "goal_sin_normed": {},
+        "goal_cos_normed": {},
+        "ball_sin_normed": {},
+        "ball_cos_normed": {},
+        "ball_carrier": {},
+    },
+    "edge_features": {
+        "dist_matrix_normed": {},
+        "speed_diff_matrix_normed": {},
+        "pos_cos_matrix": {},
+        "pos_sin_matrix": {},
+        "vel_cos_matrix": {},
+        "vel_sin_matrix": {},
+    },
+}
+
 
 @dataclass(repr=True)
 class SoccerGraphConverterPolars(DefaultGraphConverter):
@@ -84,35 +112,13 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         else:
             self.dataset = self._remove_incomplete_frames()
 
+        self._validate_feature_specs_general()
+        self._shuffle()
+
+    def _validate_feature_specs_general(self):
         # Override the feature specs to the default version if they are not provided
         if self.feature_specs == None or self.feature_specs == {}:
-            self.feature_specs = {
-                "node_features": {
-                    "x_normed": {},
-                    "y_normed": {},
-                    "s_normed": {},
-                    "v_sin_normed": {},
-                    "v_cos_normed": {},
-                    "normed_dist_to_goal": {},
-                    "normed_dist_to_ball": {},
-                    "is_possession_team": {},
-                    "is_gk": {},
-                    "is_ball": {},
-                    "goal_sin_normed": {},
-                    "goal_cos_normed": {},
-                    "ball_sin_normed": {},
-                    "ball_cos_normed": {},
-                    "ball_carrier": {},
-                },
-                "edge_features": {
-                    "dist_matrix_normed": {},
-                    "speed_diff_matrix_normed": {},
-                    "pos_cos_matrix": {},
-                    "pos_sin_matrix": {},
-                    "vel_cos_matrix": {},
-                    "vel_sin_matrix": {},
-                },
-            }
+            self.feature_specs = DEFAULT_SOCCER_FEATURE_SPECS
 
         for key in self.feature_specs.keys():
             if key not in ["node_features", "edge_features"]:
@@ -147,7 +153,6 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         )
         self._populate_feature_specs(get_node_feature_func_map, "node_features")
         self._populate_feature_specs(get_edge_feature_func_map, "edge_features")
-        self._shuffle()
 
     def _populate_feature_specs(self, feature_func, feature_tag):
         """
