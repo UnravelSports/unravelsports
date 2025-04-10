@@ -190,9 +190,26 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         configuration["graph_converter_attributes"].pop("label_column", None)
         configuration["graph_converter_attributes"].pop("graph_id_column", None)
 
+        #validate data cols
+        if "dataset_cols" in configuration:
+            #check if all columns in the dataset specified in the JSON file are in the dataset
+            for col in self.dataset.columns:
+                if col not in configuration["dataset_cols"]:
+                    raise ValueError(
+                        f"Column '{col}' is missing in dataset_cols."
+                    )
+                    
+        #validate graph converter attributes
         for key, value in configuration["graph_converter_attributes"].items():
             if key == "dataset":
                 print("Dataset is not settable from JSON file.")
+            if key == "graph_feature_cols" and configuration["graph_converter_attributes"]["graph_feature_cols"] is not None:
+                #check if graph feature columns exist in the dataset
+                for col in configuration["graph_converter_attributes"]["graph_feature_cols"]:
+                    if col not in self.dataset.columns:
+                        raise ValueError(
+                            f"Graph feature column '{col}' not found in dataset columns."
+                        )
             if hasattr(self, key):
                 setattr(self, key, value)
             else:
@@ -204,10 +221,24 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             filtered_settings = {
                 k: v for k, v in graph_settings_dict.items() if k in valid_keys
             }
+            print(valid_keys)
+            print(filtered_settings)
             self.settings = DefaultGraphSettings(**filtered_settings)
 
         self.dataset = self.dataset_checkpoint
         self.__post_init__()
+        if "dataset_features" in configuration:
+            for key, value in configuration["dataset_features"].items():
+                dataset_features = self.dataset_checkpoint.get_features()
+                if key in dataset_features:
+                    if value != dataset_features[key]:
+                        raise ValueError(
+                            f"Feature '{key}' in dataset does not match the value in the configuration file."
+                        )
+                else:
+                    raise ValueError(
+                        f"Feature '{key}' not found in dataset features."
+                    )
 
     def _validate_feature_specs(
         self, feature_specs: dict, feature_func, feature_defaults, feature_tag
@@ -669,9 +700,12 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             "package_version": package_version,
             "graph_converter_attributes": self.to_dict(),
             "graph_settings": self.settings.to_dict(),
-            "graph_feature_cols": self.dataset_checkpoint.data.columns
-            + (self.graph_feature_cols or []),
+            # "graph_feature_cols": self.dataset_checkpoint.data.columns
+            # + (self.graph_feature_cols or []),
             "dataset_features": self.dataset_checkpoint.get_features(),
+            "dataset_cols": self.dataset_checkpoint.data.columns,
+            # "graph_feature_cols": self.graph_feature_cols or [],
+            
         }
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         with open(file_path, "w") as f:
