@@ -42,6 +42,7 @@ def compute_node_features_pl(
     for feature, custom_params in feature_dict.items():
         if feature in feature_func_map:
             params = feature_func_map[feature]["defaults"].copy()
+            custom_params = {k: v for k, v in custom_params.items() if v is not None}
             params.update(custom_params)
             computed_features.append(feature_func_map[feature]["func"](**params))
         else:
