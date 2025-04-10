@@ -80,6 +80,82 @@ class BasketballDataset:
         self.data = pl.DataFrame(rows, strict=False)
         return self.data
 
+    def compute_additional_fields(self) -> pl.DataFrame:
+        """
+        After loading the data (via load()), compute additional fields:
+          - vx, vy: velocity components,
+          - speed: magnitude of the velocity,
+          - direction: movement direction in radians,
+          - acceleration: change in speed over time.
+          
+        The method groups the data by game_id and player, sorting by frame_id.
+        If the column 'game_clock' exists, the time difference is computed based on it,
+        keeping in mind that the game clock is usually counting down.
+        Otherwise, a default dt = 1 is used.
+        """
+        if self.data is None:
+            raise ValueError("Data not loaded. Call load() first.")
+
+        # Sort the data by game_id, player, and frame_id to ensure correct temporal order.
+        df = self.data.sort(["game_id", "player", "frame_id"])
+
+        # Compute time difference for velocity calculation.
+        # For velocity, we use the time difference from the current row to the next row.
+        if "game_clock" in df.columns:
+            # Calculate dt_temp as the absolute difference between the current and next game_clock.
+            df = df.with_columns([
+                (pl.col("game_clock").shift(-1) - pl.col("game_clock")).abs().alias("dt_temp")
+            ])
+            # Use dt = 1 if dt_temp is null.
+            df = df.with_columns([
+                pl.col("dt_temp").fill_null(1).alias("dt")
+            ])
+        else:
+            # Default dt value when no game_clock is available.
+            df = df.with_columns([
+                pl.lit(1).alias("dt")
+            ])
+
+        # Compute differences in x and y coordinates: current value minus previous value.
+        df = df.with_columns([
+            (pl.col("x") - pl.col("x").shift(1)).alias("dx"),
+            (pl.col("y") - pl.col("y").shift(1)).alias("dy")
+        ])
+
+        # Calculate velocity components (vx, vy) by dividing the displacement by dt.
+        df = df.with_columns([
+            (pl.col("dx") / pl.col("dt")).alias("vx"),
+            (pl.col("dy") / pl.col("dt")).alias("vy")
+        ])
+
+        # Compute speed as the Euclidean norm of (vx, vy).
+        df = df.with_columns([
+            ((pl.col("vx") ** 2 + pl.col("vy") ** 2) ** 0.5).alias("speed")
+        ])
+
+        # Calculate movement direction using arctan2(vy, vx).
+        df = df.with_columns([
+            pl.struct(["vx", "vy"]).apply(
+                lambda row: float(np.arctan2(row["vy"], row["vx"])) 
+                if (row["vx"] is not None and row["vy"] is not None) else None
+            ).alias("direction")
+        ])
+
+        # Compute acceleration based on the change in speed over the time difference.
+        # For acceleration, we calculate dt_acc as the absolute difference between the current and previous game_clock.
+        if "game_clock" in df.columns:
+            df = df.with_columns([
+                (pl.col("game_clock") - pl.col("game_clock").shift(1)).abs().alias("dt_acc")
+            ])
+            df = df.with_columns([
+                ((pl.col("speed") - pl.col("speed").shift(1)) / pl.col("dt_acc")).alias("acceleration")
+            ])
+        else:
+            df = df.with_columns([
+                ((pl.col("speed") - pl.col("speed").shift(1)) / 1).alias("acceleration")
+            ])
+        
+        return df
 
     def get_dataframe(self) -> pl.DataFrame:
         """Returns the loaded DataFrame; ensure load() is called first."""
