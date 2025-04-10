@@ -11,7 +11,7 @@ except ImportError:
 
 class BasketballDataset:
     """
-    Class for loading NBA tracking data.
+    Loads NBA tracking data.
     
     Modes:
       - URL: Loads from a 7zip archive (expects a JSON file inside).
@@ -22,7 +22,10 @@ class BasketballDataset:
         self.data = None
 
     def load(self) -> pl.DataFrame:
-        """Loads and processes data into a Polars DataFrame with columns: game_id, frame_id, team, player, x, y."""
+        """
+        Loads and processes data into a Polars DataFrame with columns:
+            game_id, frame_id, quarter, game_clock, shot_clock, raw_entities, team, player, x, y.
+        """
         if self.source.startswith("http"):
             if py7zr is None:
                 raise ImportError("py7zr is required to extract 7zip archives.")
@@ -55,20 +58,26 @@ class BasketballDataset:
         rows = []
         game_id = json_data.get("gameid", "unknown")
         events = json_data.get("events", [])
-        for event in events:
+        for event_id,event in enumerate(events):
             if "moments" in event:
                 for m_idx, moment in enumerate(event["moments"]):
                     if len(moment) >= 6:
-                        entities = moment[5]
-                        for entity in entities[1:]:
+                        quarter = moment[0]
+                        game_clock = moment[2]
+                        shot_clock = moment[3]
+                        for entity in moment[5]:
                             if len(entity) >= 4:
                                 rows.append({
                                     "game_id": game_id,
+                                    "event_id":event_id,
                                     "frame_id": m_idx,
+                                    "quarter": quarter,
+                                    "game_clock": float(game_clock) if game_clock is not None else None,
+                                    "shot_clock": float(shot_clock) if shot_clock is not None else None,
                                     "team": entity[0],
                                     "player": entity[1],
-                                    "x": entity[2],
-                                    "y": entity[3]
+                                    "x": float(entity[2]),
+                                    "y": float(entity[3])
                                 })
             elif isinstance(json_data, list):
                 for rec in json_data:
@@ -77,14 +86,15 @@ class BasketballDataset:
                         "frame_id": rec.get("frame_id"),
                         "team": rec.get("team"),
                         "player": rec.get("player"),
-                        "x": rec.get("x"),
-                        "y": rec.get("y")
+                        "x": float(rec.get("x", 0)),
+                        "y": float(rec.get("y", 0))
                     })
-        self.data = pl.DataFrame(rows)
+        # Use strict=False to allow mixed types if necessary.
+        self.data = pl.DataFrame(rows, strict=False)
         return self.data
 
     def get_dataframe(self) -> pl.DataFrame:
-        """Returns the loaded DataFrame; load() must be called first."""
+        """Returns the loaded DataFrame; ensure load() is called first."""
         if self.data is None:
             raise ValueError("Data not loaded. Call load() first.")
         return self.data
