@@ -15,24 +15,33 @@
         "feature_specs": {
             "node_features": {
                 "x_normed": {
+                    "value": null,
                     "max_value": 52.5,
                     "min_value": -52.5
                 },
                 "y_normed": {
+                    "value": null,
                     "max_value": 100.0,
                     "min_value": -34.0
                 },
-                "v_cos_normed": null,
+                "v_cos_normed": {
+                    "value": null
+                },
                 "normed_dist_to_goal": {
+                    "value": null,
                     "max_distance": 50.0
                 }
             },
             "edge_features": {
                 "dist_matrix_normed": {
+                    "value": null,
                     "max_distance": 100.0
                 },
                 "speed_diff_matrix_normed": {
-                    "ball_id": "ball"
+                    "s": null,
+                    "team": null,
+                    "ball_id": "ball",
+                    "settings": null
                 }
             }
         },
