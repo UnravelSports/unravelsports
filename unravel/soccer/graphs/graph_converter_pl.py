@@ -34,34 +34,60 @@ logger.setLevel(logging.DEBUG)
 stdout_handler = logging.StreamHandler(sys.stdout)
 logger.addHandler(stdout_handler)
 
+# DEFAULT_SOCCER_FEATURE_SPECS = {
+#     "node_features": {
+#         "x_normed": {},
+#         "y_normed": {},
+#         "s_normed": {},
+#         "v_sin_normed": {},
+#         "v_cos_normed": {},
+#         "normed_dist_to_goal": {},
+#         "normed_dist_to_ball": {},
+#         "is_possession_team": {},
+#         "is_gk": {},
+#         "is_ball": {},
+#         "goal_sin_normed": {},
+#         "goal_cos_normed": {},
+#         "ball_sin_normed": {},
+#         "ball_cos_normed": {},
+#         "ball_carrier": {},
+#     },
+#     "edge_features": {
+#         "dist_matrix_normed": {},
+#         "speed_diff_matrix_normed": {},
+#         "pos_cos_matrix": {},
+#         "pos_sin_matrix": {},
+#         "vel_cos_matrix": {},
+#         "vel_sin_matrix": {},
+#     },
+# }
 DEFAULT_SOCCER_FEATURE_SPECS = {
     "node_features": {
-        "x_normed": {},
-        "y_normed": {},
-        "s_normed": {},
-        "v_sin_normed": {},
-        "v_cos_normed": {},
-        "normed_dist_to_goal": {},
-        "normed_dist_to_ball": {},
-        "is_possession_team": {},
-        "is_gk": {},
-        "is_ball": {},
-        "goal_sin_normed": {},
-        "goal_cos_normed": {},
-        "ball_sin_normed": {},
-        "ball_cos_normed": {},
-        "ball_carrier": {},
+        "x_normed": None,
+        "y_normed": None,
+        "s_normed": None,
+        "v_sin_normed": None,
+        "v_cos_normed": None,
+        "normed_dist_to_goal": None,
+        "normed_dist_to_ball": None,
+        "is_possession_team": None,
+        "is_gk": None,
+        "is_ball": None,
+        "goal_sin_normed": None,
+        "goal_cos_normed": None,
+        "ball_sin_normed":None,
+        "ball_cos_normed":None,
+        "ball_carrier": None,
     },
     "edge_features": {
-        "dist_matrix_normed": {},
-        "speed_diff_matrix_normed": {},
-        "pos_cos_matrix": {},
-        "pos_sin_matrix": {},
-        "vel_cos_matrix": {},
-        "vel_sin_matrix": {},
+        "dist_matrix_normed": None,
+        "speed_diff_matrix_normed": None,
+        "pos_cos_matrix": None,
+        "pos_sin_matrix": None,
+        "vel_cos_matrix": None,
+        "vel_sin_matrix": None,
     },
 }
-
 
 @dataclass(repr=True)
 class SoccerGraphConverterPolars(DefaultGraphConverter):
@@ -161,7 +187,8 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         feature_map = feature_func(settings=self.settings)
         for feature, custom_params in self.feature_specs[feature_tag].items():
             params = feature_map[feature]["defaults"].copy()
-            params.update(custom_params)
+            if custom_params is not None:
+                params.update(custom_params)
             params = {k: v for k, v in params.items() if v is not None}
             self.feature_specs[feature_tag][feature] = params
 
@@ -240,18 +267,23 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
                 raise ValueError(
                     f"feature {feature} is not a valid {feature_tag[:4]} feature. Valid features are {list(feature_map.keys())}"
                 )
-            for key, value in feature_specs[feature_tag][feature].items():
-                if key not in feature_map[feature]["defaults"]:
-                    raise ValueError(
-                        f"{feature_tag[:4]} feature {feature} does not have a key '{key}'. Valid keys are {list(feature_map[feature]['defaults'].keys())}"
-                    )
+            #check if feature_specs[feature_tag][feature] is a dictionary
+            if isinstance(feature_specs[feature_tag][feature], dict):
+            # if feature_specs[feature_tag][feature] is not None:
+            #     if type(feature_specs[feature_tag][feature]) == bool:
+                print(feature, "-->", feature_specs[feature_tag][feature])
+                for key, value in feature_specs[feature_tag][feature].items():
+                    if key not in feature_map[feature]["defaults"]:
+                        raise ValueError(
+                            f"{feature_tag[:4]} feature {feature} does not have a key '{key}'. Valid keys are {list(feature_map[feature]['defaults'].keys())}"
+                        )
 
-                # expected_type = type(node_feature_map[feature]['defaults'][key])
-                expected_type = feature_defaults.__annotations__.get(key)
-                if not isinstance(value, expected_type):
-                    raise TypeError(
-                        f"Feature {feature} key '{key}' should be of type {expected_type}. Instead got {type(value)}"
-                    )
+                    # expected_type = type(node_feature_map[feature]['defaults'][key])
+                    expected_type = feature_defaults.__annotations__.get(key)
+                    if not isinstance(value, expected_type):
+                        raise TypeError(
+                            f"Feature {feature} key '{key}' should be of type {expected_type}. Instead got {type(value)}"
+                        )
 
     def _shuffle(self):
         if isinstance(self.settings.random_seed, int):
