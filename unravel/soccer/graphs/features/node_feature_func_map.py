@@ -25,7 +25,7 @@ from typing import TypedDict, Dict, Optional, Union
 
 class NodeFeatureDefaults(TypedDict):
     # value: Optional[Union[float, np.ndarray]]
-    value: float
+    # value: Optional[float]
     max_value: Optional[float]
     min_value: Optional[float]
     max_distance: Optional[float]

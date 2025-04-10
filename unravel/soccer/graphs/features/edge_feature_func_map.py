@@ -21,8 +21,8 @@ from typing import TypedDict, Dict, Optional, Union
 
 
 class EdgeFeatureDefaults(TypedDict):
-    value: float
-    max_distance: float
+    # value: Optional[float]
+    max_distance: Optional[float]
     s: Optional[Union[float, np.ndarray]]
     team: Optional[int]
     ball_id: Optional[str]
