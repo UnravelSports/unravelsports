@@ -34,33 +34,6 @@ logger.setLevel(logging.DEBUG)
 stdout_handler = logging.StreamHandler(sys.stdout)
 logger.addHandler(stdout_handler)
 
-# DEFAULT_SOCCER_FEATURE_SPECS = {
-#     "node_features": {
-#         "x_normed": {},
-#         "y_normed": {},
-#         "s_normed": {},
-#         "v_sin_normed": {},
-#         "v_cos_normed": {},
-#         "normed_dist_to_goal": {},
-#         "normed_dist_to_ball": {},
-#         "is_possession_team": {},
-#         "is_gk": {},
-#         "is_ball": {},
-#         "goal_sin_normed": {},
-#         "goal_cos_normed": {},
-#         "ball_sin_normed": {},
-#         "ball_cos_normed": {},
-#         "ball_carrier": {},
-#     },
-#     "edge_features": {
-#         "dist_matrix_normed": {},
-#         "speed_diff_matrix_normed": {},
-#         "pos_cos_matrix": {},
-#         "pos_sin_matrix": {},
-#         "vel_cos_matrix": {},
-#         "vel_sin_matrix": {},
-#     },
-# }
 DEFAULT_SOCCER_FEATURE_SPECS = {
     "node_features": {
         "x_normed": None,
@@ -141,7 +114,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         self._validate_feature_specs_general()
         self._shuffle()
 
-    def _validate_feature_specs_general(self):
+    def _validate_feature_specs_general(self): 
         # Override the feature specs to the default version if they are not provided
         if self.feature_specs == None or self.feature_specs == {}:
             self.feature_specs = DEFAULT_SOCCER_FEATURE_SPECS
@@ -189,7 +162,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             params = feature_map[feature]["defaults"].copy()
             if custom_params is not None:
                 params.update(custom_params)
-            params = {k: v for k, v in params.items() if v is not None}
+
             self.feature_specs[feature_tag][feature] = params
 
     def load_from_json(self, file_path: str) -> None:
@@ -198,14 +171,6 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         Args:
             file_path (str): Path to the JSON file.
         """
-
-        def transform_empty_dicts(d):
-            if isinstance(d, dict):
-                return {
-                    k: transform_empty_dicts(v) if v is not None else {}
-                    for k, v in d.items()
-                }
-            return d
 
         # Read configuration file
         configuration = None
@@ -220,15 +185,6 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             raise ValueError("Configuration file does not specify a version.")
 
         VersionChecker.check_versioning(config_version)
-
-        # Set converter attributes
-        if "graph_converter_attributes" in configuration:
-            if "feature_specs" in configuration["graph_converter_attributes"]:
-                configuration["graph_converter_attributes"]["feature_specs"] = (
-                    transform_empty_dicts(
-                        configuration["graph_converter_attributes"]["feature_specs"]
-                    )
-                )
 
         # Do not load label_column and graph_id_column from JSON file
         configuration["graph_converter_attributes"].pop("label_column", None)
@@ -269,18 +225,14 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
                 )
             #check if feature_specs[feature_tag][feature] is a dictionary
             if isinstance(feature_specs[feature_tag][feature], dict):
-            # if feature_specs[feature_tag][feature] is not None:
-            #     if type(feature_specs[feature_tag][feature]) == bool:
-                print(feature, "-->", feature_specs[feature_tag][feature])
                 for key, value in feature_specs[feature_tag][feature].items():
                     if key not in feature_map[feature]["defaults"]:
                         raise ValueError(
                             f"{feature_tag[:4]} feature {feature} does not have a key '{key}'. Valid keys are {list(feature_map[feature]['defaults'].keys())}"
                         )
 
-                    # expected_type = type(node_feature_map[feature]['defaults'][key])
                     expected_type = feature_defaults.__annotations__.get(key)
-                    if not isinstance(value, expected_type):
+                    if expected_type and not isinstance(value, expected_type):
                         raise TypeError(
                             f"Feature {feature} key '{key}' should be of type {expected_type}. Instead got {type(value)}"
                         )
