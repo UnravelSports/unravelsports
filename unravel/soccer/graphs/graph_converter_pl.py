@@ -11,6 +11,7 @@ from typing import List, Union, Dict, Literal, Any, Optional
 from kloppy.domain import (
     MetricPitchDimensions,
 )
+from kloppy.io import FileLike, open_as_file
 
 from spektral.data import Graph
 
@@ -95,7 +96,10 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         )
 
         if self.from_json is not None:
-            self._load_from_json(self.from_json)
+            configuration = None
+            with open_as_file(self.from_json) as f:
+                configuration = json.load(f)
+            self._load_from_json(configuration)
 
         self.label_column: str = (
             self.label_col if self.label_col is not None else self.dataset._label_column
@@ -171,7 +175,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
 
             self.feature_specs[feature_tag][feature] = params
 
-    def _load_from_json(self, file_path: str) -> None:
+    def _load_from_json(self, configuration: dict) -> None:
         """
         Load the configuration from a JSON file.
         Args:
@@ -179,11 +183,9 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         """
 
         # Read configuration file
-        configuration = None
-        with open(file_path, "r") as f:
-            configuration = json.load(f)
-        if configuration is None:
-            raise ValueError("Configuration file is empty or invalid.")
+
+        # if configuration is None:
+        #     raise ValueError("Configuration file is empty or invalid.")
 
         # Validate version
         config_version = configuration.get("package_version")
