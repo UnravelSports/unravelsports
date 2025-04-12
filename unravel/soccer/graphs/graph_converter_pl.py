@@ -163,8 +163,6 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         self._populate_feature_specs(get_node_feature_func_map, "node_features")
         self._populate_feature_specs(get_edge_feature_func_map, "edge_features")
 
-        print(self.feature_specs)
-
     def _populate_feature_specs(self, feature_func, feature_tag):
         """
         Populates the feature specs with custom parameters.
