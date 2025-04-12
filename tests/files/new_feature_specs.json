@@ -48,6 +48,7 @@
         "chunk_size": 20000,
         "non_potential_receiver_node_value": 0.1,
         "graph_feature_cols": null,
+        "from_json": null,
         "label_column": "label",
         "graph_id_column": "graph_id"
     },
@@ -94,31 +95,6 @@
             "pitch_width": 68
         }
     },
-    "graph_feature_cols": [
-        "period_id",
-        "timestamp",
-        "frame_id",
-        "ball_state",
-        "id",
-        "x",
-        "y",
-        "z",
-        "team_id",
-        "position_name",
-        "game_id",
-        "vx",
-        "vy",
-        "vz",
-        "v",
-        "ax",
-        "ay",
-        "az",
-        "a",
-        "ball_owning_team_id",
-        "is_ball_carrier",
-        "label",
-        "graph_id"
-    ],
     "dataset_features": {
         "ball_carrier_threshold": 25.0,
         "max_player_speed": 12.0,
@@ -160,5 +136,30 @@
             "max_ball_acceleration": 100,
             "ball_carrier_threshold": 25.0
         }
-    }
+    },
+    "dataset_cols": [
+        "period_id",
+        "timestamp",
+        "frame_id",
+        "ball_state",
+        "id",
+        "x",
+        "y",
+        "z",
+        "team_id",
+        "position_name",
+        "game_id",
+        "vx",
+        "vy",
+        "vz",
+        "v",
+        "ax",
+        "ay",
+        "az",
+        "a",
+        "ball_owning_team_id",
+        "is_ball_carrier",
+        "label",
+        "graph_id"
+    ]
 }
