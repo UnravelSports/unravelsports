@@ -235,6 +235,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             }
             self.settings = DefaultGraphSettings(**filtered_settings)
 
+        # validate dataset feature columns
         if "dataset_features" in configuration:
             for key, value in configuration["dataset_features"].items():
                 dataset_features = self.dataset.get_features()
@@ -245,6 +246,21 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
                         )
                 else:
                     raise ValueError(f"Feature '{key}' not found in dataset features.")
+
+            # validate orientation
+            if (
+                "orientation"
+                in configuration["dataset_features"]["settings"]["pitch_dimensions"]
+            ):
+                if (
+                    configuration["dataset_features"]["settings"]["pitch_dimensions"][
+                        "orientation"
+                    ]
+                    != self.dataset.settings.pitch_dimensions.orientation
+                ):
+                    raise ValueError(
+                        f"Orientation in dataset does not match the value in the configuration file."
+                    )
 
     def _validate_feature_specs(
         self, feature_specs: dict, feature_func, feature_defaults, feature_tag
