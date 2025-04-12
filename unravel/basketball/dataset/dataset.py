@@ -1,15 +1,21 @@
+from dataclasses import dataclass, field
+from typing import Optional
 import os
 import json
 import tempfile
 import polars as pl
 import requests
+import numpy as np
 
 try:
     import py7zr
 except ImportError:
     py7zr = None
 
-class BasketballDataset:
+from ...utils import DefaultDataset
+
+@dataclass(kw_only=True)
+class BasketballDataset(DefaultDataset):
     """
     Loads NBA tracking data.
     
@@ -17,28 +23,50 @@ class BasketballDataset:
       - URL: Loads from a 7zip archive (expects a JSON file inside).
       - Local: Loads from a file path or game identifier.
     """
-    def __init__(self, source: str):
-        self.source = source
-        self.data = None
+    tracking_data: str
+    data: Optional[pl.DataFrame] = field(default=None, init=False)
 
     def load(self) -> pl.DataFrame:
-        # Загрузка JSON из файла или по URL остаётся без изменений…
-        if self.source.startswith("http"):
-            # [код для загрузки по URL]
-            ...
+        """
+        Loads JSON data from a local file or URL and converts it into a Polars DataFrame with the following columns:
+          game_id, event_id, frame_id, quarter, game_clock, shot_clock, team, player, x, y.
+        """
+        # Load via URL if tracking_data starts with "http"
+        if self.tracking_data.startswith("http"):
+            if py7zr is None:
+                raise ImportError("py7zr is required to extract 7zip archives.")
+            response = requests.get(self.tracking_data)
+            if response.status_code != 200:
+                raise Exception("Failed to download data from URL.")
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".7z") as tmp_file:
+                tmp_file.write(response.content)
+                tmp_filename = tmp_file.name
+            with py7zr.SevenZipFile(tmp_filename, mode='r') as archive:
+                extract_path = tempfile.mkdtemp()
+                archive.extractall(path=extract_path)
+            os.unlink(tmp_filename)
+            json_file = next(
+                (os.path.join(extract_path, fname) for fname in os.listdir(extract_path) if fname.endswith('.json')),
+                None
+            )
+            if json_file is None:
+                raise FileNotFoundError("JSON file not found in extracted archive.")
+            with open(json_file, 'r', encoding='utf-8') as jf:
+                json_data = json.load(jf)
         else:
-            if os.path.isfile(self.source):
-                with open(self.source, 'r', encoding='utf-8') as jf:
+            # Load from file if a valid file path is provided
+            if os.path.isfile(self.tracking_data):
+                with open(self.tracking_data, 'r', encoding='utf-8') as jf:
                     json_data = json.load(jf)
             else:
                 file_path = os.path.join("data", "nba", f"{self.source}.json")
                 if not os.path.isfile(file_path):
-                    raise FileNotFoundError(f"Game file '{self.source}.json' not found at: {file_path}")
+                    raise FileNotFoundError(f"Game file '{self.tracking_data}.json' not found at: {file_path}")
                 with open(file_path, 'r', encoding='utf-8') as jf:
                     json_data = json.load(jf)
-        
+
         rows = []
-        # Если json_data - словарь, обрабатываем как ранее:
+        # Process JSON as a dictionary
         if isinstance(json_data, dict):
             game_id = json_data.get("gameid", "unknown")
             events = json_data.get("events", [])
@@ -63,7 +91,7 @@ class BasketballDataset:
                                         "x": float(entity[2]),
                                         "y": float(entity[3])
                                     })
-        # Если же json_data - список, обрабатываем каждую запись отдельно:
+        # Process JSON if it is a list
         elif isinstance(json_data, list):
             for rec in json_data:
                 rows.append({
@@ -87,62 +115,40 @@ class BasketballDataset:
           - speed: magnitude of the velocity,
           - direction: movement direction in radians,
           - acceleration: change in speed over time.
-          
-        The method groups the data by game_id and player, sorting by frame_id.
-        If the column 'game_clock' exists, the time difference is computed based on it,
-        keeping in mind that the game clock is usually counting down.
-        Otherwise, a default dt = 1 is used.
+        
+        Calculations are performed for each group defined by game_id and player.
         """
         if self.data is None:
             raise ValueError("Data not loaded. Call load() first.")
 
-        # Sort the data by game_id, player, and frame_id to ensure correct temporal order.
         df = self.data.sort(["game_id", "player", "frame_id"])
-
-        # Compute time difference for velocity calculation.
-        # For velocity, we use the time difference from the current row to the next row.
         if "game_clock" in df.columns:
-            # Calculate dt_temp as the absolute difference between the current and next game_clock.
             df = df.with_columns([
                 (pl.col("game_clock").shift(-1) - pl.col("game_clock")).abs().alias("dt_temp")
             ])
-            # Use dt = 1 if dt_temp is null.
             df = df.with_columns([
                 pl.col("dt_temp").fill_null(1).alias("dt")
             ])
         else:
-            # Default dt value when no game_clock is available.
-            df = df.with_columns([
-                pl.lit(1).alias("dt")
-            ])
-
-        # Compute differences in x and y coordinates: current value minus previous value.
+            df = df.with_columns([pl.lit(1).alias("dt")])
+        
         df = df.with_columns([
             (pl.col("x") - pl.col("x").shift(1)).alias("dx"),
             (pl.col("y") - pl.col("y").shift(1)).alias("dy")
         ])
-
-        # Calculate velocity components (vx, vy) by dividing the displacement by dt.
         df = df.with_columns([
             (pl.col("dx") / pl.col("dt")).alias("vx"),
             (pl.col("dy") / pl.col("dt")).alias("vy")
         ])
-
-        # Compute speed as the Euclidean norm of (vx, vy).
         df = df.with_columns([
             ((pl.col("vx") ** 2 + pl.col("vy") ** 2) ** 0.5).alias("speed")
         ])
-
-        # Calculate movement direction using arctan2(vy, vx).
         df = df.with_columns([
             pl.struct(["vx", "vy"]).apply(
-                lambda row: float(np.arctan2(row["vy"], row["vx"])) 
+                lambda row: float(np.arctan2(row["vy"], row["vx"]))
                 if (row["vx"] is not None and row["vy"] is not None) else None
             ).alias("direction")
         ])
-
-        # Compute acceleration based on the change in speed over the time difference.
-        # For acceleration, we calculate dt_acc as the absolute difference between the current and previous game_clock.
         if "game_clock" in df.columns:
             df = df.with_columns([
                 (pl.col("game_clock") - pl.col("game_clock").shift(1)).abs().alias("dt_acc")
@@ -154,7 +160,6 @@ class BasketballDataset:
             df = df.with_columns([
                 ((pl.col("speed") - pl.col("speed").shift(1)) / 1).alias("acceleration")
             ])
-        
         return df
 
     def get_dataframe(self) -> pl.DataFrame:
