@@ -133,8 +133,9 @@ class TestPolarFlex:
         SoccerGraphConverter with feature specs loaded from a json file. The default_converter is saved to a json file and then loaded to create a new converter.
         """
         default_converter.save(feature_specs_file)
-        converter = SoccerGraphConverterPolars(dataset=kloppy_polars_dataset)
-        converter.load_from_json(feature_specs_file)
+        converter = SoccerGraphConverterPolars(
+            dataset=kloppy_polars_dataset, from_json=feature_specs_file
+        )
         return converter
 
     @pytest.fixture()
@@ -425,8 +426,9 @@ class TestPolarFlex:
         Tests if the default overriden converter is saved and loaded correctly.
         """
         default_overriden_converter.save(feature_specs_file)
-        converter = SoccerGraphConverterPolars(dataset=kloppy_polars_dataset)
-        converter.load_from_json(feature_specs_file)
+        converter = SoccerGraphConverterPolars(
+            dataset=kloppy_polars_dataset, from_json=feature_specs_file
+        )
         converter.save(new_feature_specs_file)
 
         with open(feature_specs_file, "r") as f1, open(
@@ -447,8 +449,9 @@ class TestPolarFlex:
         Tests if the valid feature converter is saved and loaded correctly.
         """
         valid_feature_converter.save(feature_specs_file)
-        converter = SoccerGraphConverterPolars(dataset=kloppy_polars_dataset)
-        converter.load_from_json(feature_specs_file)
+        converter = SoccerGraphConverterPolars(
+            dataset=kloppy_polars_dataset, from_json=feature_specs_file
+        )
         converter.save(new_feature_specs_file)
 
         with open(feature_specs_file, "r") as f1, open(
