@@ -163,6 +163,8 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         self._populate_feature_specs(get_node_feature_func_map, "node_features")
         self._populate_feature_specs(get_edge_feature_func_map, "edge_features")
 
+        print(self.feature_specs)
+
     def _populate_feature_specs(self, feature_func, feature_tag):
         """
         Populates the feature specs with custom parameters.
@@ -260,7 +262,10 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
                 raise ValueError(
                     f"feature {feature} is not a valid {feature_tag[:4]} feature. Valid features are {list(feature_map.keys())}"
                 )
-            # check if feature_specs[feature_tag][feature] is a dictionary
+            # if feature_specs[feature_tag][feature] is a boolean, convert it to dictionary
+            if isinstance(feature_specs[feature_tag][feature], bool):
+                if feature_specs[feature_tag][feature] == False:
+                    feature_specs[feature_tag][feature] = {"value": None}
             if isinstance(feature_specs[feature_tag][feature], dict):
                 for key, value in feature_specs[feature_tag][feature].items():
                     if key not in feature_map[feature]["defaults"]:
