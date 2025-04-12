@@ -59,7 +59,8 @@ class BasketballDataset(DefaultDataset):
                 with open(self.tracking_data, 'r', encoding='utf-8') as jf:
                     json_data = json.load(jf)
             else:
-                file_path = os.path.join("data", "nba", f"{self.source}.json")
+                # Search for a file in the default directory using the game identifier
+                file_path = os.path.join("data", "nba", f"{self.tracking_data}.json")
                 if not os.path.isfile(file_path):
                     raise FileNotFoundError(f"Game file '{self.tracking_data}.json' not found at: {file_path}")
                 with open(file_path, 'r', encoding='utf-8') as jf:
