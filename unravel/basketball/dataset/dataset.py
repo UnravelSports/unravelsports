@@ -7,6 +7,8 @@ import polars as pl
 import requests
 import numpy as np
 
+from kloppy.io import open_as_file
+
 try:
     import py7zr
 except ImportError:
@@ -22,8 +24,23 @@ class BasketballDataset(DefaultDataset):
     Modes:
       - URL: Loads from a 7zip archive (expects a JSON file inside).
       - Local: Loads from a file path or game identifier.
+      
+    Additional parameters:
+      - max_player_speed, max_ball_speed, max_player_acceleration, max_ball_acceleration:
+          Threshold values for normalizing player and ball speeds/accelerations.
+      - orient_ball_owning:
+          Flag indicating whether to compute oriented direction for ball ownership.
+      - sample_rate:
+          Fraction of data to sample (e.g., 0.5 to keep half of the rows).
+
     """
     tracking_data: str
+    max_player_speed: float = 20.0
+    max_ball_speed: float = 30.0
+    max_player_acceleration: float = 10.0
+    max_ball_acceleration: float = 10.0
+    orient_ball_owning: bool = False
+    sample_rate: float = 1.0
     data: Optional[pl.DataFrame] = field(default=None, init=False)
 
     def load(self) -> pl.DataFrame:
@@ -33,22 +50,21 @@ class BasketballDataset(DefaultDataset):
         """
         # Load via URL if tracking_data starts with "http"
         if self.tracking_data.startswith("http"):
+            with open_as_file(self.tracking_data) as tmp_file:
+                tmp_filename = tmp_file.name
+            json_file = None
             if py7zr is None:
                 raise ImportError("py7zr is required to extract 7zip archives.")
-            response = requests.get(self.tracking_data)
-            if response.status_code != 200:
-                raise Exception("Failed to download data from URL.")
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".7z") as tmp_file:
-                tmp_file.write(response.content)
-                tmp_filename = tmp_file.name
             with py7zr.SevenZipFile(tmp_filename, mode='r') as archive:
-                extract_path = tempfile.mkdtemp()
-                archive.extractall(path=extract_path)
+                for fname in archive.getnames():
+                    if fname.endswith('.json'):
+                        json_file = os.path.join(tempfile.mkdtemp(), fname)
+                        with open(json_file, 'wb') as f:
+                            file_dict = archive.read(fname)
+                            file_bytes = file_dict[fname].read()
+                            f.write(file_bytes)
+                        break
             os.unlink(tmp_filename)
-            json_file = next(
-                (os.path.join(extract_path, fname) for fname in os.listdir(extract_path) if fname.endswith('.json')),
-                None
-            )
             if json_file is None:
                 raise FileNotFoundError("JSON file not found in extracted archive.")
             with open(json_file, 'r', encoding='utf-8') as jf:
@@ -56,15 +72,15 @@ class BasketballDataset(DefaultDataset):
         else:
             # Load from file if a valid file path is provided
             if os.path.isfile(self.tracking_data):
-                with open(self.tracking_data, 'r', encoding='utf-8') as jf:
-                    json_data = json.load(jf)
+                file_path = self.tracking_data
             else:
                 # Search for a file in the default directory using the game identifier
                 file_path = os.path.join("data", "nba", f"{self.tracking_data}.json")
                 if not os.path.isfile(file_path):
                     raise FileNotFoundError(f"Game file '{self.tracking_data}.json' not found at: {file_path}")
-                with open(file_path, 'r', encoding='utf-8') as jf:
-                    json_data = json.load(jf)
+                
+            with open_as_file(file_path) as f:
+                json_data = json.load(f)
 
         rows = []
         # Process JSON as a dictionary
@@ -107,6 +123,9 @@ class BasketballDataset(DefaultDataset):
             raise ValueError("Unexpected JSON structure")
 
         self.data = pl.DataFrame(rows, strict=False)
+        if self.sample_rate < 1.0:
+            self.data = self.data.sample(fraction=self.sample_rate, with_replacement=False)
+
         return self.data
 
     def compute_additional_fields(self) -> pl.DataFrame:
@@ -115,9 +134,11 @@ class BasketballDataset(DefaultDataset):
           - vx, vy: velocity components,
           - speed: magnitude of the velocity,
           - direction: movement direction in radians,
-          - acceleration: change in speed over time.
+          - acceleration: change in speed over time,
+          - normalized_speed: speed normalized by max_player_speed or max_ball_speed,
+          - normalized_acceleration: acceleration normalized by max_player_acceleration or max_ball_acceleration,
+          - oriented_direction (if orient_ball_owning is True): a placeholder for ball-owning orientation.
         
-        Calculations are performed for each group defined by game_id and player.
         """
         if self.data is None:
             raise ValueError("Data not loaded. Call load() first.")
@@ -137,19 +158,22 @@ class BasketballDataset(DefaultDataset):
             (pl.col("x") - pl.col("x").shift(1)).alias("dx"),
             (pl.col("y") - pl.col("y").shift(1)).alias("dy")
         ])
+        
         df = df.with_columns([
             (pl.col("dx") / pl.col("dt")).alias("vx"),
             (pl.col("dy") / pl.col("dt")).alias("vy")
         ])
+
         df = df.with_columns([
             ((pl.col("vx") ** 2 + pl.col("vy") ** 2) ** 0.5).alias("speed")
         ])
-        df = df.with_columns([
-            pl.struct(["vx", "vy"]).apply(
-                lambda row: float(np.arctan2(row["vy"], row["vx"]))
-                if (row["vx"] is not None and row["vy"] is not None) else None
-            ).alias("direction")
-        ])
+
+        df = df.with_columns(
+                            pl.concat_list([pl.col("vx"), pl.col("vy")])
+                            .map_elements(lambda row: float(np.arctan2(row[1], row[0])) if row[0] is not None and row[1] is not None else None)
+                            .alias("direction")
+                        )
+
         if "game_clock" in df.columns:
             df = df.with_columns([
                 (pl.col("game_clock") - pl.col("game_clock").shift(1)).abs().alias("dt_acc")
