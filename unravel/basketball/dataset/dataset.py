@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, List
 import os
 import json
 import tempfile
@@ -21,16 +21,16 @@ from ..graphs.pitch_dimensions import BasketballPitchDimensions
 class BasketballDataset(DefaultDataset):
     """
     Loads NBA tracking data.
-    
+
     Modes:
       - URL: Loads from a 7zip archive (expects a JSON file inside).
       - Local: Loads from a file path or game identifier.
-      
+
     Additional parameters:
       - max_player_speed, max_ball_speed, max_player_acceleration, max_ball_acceleration:
           Thresholds for normalizing speed/acceleration.
       - orient_ball_owning:
-          If True, computes oriented direction for ball ownership (placeholder).
+          If True, computes oriented direction for ball ownership.
       - sample_rate:
           Fraction of rows to sample (0.0–1.0).
     """
@@ -45,6 +45,7 @@ class BasketballDataset(DefaultDataset):
     settings: DefaultSettings = field(init=False)
 
     def __post_init__(self):
+        # Initialize default settings
         self.settings = DefaultSettings(
             pitch_dimensions=BasketballPitchDimensions(),
             home_team_id="home",
@@ -52,10 +53,11 @@ class BasketballDataset(DefaultDataset):
             provider="nba",
             orientation="attacking_home"
         )
+        # Automatically load data
         self.load()
 
     def load(self) -> pl.DataFrame:
-        # Load JSON from URL or local
+        # Determine source: URL or local file
         if self.tracking_data.startswith("http"):
             with open_as_file(self.tracking_data) as tmp_file:
                 tmp_filename = tmp_file.name
@@ -75,15 +77,21 @@ class BasketballDataset(DefaultDataset):
             with open(json_file, 'r', encoding='utf-8') as jf:
                 json_data = json.load(jf)
         else:
+            # Local file or game ID mapping
             if os.path.isfile(self.tracking_data):
                 file_path = self.tracking_data
             else:
-                file_path = os.path.join("data", "nba", f"{self.tracking_data}.json")
+                file_path = os.path.join(
+                    "data", "nba", f"{self.tracking_data}.json"
+                )
                 if not os.path.isfile(file_path):
-                    raise FileNotFoundError(f"Game file '{self.tracking_data}.json' not found at {file_path}")
+                    raise FileNotFoundError(
+                        f"Game file '{self.tracking_data}.json' not found at {file_path}"
+                    )
             with open_as_file(file_path) as f:
                 json_data = json.load(f)
 
+        # Parse JSON into rows
         rows = []
         if isinstance(json_data, dict):
             game_id = json_data.get("gameid", "unknown")
@@ -118,12 +126,14 @@ class BasketballDataset(DefaultDataset):
         else:
             raise ValueError("Unexpected JSON structure")
 
-        # Build DataFrame and sample if needed
+        # Build DataFrame and apply sampling
         self.data = pl.DataFrame(rows, strict=False)
         if self.sample_rate < 1.0:
-            self.data = self.data.sample(fraction=self.sample_rate, with_replacement=False)
+            self.data = self.data.sample(
+                fraction=self.sample_rate, with_replacement=False
+            )
 
-        # Compute velocities, speed, direction, acceleration, and normalized fields
+        # Add computed fields and return
         self.data = self.compute_additional_fields()
         return self.data
 
@@ -135,7 +145,10 @@ class BasketballDataset(DefaultDataset):
 
         # Time delta for velocity
         if "game_clock" in df.columns:
-            df = df.with_columns((pl.col("game_clock").shift(-1) - pl.col("game_clock")).abs().fill_null(1).alias("dt"))
+            df = df.with_columns(
+                (pl.col("game_clock").shift(-1) - pl.col("game_clock"))
+                .abs().fill_null(1).alias("dt")
+            )
         else:
             df = df.with_columns(pl.lit(1).alias("dt"))
 
@@ -151,15 +164,25 @@ class BasketballDataset(DefaultDataset):
             (pl.col("dy") / pl.col("dt")).alias("vy")
         ])
 
-        # Speed and acceleration
+        # Speed
         df = df.with_columns([
             ((pl.col("vx")**2 + pl.col("vy")**2)**0.5).alias("speed")
         ])
+
+        # Time delta for acceleration
         if "game_clock" in df.columns:
-            df = df.with_columns((pl.col("game_clock") - pl.col("game_clock").shift(1)).abs().fill_null(1).alias("dt_acc"))
+            df = df.with_columns(
+                (pl.col("game_clock") - pl.col("game_clock").shift(1))
+                .abs().fill_null(1).alias("dt_acc")
+            )
         else:
             df = df.with_columns(pl.lit(1).alias("dt_acc"))
-        df = df.with_columns(((pl.col("speed") - pl.col("speed").shift(1)) / pl.col("dt_acc")).alias("acceleration"))
+
+        # Acceleration
+        df = df.with_columns(
+            ((pl.col("speed") - pl.col("speed").shift(1)) / pl.col("dt_acc"))
+            .alias("acceleration")
+        )
 
         # Normalize speed and acceleration
         df = df.with_columns([
@@ -174,8 +197,28 @@ class BasketballDataset(DefaultDataset):
                 .alias("normalized_acceleration")
         ])
 
-        # Placeholder for oriented direction if requested
+        # Oriented direction if requested
         if self.orient_ball_owning:
             df = df.with_columns(pl.lit(None).alias("oriented_direction"))
 
         return df
+
+    def add_graph_ids(self, by: List[str], column_name: str = "graph_id") -> None:
+        """
+        Add a graph identifier column by concatenating specified fields.
+        """
+        if self.data is None:
+            raise ValueError("Data not loaded. Call load() first.")
+        self.data = self.data.with_columns(
+            pl.concat_str([pl.col(c) for c in by], sep="-").alias(column_name)
+        )
+
+    def add_dummy_labels(self, by: List[str], column_name: str = "label") -> None:
+        """
+        Add a dummy label column (zeros) for each row, compatible with graph splitting.
+        """
+        if self.data is None:
+            raise ValueError("Data not loaded. Call load() first.")
+        self.data = self.data.with_columns(
+            pl.lit(0).alias(column_name)
+        )
