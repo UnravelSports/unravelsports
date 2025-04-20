@@ -14,7 +14,8 @@ try:
 except ImportError:
     py7zr = None
 
-from ...utils import DefaultDataset
+from ...utils import DefaultDataset, DefaultSettings
+from ..graphs.pitch_dimensions import BasketballPitchDimensions
 
 @dataclass(kw_only=True)
 class BasketballDataset(DefaultDataset):
@@ -41,8 +42,16 @@ class BasketballDataset(DefaultDataset):
     orient_ball_owning: bool = False
     sample_rate: float = 1.0
     data: Optional[pl.DataFrame] = field(default=None, init=False)
+    settings: DefaultSettings = field(init=False)
 
     def __post_init__(self):
+        self.settings = DefaultSettings(
+            pitch_dimensions=BasketballPitchDimensions(),
+            home_team_id="home",
+            away_team_id="away",
+            provider="nba",
+            orientation="attacking_home"
+        )
         self.load()
 
     def load(self) -> pl.DataFrame:
