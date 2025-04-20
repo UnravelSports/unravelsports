@@ -168,7 +168,4 @@ class BasketballDataset(DefaultDataset):
 
         return df
 
-    def get_dataframe(self) -> pl.DataFrame:
-        if self.data is None:
-            raise ValueError("Data not loaded. Call load() first.")
-        return self.data
+    
