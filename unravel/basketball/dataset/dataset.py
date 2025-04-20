@@ -42,6 +42,9 @@ class BasketballDataset(DefaultDataset):
     sample_rate: float = 1.0
     data: Optional[pl.DataFrame] = field(default=None, init=False)
 
+    def __post_init__(self):
+        self.load()
+
     def load(self) -> pl.DataFrame:
         # Load JSON from URL or local
         if self.tracking_data.startswith("http"):
@@ -167,5 +170,3 @@ class BasketballDataset(DefaultDataset):
             df = df.with_columns(pl.lit(None).alias("oriented_direction"))
 
         return df
-
-    
