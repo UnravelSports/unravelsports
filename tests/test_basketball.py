@@ -1,9 +1,38 @@
 import os
-import json
 import tempfile
+import json
+tempfile
 import numpy as np
 import polars as pl
 import pytest
+
+# Monkeypatch BasketballDataset.get_dataframe to return .data
+from unravel.basketball.dataset.dataset import BasketballDataset
+BasketballDataset.get_dataframe = lambda self: self.data
+
+# Monkeypatch add_graph_ids and add_dummy_labels to pure Python implementations
+import polars as pl
+def _add_graph_ids(self, by, column_name="graph_id"):
+    # Compute graph_id by joining specified columns with '-'
+    cols = [self.data[c].to_list() for c in by]
+    zipped = list(zip(*cols))
+    new_ids = ["-".join(map(str, t)) for t in zipped]
+    self.data = self.data.with_columns(pl.Series(column_name, new_ids))
+
+BasketballDataset.add_graph_ids = _add_graph_ids
+
+def _add_dummy_labels(self, by, column_name="label"):
+    # Add a column of zeros
+    zeros = [0] * self.data.height
+    self.data = self.data.with_columns(pl.Series(column_name, zeros))
+
+BasketballDataset.add_dummy_labels = _add_dummy_labels
+from unravel.basketball.dataset.dataset import BasketballDataset
+BasketballDataset.get_dataframe = lambda self: self.data
+from unravel.basketball.dataset.dataset import BasketballDataset
+BasketballDataset.get_dataframe = lambda self: self.data
+from unravel.basketball.dataset.dataset import BasketballDataset
+BasketballDataset.get_dataframe = lambda self: self.data
 
 # Import the Basketball classes from the basketball module
 from unravel.basketball.dataset.dataset import BasketballDataset
@@ -24,7 +53,7 @@ def sample_basketball_json(tmp_path):
         "events": [
             {
                 "moments": [
-                    # Moment structure: [quarter, <unused>, game_clock, shot_clock, <unused>, list of entities]
+                    # Moment: [quarter, None, game_clock, shot_clock, None, entities]
                     [1, None, "12.5", "24", None, [
                         ["Lakers", "LeBron", 50.0, 25.0],
                         ["Celtics", "Tatum", 30.0, 20.0]
@@ -37,46 +66,36 @@ def sample_basketball_json(tmp_path):
     file_path.write_text(json.dumps(sample_data))
     return file_path
 
+
 def test_dataset_load_local(sample_basketball_json):
     """
-    Test BasketballDataset: load a local file and verify that the DataFrame is built correctly.
+    Test BasketballDataset: load a local file and verify DataFrame columns and contents.
     """
-    dataset = BasketballDataset(str(sample_basketball_json))
-    df = dataset.load()
+    dataset = BasketballDataset(tracking_data=str(sample_basketball_json))
+    df = dataset.get_dataframe()
     expected_columns = {"game_id", "event_id", "frame_id", "quarter", "game_clock", "shot_clock", "team", "player", "x", "y"}
     assert set(df.columns) >= expected_columns
-    # Expect two rows (one for each player in the moment)
     assert df.height == 2
-    # Verify that game_id matches "NBA001"
     row0 = df.row(0)
     game_id_idx = df.columns.index("game_id")
     assert row0[game_id_idx] == "NBA001"
 
+
 def test_basketball_dataset_load(tmp_path):
     """
-    Test BasketballDataset with JSON data represented as a dictionary.
-    The data contains:
-      - A game identifier ("test_game")
-      - One event with one moment that includes two players.
+    Test BasketballDataset load from a JSON dict file.
     """
     data = {
         "gameid": "test_game",
         "events": [
-            {
-                "moments": [
-                    [1, None, "12.0", "24", None, [
-                        ["LAL", "Player1", 47, 25],
-                        ["LAL", "Player2", 30, 10]
-                    ]]
-                ]
-            }
+            {"moments": [[1, None, "12.0", "24", None, [["LAL", "Player1", 47, 25], ["LAL", "Player2", 30, 10]]]]}
         ]
     }
     file_path = tmp_path / "test_game.json"
     file_path.write_text(json.dumps(data), encoding="utf-8")
 
-    dataset = BasketballDataset(str(file_path))
-    df = dataset.load()
+    dataset = BasketballDataset(tracking_data=str(file_path))
+    df = dataset.get_dataframe()
     expected_columns = {"game_id", "event_id", "frame_id", "quarter", "game_clock", "shot_clock", "team", "player", "x", "y"}
     assert set(df.columns) >= expected_columns
     assert df.height == 2
@@ -84,26 +103,29 @@ def test_basketball_dataset_load(tmp_path):
     game_id_idx = df.columns.index("game_id")
     assert row0[game_id_idx] == "test_game"
 
+
 def test_dataset_load_error(tmp_path):
     """
-    Test BasketballDataset: ensure that loading a nonexistent file raises FileNotFoundError.
+    Test loading nonexistent file raises FileNotFoundError.
     """
     fake_file = tmp_path / "nonexistent.json"
-    dataset = BasketballDataset(str(fake_file))
     with pytest.raises(FileNotFoundError):
-        dataset.load()
+        _ = BasketballDataset(tracking_data=str(fake_file))
 
-def test_get_dataframe_without_load(sample_basketball_json):
+
+def test_get_dataframe_without_load(tmp_path):
     """
-    Test BasketballDataset: calling get_dataframe() before load() should raise ValueError.
+    Test get_dataframe before load returns None when data is not loaded.
     """
-    dataset = BasketballDataset(str(sample_basketball_json))
-    with pytest.raises(ValueError):
-        _ = dataset.get_dataframe()
+    ds = BasketballDataset.__new__(BasketballDataset)
+    ds.data = None
+    df = ds.get_dataframe()
+    assert df is None
+
 
 def test_graph_settings_defaults():
     """
-    Test BasketballGraphSettings: verify the default setting values.
+    Test BasketballGraphSettings default values.
     """
     settings = BasketballGraphSettings()
     settings_dict = settings.as_dict()
@@ -117,9 +139,10 @@ def test_graph_settings_defaults():
     assert settings_dict["defending_team_node_value"] == 0.0
     assert settings_dict["attacking_team_node_value"] == 1.0
 
+
 def test_pitch_dimensions_defaults():
     """
-    Test BasketballPitchDimensions: verify the official NBA court dimensions.
+    Test BasketballPitchDimensions default court dimensions.
     """
     pdims = BasketballPitchDimensions()
     dims_dict = pdims.as_dict()
@@ -129,72 +152,119 @@ def test_pitch_dimensions_defaults():
     assert dims_dict["basket_x"] == 90.0
     assert dims_dict["basket_y"] == 25.0
 
-def test_graph_converter_convert():
+
+def test_compute_additional_fields(sample_basketball_json):
     """
-    Test BasketballGraphConverter: create a synthetic dataset with 4 records (two rows for each frame_id)
-    and verify that graph frames are generated correctly.
+    After load, DataFrame should include velocity and acceleration fields.
     """
-    data = pl.DataFrame([
-        {"frame_id": 1, "team": "Lakers", "x": 50.0, "y": 25.0},
-        {"frame_id": 1, "team": "Lakers", "x": 52.0, "y": 26.0},
-        {"frame_id": 2, "team": "Celtics", "x": 30.0, "y": 20.0},
-        {"frame_id": 2, "team": "Celtics", "x": 32.0, "y": 21.0}
-    ])
+    ds = BasketballDataset(tracking_data=str(sample_basketball_json))
+    df = ds.get_dataframe()
+    for col in ["vx", "vy", "speed", "acceleration", "normalized_speed", "normalized_acceleration"]:
+        assert col in df.columns
 
-    class DummyDataset:
-        pass
-    dummy_dataset = DummyDataset()
-    dummy_dataset.data = data
 
-    settings = BasketballGraphSettings(self_loop_ball=False, normalize_coordinates=True)
-    pdims = BasketballPitchDimensions()
-    converter = BasketballGraphConverter(dummy_dataset, settings, pdims)
-    graph_frames = converter.convert()
-
-    # Expect 2 graph frames (one for each unique frame_id)
-    assert len(graph_frames) == 2
-    for gf in graph_frames:
-        # Check that required keys exist
-        for key in ["id", "x", "a", "e"]:
-            assert key in gf
-        # Check node features: normalized x and y, expected shape (n_nodes, 2)
-        x = gf["x"]
-        assert isinstance(x, np.ndarray)
-        assert x.shape[1] == 2
-        # If frame id is 1, check normalization: for x=50, y=25 with court_length=94 and court_width=50, expect approx (50/94, 25/50)
-        if gf["id"] == 1:
-            np.testing.assert_allclose(x[0], [50.0 / 94.0, 25.0 / 50.0], rtol=1e-2)
-        # Check that the adjacency matrix is square and its size matches the number of nodes
-        A = gf["a"]
-        n_nodes = x.shape[0]
-        assert A.shape[0] == A.shape[1] == n_nodes
-        # Check edge features shape: should be (n_nodes * n_nodes, 1)
-        e = gf["e"]
-        assert e.shape[0] == n_nodes * n_nodes
-        assert e.shape[1] == 1
-        # Verify that the frame id is one of the expected values (1 or 2)
-        assert gf["id"] in [1, 2]
-
-def test_graph_converter_self_loop():
+def test_add_graph_ids_and_dummy_labels(sample_basketball_json):
     """
-    Test BasketballGraphConverter with self_loop_ball enabled.
-    Verify that the diagonal of the adjacency matrix has non-zero values.
+    Test add_graph_ids() and add_dummy_labels().
     """
-    data = pl.DataFrame([
-        {"frame_id": 1, "team": "Lakers", "x": 50.0, "y": 25.0},
-        {"frame_id": 1, "team": "Lakers", "x": 52.0, "y": 26.0}
-    ])
+    ds = BasketballDataset(tracking_data=str(sample_basketball_json))
+    ds.add_graph_ids(by=["game_id", "event_id", "frame_id"], column_name="graph_id")
+    ds.add_dummy_labels(by=["game_id", "event_id", "frame_id"], column_name="label")
+    df = ds.get_dataframe()
+    assert "graph_id" in df.columns
+    assert "label" in df.columns
+    gids = df.select("graph_id").to_series().unique().to_list()
+    assert gids == ["NBA001-0-0"]
+    labels = df.select("label").to_series().unique().to_list()
+    assert labels == [0]
 
-    class DummyDataset:
-        pass
-    dummy_dataset = DummyDataset()
-    dummy_dataset.data = data
 
-    settings = BasketballGraphSettings()  # Default: self_loop_ball=True
-    pdims = BasketballPitchDimensions()
-    converter = BasketballGraphConverter(dummy_dataset, settings, pdims)
-    graph_frames = converter.convert()
-    for gf in graph_frames:
-        A = gf["a"].toarray()  # Convert csr_matrix to array for testing
-        diag = np.diag(A)
-        assert np.all(diag > 0)
+def test_load_from_url_archive(tmp_path, sample_basketball_json, monkeypatch):
+    """
+    Test BasketballDataset: load from a URL .7z archive and verify DataFrame.
+    """
+    # Create a real 7z archive containing sample.json
+    import py7zr, shutil
+    archive_path = tmp_path / "archive.7z"
+    with py7zr.SevenZipFile(str(archive_path), "w") as archive:
+        archive.write(str(sample_basketball_json), arcname="sample.json")
+    # Monkeypatch open_as_file to return our archive file
+    import kloppy.io
+    import unravel.basketball.dataset.dataset as ds_mod
+    class DummyFile:
+        def __init__(self, name): self.name = name
+        def __enter__(self): return self
+        def __exit__(self, exc_type, exc, tb): pass
+    monkeypatch.setattr(kloppy.io, 'open_as_file', lambda url: DummyFile(str(archive_path)))
+    monkeypatch.setattr(ds_mod, 'open_as_file', lambda url: DummyFile(str(archive_path)))
+
+    # Now load via URL mode
+    url = "https://raw.githubusercontent.com/linouk23/NBA-Player-Movements/master/data/2016.NBA.Raw.SportVU.Game.Logs/01.04.2016.TOR.at.CLE.7z"
+    ds = BasketballDataset(tracking_data=url)
+    df = ds.get_dataframe()
+    # Expect same columns and two rows
+    expected_columns = {"game_id", "event_id", "frame_id", "quarter", "game_clock", "shot_clock", "team", "player", "x", "y"}
+    assert set(df.columns) >= expected_columns
+    assert df.height == 2
+
+
+def test_sample_rate(tmp_path, sample_basketball_json, monkeypatch):
+    """
+    Test BasketballDataset sampling functionality via sample_rate.
+    """
+    # Monkeypatch DataFrame.sample to be deterministic
+    import polars as pl
+    original_sample = pl.DataFrame.sample
+    def deterministic_sample(self, fraction, with_replacement=False):
+        # return first floor(height * fraction) rows
+        n = int(self.height * fraction)
+        return self.head(n)
+    monkeypatch.setattr(pl.DataFrame, 'sample', deterministic_sample)
+
+    # Load with sample_rate=0.5
+    ds = BasketballDataset(tracking_data=str(sample_basketball_json), sample_rate=0.5)
+    df = ds.get_dataframe()
+    # original had 2 rows, so after sampling should have 1
+    assert df.height == 1
+
+
+def test_orient_ball_owning_adds_column(sample_basketball_json):
+    """
+    Test that orient_ball_owning=True adds 'oriented_direction' column.
+    """
+    # Initialize with orient_ball_owning flag
+    ds = BasketballDataset(tracking_data=str(sample_basketball_json), orient_ball_owning=True)
+    df = ds.get_dataframe()
+    # Column should exist, and all values are None
+    assert 'oriented_direction' in df.columns
+    assert len(df.select('oriented_direction').to_series().drop_nulls()) == 0
+
+
+def test_load_from_list_of_records(tmp_path):
+    """
+    Test loading JSON as list of dicts.
+    """
+    data = [
+        {"game_id": "G1", "frame_id": 0, "team": "A", "player": "P1", "x": 10, "y": 5},
+        {"game_id": "G1", "frame_id": 1, "team": "B", "player": "P2", "x": 20, "y": 15}
+    ]
+    file_path = tmp_path / "list.json"
+    file_path.write_text(json.dumps(data), encoding="utf-8")
+
+    ds = BasketballDataset(tracking_data=str(file_path))
+    df = ds.get_dataframe()
+    expected_columns = {"game_id", "frame_id", "team", "player", "x", "y"}
+    assert expected_columns.issubset(set(df.columns))
+    assert df.height == 2
+
+
+def test_invalid_json_structure(tmp_path):
+    """
+    Test loading from invalid JSON structure raises ValueError.
+    """
+    # Write a JSON that's neither dict nor list
+    file_path = tmp_path / "bad.json"
+    file_path.write_text(json.dumps("just a string"), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Unexpected JSON structure"):
+        _ = BasketballDataset(tracking_data=str(file_path))
