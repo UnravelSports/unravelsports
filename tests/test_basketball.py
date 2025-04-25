@@ -38,8 +38,8 @@ BasketballDataset.get_dataframe = lambda self: self.data
 
 # Import the Basketball classes from the basketball module
 from unravel.basketball.dataset.dataset import BasketballDataset
-from unravel.basketball.graphs.graph_settings import BasketballGraphSettings
-from unravel.basketball.graphs.pitch_dimensions import BasketballPitchDimensions
+from unravel.basketball.graphs.graph_settings import BasketballGraphSettings, BasketballPitchDimensions
+
 from unravel.basketball.graphs.graph_converter import BasketballGraphConverter
 
 @pytest.fixture
@@ -299,8 +299,14 @@ def test_basketball_pitchdimensions_basket_coordinates():
 
 # New tests for updated BasketballGraphSettings
 
-def test_graph_settings_requires_pitch_dimensions():
-    with pytest.raises(TypeError): BasketballGraphSettings()
+def test_graph_settings_default_pitch_dimensions():
+    """
+    Now that pitch_dimensions has a default_factory, creating settings
+    без аргументов должно работать и давать корректный объект.
+    """
+    settings = BasketballGraphSettings()
+    assert isinstance(settings.pitch_dimensions, BasketballPitchDimensions)
+
 
 
 def test_graph_settings_invalid_pitch_dimensions_type():
