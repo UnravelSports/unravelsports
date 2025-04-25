@@ -15,8 +15,7 @@ except ImportError:
     py7zr = None
 
 from ...utils import DefaultDataset, DefaultSettings
-from ..graphs.pitch_dimensions import BasketballPitchDimensions
-
+from ..graphs.graph_settings import BasketballPitchDimensions
 @dataclass(kw_only=True)
 class BasketballDataset(DefaultDataset):
     """

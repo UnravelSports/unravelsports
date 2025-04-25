@@ -1,3 +1,2 @@
 from .graph_converter import BasketballGraphConverter
-from .graph_settings import BasketballGraphSettings
-from .pitch_dimensions import BasketballPitchDimensions
+from .graph_settings import BasketballGraphSettings, BasketballPitchDimensions
