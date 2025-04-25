@@ -5,6 +5,7 @@ tempfile
 import numpy as np
 import polars as pl
 import pytest
+from unravel.utils.features import AdjacencyMatrixType, AdjacenyMatrixConnectType, PredictionLabelType
 from kloppy.domain import Unit
 
 # Monkeypatch BasketballDataset.get_dataframe to return .data
@@ -128,18 +129,20 @@ def test_graph_settings_defaults():
     """
     Test BasketballGraphSettings default values.
     """
-    settings = BasketballGraphSettings()
-    settings_dict = settings.as_dict()
-    assert settings_dict["self_loop_ball"] is True
-    assert settings_dict["adjacency_matrix_connect_type"] == "ball"
-    assert settings_dict["adjacency_matrix_type"] == "split_by_team"
-    assert settings_dict["label_type"] == "binary"
-    assert settings_dict["max_player_speed"] == 20.0
-    assert settings_dict["max_ball_speed"] == 30.0
-    assert settings_dict["normalize_coordinates"] is True
-    assert settings_dict["defending_team_node_value"] == 0.0
-    assert settings_dict["attacking_team_node_value"] == 1.0
-
+    pdims = BasketballPitchDimensions()
+    settings = BasketballGraphSettings(pitch_dimensions=pdims)
+    # Custom settings
+    assert settings.pitch_dimensions is pdims
+    assert settings.ball_carrier_threshold == 5.0
+    assert settings.defending_team_node_value == 0.0
+    assert settings.attacking_team_node_value == 1.0
+    # Inherited defaults
+    assert settings.self_loop_ball is True
+    assert settings.adjacency_matrix_connect_type == AdjacenyMatrixConnectType.BALL
+    assert settings.adjacency_matrix_type == AdjacencyMatrixType.SPLIT_BY_TEAM
+    assert settings.label_type == PredictionLabelType.BINARY
+    assert settings.max_player_speed == 12.0
+    assert settings.max_ball_speed == 28.0
 
 def test_pitch_dimensions_defaults():
     """
@@ -292,3 +295,34 @@ def test_basketball_pitchdimensions_basket_coordinates():
     d = pdims.as_dict()
     assert d["basket_x"] == pytest.approx(90.0)
     assert d["basket_y"] == pytest.approx(25.0)
+
+
+# New tests for updated BasketballGraphSettings
+
+def test_graph_settings_requires_pitch_dimensions():
+    with pytest.raises(TypeError): BasketballGraphSettings()
+
+
+def test_graph_settings_invalid_pitch_dimensions_type():
+    with pytest.raises(TypeError): BasketballGraphSettings(pitch_dimensions="not a BasketballPitchDimensions")
+
+
+def test_graph_settings_invalid_defending_team_node_value():
+    pdims=BasketballPitchDimensions()
+    with pytest.raises(ValueError): BasketballGraphSettings(pitch_dimensions=pdims,defending_team_node_value=-0.1)
+
+
+def test_graph_settings_invalid_attacking_team_node_value():
+    pdims=BasketballPitchDimensions()
+    with pytest.raises(ValueError): BasketballGraphSettings(pitch_dimensions=pdims,attacking_team_node_value=1.1)
+
+
+def test_graph_settings_custom_values_and_inheritance():
+    pdims=BasketballPitchDimensions()
+    settings=BasketballGraphSettings(pitch_dimensions=pdims,ball_carrier_threshold=7.5,defending_team_node_value=0.3,attacking_team_node_value=0.7)
+    assert settings.ball_carrier_threshold==7.5
+    assert settings.defending_team_node_value==0.3
+    assert settings.attacking_team_node_value==0.7
+    assert hasattr(settings,"self_loop_ball")
+    assert hasattr(settings,"adjacency_matrix_type")
+
