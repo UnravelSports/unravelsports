@@ -5,6 +5,7 @@ tempfile
 import numpy as np
 import polars as pl
 import pytest
+from kloppy.domain import Unit
 
 # Monkeypatch BasketballDataset.get_dataframe to return .data
 from unravel.basketball.dataset.dataset import BasketballDataset
@@ -268,3 +269,26 @@ def test_invalid_json_structure(tmp_path):
 
     with pytest.raises(ValueError, match="Unexpected JSON structure"):
         _ = BasketballDataset(tracking_data=str(file_path))
+
+
+# New tests for updated BasketballPitchDimensions
+
+def test_basketball_pitchdimensions_asdict_contains_standardized_and_unit():
+    pdims = BasketballPitchDimensions()
+    d = pdims.as_dict()
+    assert d["standardized"] is False
+    assert d["unit"] == Unit.FEET
+
+
+def test_basketball_pitchdimensions_dimension_fields():
+    pdims = BasketballPitchDimensions()
+    d = pdims.as_dict()
+    assert d["x_dim"] == {"min": 0.0, "max": 94.0}
+    assert d["y_dim"] == {"min": 0.0, "max": 50.0}
+
+
+def test_basketball_pitchdimensions_basket_coordinates():
+    pdims = BasketballPitchDimensions()
+    d = pdims.as_dict()
+    assert d["basket_x"] == pytest.approx(90.0)
+    assert d["basket_y"] == pytest.approx(25.0)
