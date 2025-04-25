@@ -1,42 +1,34 @@
-class BasketballGraphSettings:
+from dataclasses import dataclass, field
+from typing import Union
+
+from unravel.utils.objects.default_graph_settings import DefaultGraphSettings
+from unravel.utils.features import (
+    AdjacencyMatrixType,
+    AdjacenyMatrixConnectType,
+    PredictionLabelType,
+)
+from .pitch_dimensions import BasketballPitchDimensions
+
+@dataclass(kw_only=True)
+class BasketballGraphSettings(DefaultGraphSettings):
     """
     Configuration settings for converting NBA tracking data into graph representations.
+    Inherits from DefaultGraphSettings to leverage common functionality.
     """
-    def __init__(
-        self,
-        self_loop_ball: bool = True,
-        adjacency_matrix_connect_type: str = "ball",
-        adjacency_matrix_type: str = "split_by_team",
-        label_type: str = "binary",
-        max_player_speed: float = 20.0,  # unit: feet per second (adjust as needed)
-        max_ball_speed: float = 30.0,    # unit: feet per second (adjust as needed)
-        defending_team_node_value: float = 0.0,
-        attacking_team_node_value: float = 1.0,
-        normalize_coordinates: bool = True,
-        verbose: bool = False,
-    ):
-        self.self_loop_ball = self_loop_ball
-        self.adjacency_matrix_connect_type = adjacency_matrix_connect_type
-        self.adjacency_matrix_type = adjacency_matrix_type
-        self.label_type = label_type
-        self.max_player_speed = max_player_speed
-        self.max_ball_speed = max_ball_speed
-        self.defending_team_node_value = defending_team_node_value
-        self.attacking_team_node_value = attacking_team_node_value
-        self.normalize_coordinates = normalize_coordinates
-        self.verbose = verbose
+    # Sport-specific settings
+    pitch_dimensions: BasketballPitchDimensions
+    ball_carrier_threshold: float = 5.0
+    defending_team_node_value: float = 0.0
+    attacking_team_node_value: float = 1.0
 
-    def as_dict(self) -> dict:
-        """Return all settings as a dictionary."""
-        return {
-            "self_loop_ball": self.self_loop_ball,
-            "adjacency_matrix_connect_type": self.adjacency_matrix_connect_type,
-            "adjacency_matrix_type": self.adjacency_matrix_type,
-            "label_type": self.label_type,
-            "max_player_speed": self.max_player_speed,
-            "max_ball_speed": self.max_ball_speed,
-            "defending_team_node_value": self.defending_team_node_value,
-            "attacking_team_node_value": self.attacking_team_node_value,
-            "normalize_coordinates": self.normalize_coordinates,
-            "verbose": self.verbose,
-        }
+    def __post_init__(self):
+        # Validate pitch_dimensions type
+        if not isinstance(self.pitch_dimensions, BasketballPitchDimensions):
+            raise TypeError("pitch_dimensions must be a BasketballPitchDimensions instance")
+        # Validate node value ranges
+        if not (0.0 <= self.defending_team_node_value <= 1.0):
+            raise ValueError("defending_team_node_value must be between 0 and 1")
+        if not (0.0 <= self.attacking_team_node_value <= 1.0):
+            raise ValueError("attacking_team_node_value must be between 0 and 1")
+        # Perform default settings validation
+        super().__post_init__()
