@@ -8,6 +8,11 @@ from spektral.data import Graph
 from unravel.utils.objects.default_graph_converter import DefaultGraphConverter
 from .graph_settings import BasketballGraphSettings
 
+from .features.node_features import compute_node_features
+from .features.adjacency_matrix import compute_adjacency_matrix
+from .features.edge_features import compute_edge_features
+
+
 if False:
     # for type checking
     from unravel.basketball.dataset.dataset import BasketballDataset
@@ -97,34 +102,20 @@ class BasketballGraphConverter(DefaultGraphConverter):
         rows = []
         for fid in frame_ids:
             recs = df.filter(pl.col("frame_id") == fid).to_dicts()
-            x, teams = self._compute_node_features(recs)
-            a = self._compute_adjacency(teams)
-            e = self._compute_edge_features(x)
+            
+            x, teams = compute_node_features(
+                recs,
+                normalize_coordinates=self.settings.normalize_coordinates,
+                pitch_dimensions=self.settings.pitch_dimensions,
+                node_feature_cols=self._exprs_variables["node_feature_cols"],
+            )
+            a = compute_adjacency_matrix(
+                teams,
+                self_loop=self.settings.self_loop_ball,
+            )
+            e = compute_edge_features(x)
+
             y = recs[0].get(self.label_col)
             rows.append({"id": fid, "x": x, "a": a, "e": e, "y": y})
 
         return pl.DataFrame(rows)
-
-
-
-    def _compute_node_features(self, records: List[Dict[str, Any]]) -> Tuple[np.ndarray, List[Any]]:
-        xs, teams = [], []
-        for rec in records:
-            x, y = rec.get("x", 0.0), rec.get("y", 0.0)
-            if self.settings.normalize_coordinates:
-                x /= self.settings.pitch_dimensions.court_length
-                y /= self.settings.pitch_dimensions.court_width
-            xs.append([x, y])
-            teams.append(rec.get("team"))
-        return np.array(xs), teams
-
-    def _compute_adjacency(self, teams: List[Any]) -> np.ndarray:
-        arr = np.array(teams)
-        A = (arr[:, None] == arr[None, :]).astype(float)
-        if not self.settings.self_loop_ball:
-            np.fill_diagonal(A, 0.0)
-        return A
-
-    def _compute_edge_features(self, x: np.ndarray) -> np.ndarray:
-        diff = x[:, None, :] - x[None, :, :]
-        return np.linalg.norm(diff, axis=2)
