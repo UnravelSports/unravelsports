@@ -307,7 +307,6 @@ def test_basketball_pitchdimensions_basket_coordinates():
 def test_graph_settings_default_pitch_dimensions():
     """
     Now that pitch_dimensions has a default_factory, creating settings
-    без аргументов должно работать и давать корректный объект.
     """
     settings = BasketballGraphSettings()
     assert isinstance(settings.pitch_dimensions, BasketballPitchDimensions)
