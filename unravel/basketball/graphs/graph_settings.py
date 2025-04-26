@@ -9,6 +9,7 @@ from unravel.utils.features import (
     AdjacenyMatrixConnectType,
     PredictionLabelType,
 )
+import warnings
 
 @dataclass
 class BasketballPitchDimensions:
@@ -62,6 +63,20 @@ class BasketballGraphSettings(DefaultGraphSettings):
     attacking_team_node_value: float = 1.0
 
     def __post_init__(self):
+
+        for deprecated in (
+            "max_player_speed",
+            "max_ball_speed",
+            "max_player_acceleration",
+            "max_ball_acceleration",
+        ):
+            if hasattr(self, deprecated):
+                warnings.warn(
+                    f"{deprecated} is deprecated in BasketballGraphSettings "
+                    "and will be removed in a future release.",
+                    DeprecationWarning,
+                )
+                delattr(self, deprecated)
         # Ensure correct type
         if not isinstance(self.pitch_dimensions, BasketballPitchDimensions):
             raise TypeError("pitch_dimensions must be a BasketballPitchDimensions instance")

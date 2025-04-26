@@ -146,8 +146,6 @@ def test_graph_settings_defaults():
     assert settings.adjacency_matrix_connect_type == AdjacenyMatrixConnectType.BALL
     assert settings.adjacency_matrix_type == AdjacencyMatrixType.SPLIT_BY_TEAM
     assert settings.label_type == PredictionLabelType.BINARY
-    assert settings.max_player_speed == 12.0
-    assert settings.max_ball_speed == 28.0
 
 def test_pitch_dimensions_defaults():
     """
