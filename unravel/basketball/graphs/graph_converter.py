@@ -95,27 +95,64 @@ class BasketballGraphConverter(DefaultGraphConverter):
             raise ValueError(f"Missing graph_id column '{self._exprs_variables['graph_id_col']}'")
 
     def _convert(self) -> pl.DataFrame:
-        df = self.dataset_obj.data
-        # get all unique frame IDs
-        frame_ids = df.select("frame_id").unique().to_series().to_list()
+        """
+        Convert the raw Polars DataFrame into a graph‐structured DataFrame,
+        returning one row per unique frame_id with columns:
+          - id: frame identifier
+          - x: node feature matrix (np.ndarray)
+          - a: adjacency matrix (np.ndarray)
+          - e: edge feature matrix (np.ndarray)
+          - y: label for that frame
 
+        Uses Polars group_by/agg to collect per-frame lists without Python-level loops.
+        """
+        from .features.node_features import compute_node_features
+        from .features.adjacency_matrix import compute_adjacency_matrix
+        from .features.edge_features import compute_edge_features
+
+        df = self.dataset_obj.data
+        node_cols = self._exprs_variables["node_feature_cols"]
+        label_col = self._exprs_variables["label_col"]
+
+        # Group by frame, collect each feature and team into list columns, grab first label
+        aggregated = (
+            df
+            .group_by("frame_id")
+            .agg(
+                # For each node feature, pl.col(c) automatically produces a list of values
+                *[pl.col(c).alias(f"{c}_list") for c in node_cols],
+                pl.col("team").alias("team_list"),
+                pl.col(label_col).first().alias("y"),
+            )
+        )
+
+        # Build out each graph row from the collected lists
         rows = []
-        for fid in frame_ids:
-            recs = df.filter(pl.col("frame_id") == fid).to_dicts()
-            
+        for row in aggregated.rows(named=True):
+            # Reconstruct per-entity dicts from parallel lists
+            n = len(row[f"{node_cols[0]}_list"])
+            records = [
+                {c: row[f"{c}_list"][i] for c in node_cols} | {"team": row["team_list"][i]}
+                for i in range(n)
+            ]
+
+            # Compute node matrix & teams
             x, teams = compute_node_features(
-                recs,
+                records,
                 normalize_coordinates=self.settings.normalize_coordinates,
                 pitch_dimensions=self.settings.pitch_dimensions,
-                node_feature_cols=self._exprs_variables["node_feature_cols"],
+                node_feature_cols=node_cols,
             )
-            a = compute_adjacency_matrix(
-                teams,
-                self_loop=self.settings.self_loop_ball,
-            )
+            # Build adjacency & edge
+            a = compute_adjacency_matrix(teams, self_loop=self.settings.self_loop_ball)
             e = compute_edge_features(x)
 
-            y = recs[0].get(self.label_col)
-            rows.append({"id": fid, "x": x, "a": a, "e": e, "y": y})
+            rows.append({
+                "id": row["frame_id"],
+                "x": x,
+                "a": a,
+                "e": e,
+                "y": row["y"],
+            })
 
         return pl.DataFrame(rows)
