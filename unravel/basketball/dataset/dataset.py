@@ -4,8 +4,6 @@ import os
 import json
 import tempfile
 import polars as pl
-import requests
-import numpy as np
 
 from kloppy.io import open_as_file
 
@@ -14,8 +12,11 @@ try:
 except ImportError:
     py7zr = None
 
-from ...utils import DefaultDataset, DefaultSettings
-from ..graphs.graph_settings import BasketballPitchDimensions
+# Import default base classes
+from unravel.utils import DefaultDataset, DefaultSettings
+# Import pitch dimensions from merged graph_settings module
+from unravel.basketball.graphs.graph_settings import BasketballPitchDimensions
+
 @dataclass(kw_only=True)
 class BasketballDataset(DefaultDataset):
     """
@@ -209,7 +210,7 @@ class BasketballDataset(DefaultDataset):
         if self.data is None:
             raise ValueError("Data not loaded. Call load() first.")
         self.data = self.data.with_columns(
-            pl.concat_str([pl.col(c) for c in by], sep="-").alias(column_name)
+            pl.concat_str([pl.col(c) for c in by], separator="-").alias(column_name)
         )
 
     def add_dummy_labels(self, by: List[str], column_name: str = "label") -> None:
