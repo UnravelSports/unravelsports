@@ -156,3 +156,41 @@ class BasketballGraphConverter(DefaultGraphConverter):
             })
 
         return pl.DataFrame(rows)
+
+
+
+
+    def to_graph_frames(self) -> list[dict]:
+        """
+        Compute all graphs once and return a list of lightweight dicts:
+        {"id": frame_id, "x": np.ndarray, "a": np.ndarray, "e": np.ndarray, "y": label}
+        """
+        if not hasattr(self, "_graph_df"):
+            self._graph_df = self.compute()        # cache result
+
+        return [
+            {
+                "id": row["id"],
+                "x": row["x"],
+                "a": row["a"],
+                "e": row["e"],
+                "y": row["y"],
+            }
+            for row in self._graph_df.rows(named=True)
+        ]
+
+
+    def to_spektral_graphs(self) -> list[Graph]:
+        """
+        Convert each frame dict into a Spektral Graph object.
+        """
+        return [
+            Graph(
+                x=frame["x"],
+                a=frame["a"],
+                e=frame["e"],
+                y=np.asarray([frame["y"]], dtype=float),
+                id=frame["id"],
+            )
+            for frame in self.to_graph_frames()
+        ]

@@ -54,6 +54,9 @@ class BasketballGraphSettings(DefaultGraphSettings):
     Configuration settings for converting NBA tracking data into graph representations.
     Inherits from DefaultGraphSettings to leverage common functionality.
     """
+    # New switch: whether to scale x/y to [0, 1]
+    normalize_coordinates: bool = False
+    
     # Embed pitch dimensions with default factory for convenience
     pitch_dimensions: BasketballPitchDimensions = field(default_factory=BasketballPitchDimensions)
 
