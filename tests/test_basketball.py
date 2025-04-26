@@ -455,3 +455,59 @@ def test_compute_smoke(sample_basketball_json):
     )
     assert df.height == len(unique_frames)
 
+# New tests for new graph-export APIs
+
+def test_to_graph_frames_and_consistency(sample_basketball_json):
+    """
+    to_graph_frames() must return the same information that compute() provides,
+    but wrapped per-frame in a dict.
+    """
+    # prepare dataset and converter
+    ds = BasketballDataset(tracking_data=str(sample_basketball_json))
+    ds.add_graph_ids(by=["game_id", "event_id", "frame_id"], column_name="graph_id")
+    ds.add_dummy_labels(by=["game_id", "event_id", "frame_id"], column_name="label")
+    settings = BasketballGraphSettings()
+    conv = BasketballGraphConverter(dataset=ds, settings=settings)
+
+    # run both paths
+    df_result      = conv.compute()
+    frame_dicts    = conv.to_graph_frames()
+
+    # basic checks
+    assert isinstance(frame_dicts, list)
+    assert len(frame_dicts) == df_result.height
+
+    # compare first frame between both outputs
+    first_d = frame_dicts[0]
+    first_r = df_result.row(0, named=True)
+
+    assert set(first_d.keys()) == {"id", "x", "a", "e", "y"}
+    assert first_d["id"] == first_r["id"]
+    assert np.array_equal(first_d["x"], first_r["x"])
+    assert np.array_equal(first_d["a"], first_r["a"])
+    assert np.array_equal(first_d["e"], first_r["e"])
+    assert first_d["y"] == first_r["y"]
+
+
+def test_to_spektral_graphs(sample_basketball_json):
+    """
+    to_spektral_graphs() must wrap each frame in a valid spektral.data.Graph.
+    """
+    ds = BasketballDataset(tracking_data=str(sample_basketball_json))
+    ds.add_graph_ids(by=["game_id","event_id","frame_id"], column_name="graph_id")
+    ds.add_dummy_labels(by=["game_id","event_id","frame_id"], column_name="label")
+    settings = BasketballGraphSettings()
+    conv = BasketballGraphConverter(dataset=ds, settings=settings)
+
+    graphs = conv.to_spektral_graphs()
+
+    from spektral.data import Graph
+    assert isinstance(graphs, list)
+    assert all(isinstance(g, Graph) for g in graphs)
+
+    # inspect first graph
+    g0 = graphs[0]
+    assert g0.x.ndim == 2                 # (n_nodes, n_node_features)
+    assert g0.a.shape[0] == g0.a.shape[1] # square adjacency
+    assert g0.e.shape[0] == g0.e.shape[1] # edges align with nodes
+    assert g0.y.shape == (1,)             # single label per graph
