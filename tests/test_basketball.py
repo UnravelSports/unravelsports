@@ -332,3 +332,114 @@ def test_graph_settings_custom_values_and_inheritance():
     assert hasattr(settings,"self_loop_ball")
     assert hasattr(settings,"adjacency_matrix_type")
 
+# New tests for updated BasketballGraphConverter
+
+def test_graph_converter_internal_methods(sample_basketball_json):
+    """
+    Test internal methods of BasketballGraphConverter using real data.
+    """
+    ds = BasketballDataset(tracking_data=str(sample_basketball_json))
+    ds.add_graph_ids(by=["game_id", "event_id", "frame_id"], column_name="graph_id")
+    ds.add_dummy_labels(by=["game_id", "event_id", "frame_id"], column_name="label")
+
+    settings = BasketballGraphSettings()
+    settings.normalize_coordinates = True
+
+    converter = BasketballGraphConverter(dataset=ds, settings=settings)
+
+    frame0 = ds.get_dataframe().filter(pl.col("frame_id") == 0)
+    records = frame0.to_dicts()
+
+    x, teams = converter._compute_node_features(records)
+    assert isinstance(x, np.ndarray)
+    assert x.ndim == 2 and x.shape[0] == len(records)
+    assert x[0, 0] == pytest.approx(records[0]["x"] / settings.pitch_dimensions.court_length)
+    assert teams == [rec["team"] for rec in records]
+
+    A = converter._compute_adjacency(teams)
+    assert isinstance(A, np.ndarray)
+    assert A.shape == (len(records), len(records))
+    for i in range(len(records)):
+        for j in range(len(records)):
+            if teams[i] != teams[j]:
+                assert A[i, j] == 0.0
+
+    E = converter._compute_edge_features(x)
+    assert isinstance(E, np.ndarray)
+    assert E.shape == (len(records), len(records))
+    assert all(E[i, i] == pytest.approx(0.0) for i in range(len(records)))
+    dist = np.linalg.norm(x[0] - x[1])
+    assert E[0, 1] == pytest.approx(dist)
+    assert E[1, 0] == pytest.approx(dist)
+
+def test_apply_settings_mapping(sample_basketball_json):
+    ds = BasketballDataset(tracking_data=str(sample_basketball_json))
+    ds.add_graph_ids(by=["game_id", "event_id", "frame_id"], column_name="graph_id")
+    ds.add_dummy_labels(by=["game_id", "event_id", "frame_id"], column_name="label")
+
+    settings = BasketballGraphSettings()
+    settings.pad = True
+    settings.random_seed = 123
+
+    converter = BasketballGraphConverter(dataset=ds, settings=settings)
+    mapping = converter._apply_settings()
+
+    assert mapping == {
+        "ball_carrier_threshold": 5.0,
+        "self_loop_ball": True,
+        "adjacency_matrix_type": AdjacencyMatrixType.SPLIT_BY_TEAM,
+        "adjacency_matrix_connect_type": AdjacenyMatrixConnectType.BALL,
+        "pad": True,
+        "random_seed": 123,
+        "label_type": PredictionLabelType.BINARY,
+    }
+
+def test_graph_converter_init_raises_on_non_dataframe_dataset():
+    settings = BasketballGraphSettings()
+    bad_ds = BasketballDataset.__new__(BasketballDataset)
+    bad_ds.data = "not a dataframe"
+    from unravel.basketball.graphs.graph_converter import BasketballGraphConverter
+    with pytest.raises(AttributeError):
+        _ = BasketballGraphConverter(dataset=bad_ds, settings=settings)
+
+def test_post_init_exprs_variables(sample_basketball_json):
+    ds = BasketballDataset(tracking_data=str(sample_basketball_json))
+    ds.add_graph_ids(by=["game_id", "event_id", "frame_id"], column_name="graph_id")
+    settings = BasketballGraphSettings()
+    conv = BasketballGraphConverter(dataset=ds, settings=settings)
+    assert set(conv._exprs_variables["node_feature_cols"]) == {"x", "y", "vx", "vy", "speed", "acceleration"}
+    assert conv._exprs_variables["label_col"] == "label"
+    assert conv._exprs_variables["graph_id_col"] == "graph_id"
+
+def test_custom_graph_feature_cols(sample_basketball_json):
+    ds = BasketballDataset(tracking_data=str(sample_basketball_json))
+    ds.add_graph_ids(by=["game_id","event_id","frame_id"],column_name="graph_id")
+    ds.add_dummy_labels(by=["game_id","event_id","frame_id"],column_name="label")
+    settings = BasketballGraphSettings()
+    cols = ["x","y"]
+    conv = BasketballGraphConverter(dataset=ds, settings=settings, graph_feature_cols=cols)
+    assert conv._exprs_variables["node_feature_cols"] == cols
+
+def test_compute_smoke(sample_basketball_json):
+    ds = BasketballDataset(tracking_data=str(sample_basketball_json))
+    ds.add_graph_ids(by=["game_id","event_id","frame_id"], column_name="graph_id")
+    ds.add_dummy_labels(by=["game_id","event_id","frame_id"], column_name="label")
+
+    settings = BasketballGraphSettings()
+    settings.normalize_coordinates = True
+
+    converter = BasketballGraphConverter(dataset=ds, settings=settings)
+    df = converter.compute()
+
+    assert isinstance(df, pl.DataFrame)
+    assert set(df.columns) == {"id", "x", "a", "e", "y"}
+
+    unique_frames = (
+        ds.get_dataframe()
+        .select("frame_id")
+        .unique()
+        .to_series()
+        .to_list()
+    )
+    assert df.height == len(unique_frames)
+
