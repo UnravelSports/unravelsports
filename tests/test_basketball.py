@@ -8,6 +8,11 @@ import pytest
 from unravel.utils.features import AdjacencyMatrixType, AdjacenyMatrixConnectType, PredictionLabelType
 from kloppy.domain import Unit
 
+from unravel.basketball.graphs.features.node_features import compute_node_features
+from unravel.basketball.graphs.features.adjacency_matrix import compute_adjacency_matrix
+from unravel.basketball.graphs.features.edge_features import compute_edge_features
+
+
 # Monkeypatch BasketballDataset.get_dataframe to return .data
 from unravel.basketball.dataset.dataset import BasketballDataset
 BasketballDataset.get_dataframe = lambda self: self.data
@@ -350,13 +355,23 @@ def test_graph_converter_internal_methods(sample_basketball_json):
     frame0 = ds.get_dataframe().filter(pl.col("frame_id") == 0)
     records = frame0.to_dicts()
 
-    x, teams = converter._compute_node_features(records)
+    x, teams = compute_node_features(
+    records,
+    normalize_coordinates=settings.normalize_coordinates,
+    pitch_dimensions=settings.pitch_dimensions,
+    node_feature_cols=converter._exprs_variables["node_feature_cols"],
+    )
+
     assert isinstance(x, np.ndarray)
     assert x.ndim == 2 and x.shape[0] == len(records)
     assert x[0, 0] == pytest.approx(records[0]["x"] / settings.pitch_dimensions.court_length)
     assert teams == [rec["team"] for rec in records]
 
-    A = converter._compute_adjacency(teams)
+    A = compute_adjacency_matrix(
+        teams,
+        self_loop=settings.self_loop_ball,
+    )
+    
     assert isinstance(A, np.ndarray)
     assert A.shape == (len(records), len(records))
     for i in range(len(records)):
@@ -364,7 +379,7 @@ def test_graph_converter_internal_methods(sample_basketball_json):
             if teams[i] != teams[j]:
                 assert A[i, j] == 0.0
 
-    E = converter._compute_edge_features(x)
+    E = compute_edge_features(x)
     assert isinstance(E, np.ndarray)
     assert E.shape == (len(records), len(records))
     assert all(E[i, i] == pytest.approx(0.0) for i in range(len(records)))
