@@ -9,7 +9,7 @@ from kloppy.domain import (
     Provider,
 )
 
-from typing import List, Dict, Union, Literal, Tuple
+from typing import List, Dict, Union, Literal, Tuple, Optional
 
 from dataclasses import field, dataclass
 
@@ -621,18 +621,19 @@ class KloppyPolarsDataset(DefaultDataset):
             Group.BY_FRAME_TEAM
         )
 
-    def __fix_orientation_to_ball_owning(
-        self, df: pl.DataFrame, home_team_id: Union[str, int]
-    ):
+    def convert_orientation_to_ball_owning(self, df: pl.DataFrame):
         # When orient_ball_owning is True, it means the orientation has to flip from "STATIC_HOME_AWAY" to "BALL_OWNING" in the Polars dataframe
         # This means that when away is the attacking team we can flip all coordinates by -1.0
         flip_columns = [Column.X, Column.Y, Column.VX, Column.VY, Column.AX, Column.AY]
 
         self.settings.orientation = Orientation.BALL_OWNING_TEAM
+
+        home_team, _ = self.kloppy_dataset.metadata.teams
         return df.with_columns(
             [
                 pl.when(
-                    pl.col(Column.BALL_OWNING_TEAM_ID).cast(str) != str(home_team_id)
+                    pl.col(Column.BALL_OWNING_TEAM_ID).cast(str)
+                    != str(home_team.team_id)
                 )
                 .then(pl.col(flip_columns) * -1)
                 .otherwise(pl.col(flip_columns))
@@ -707,10 +708,8 @@ class KloppyPolarsDataset(DefaultDataset):
             self._orient_ball_owning
             and self.settings.orientation != Orientation.BALL_OWNING_TEAM
         ):
-            home_team, _ = self.kloppy_dataset.metadata.teams
-            df = self.__fix_orientation_to_ball_owning(
-                df, home_team_id=home_team.team_id
-            )
+
+            df = self.convert_orientation_to_ball_owning(df)
 
         if self._infer_goalkeepers:
             df = self.__infer_goalkeepers(df)
@@ -718,8 +717,12 @@ class KloppyPolarsDataset(DefaultDataset):
         self.data = df
         return self
 
-    def add_dummy_labels(self, by: List[str] = ["game_id", "frame_id"]) -> pl.DataFrame:
-        self.data = add_dummy_label_column(self.data, by, self._label_column)
+    def add_dummy_labels(
+        self, by: List[str] = ["game_id", "frame_id"], random_seed: Optional[int] = None
+    ) -> pl.DataFrame:
+        self.data = add_dummy_label_column(
+            self.data, by, self._label_column, random_seed
+        )
         return self.data
 
     def add_graph_ids(self, by: List[str] = ["game_id", "period_id"]) -> pl.DataFrame:
@@ -745,3 +748,9 @@ class KloppyPolarsDataset(DefaultDataset):
             raise ValueError(
                 "No home_players or away_players, first load() the dataset"
             )
+
+    def sample(self, sample_rate: float):
+        sample = 1.0 / sample_rate
+
+        self.data = self.data.filter((pl.col(Column.FRAME_ID) % sample) == 0)
+        return self

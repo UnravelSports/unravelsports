@@ -1,6 +1,6 @@
 import logging
 import sys
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Optional
 
 import numpy as np
 
@@ -138,6 +138,8 @@ class CustomSpektralDataset(Dataset, Sequence):
         split_test: float,
         by_graph_id: bool = False,
         random_seed: Union[bool, int] = False,
+        train_label_ratio: Optional[float] = None,
+        test_label_ratio: Optional[float] = None,
     ):
         return self.split_test_train_validation(
             split_train=split_train,
@@ -145,6 +147,8 @@ class CustomSpektralDataset(Dataset, Sequence):
             split_validation=0.0,
             by_graph_id=by_graph_id,
             random_seed=random_seed,
+            train_label_ratio=train_label_ratio,
+            test_label_ratio=test_label_ratio,
         )
 
     def split_test_train_validation(
@@ -154,9 +158,12 @@ class CustomSpektralDataset(Dataset, Sequence):
         split_validation: float,
         by_graph_id: bool = False,
         random_seed: int = None,
+        train_label_ratio: Optional[float] = None,
+        test_label_ratio: Optional[float] = None,
+        val_label_ratio: Optional[float] = None,
     ):
         """
-        split_train, split_test and split_validation can be either floats, total number of samples or ratio.
+        Split dataset into train, test, and validation sets with optional label balancing.
 
         split_train (float): amount of total samples that will go into train set
         split_test (float): amount of total samples that will go into test set.
@@ -164,10 +171,18 @@ class CustomSpektralDataset(Dataset, Sequence):
         by_graph_id (bool): when we want to split the samples by graph_id, such that all graphs with the same id end up in the same train/test/validation set
             set to True. Defaults to False. When set to True the split ratio's will be approximated,
             because we can't be sure to split the graphs exactly according to the ratios.
+        random_seed (int, optional): Random seed for reproducibility
+        train_label_ratio (float, optional): If provided, balances the training set to have this ratio of labels (0/1).
+            Must be between 0 and 1. Defaults to None (keep original distribution).
+        test_label_ratio (float, optional): If provided, balances the test set to have this ratio of labels (0/1).
+            Must be between 0 and 1. Defaults to None (keep original distribution).
+        val_label_ratio (float, optional): If provided, balances the validation set to have this ratio of labels (0/1).
+            Must be between 0 and 1. Defaults to None (keep original distribution).
 
         for an explanation on splitting behaviour when by_graph_id = True
         see: https://github.com/USSoccerFederation/ussf_ssac_23_soccer_gnn/blob/main/split_sequences.py
         """
+
         total = split_train + split_test + split_validation
 
         train_pct = split_train / total
@@ -185,6 +200,7 @@ class CustomSpektralDataset(Dataset, Sequence):
 
         dataset_length = len(self)
         num_train = int(train_pct * dataset_length)
+
         if validation_pct > 0:
             num_test = int(test_pct * dataset_length)
             num_validation = dataset_length - num_train - num_test
@@ -219,12 +235,43 @@ class CustomSpektralDataset(Dataset, Sequence):
                     num_train + num_test : num_train + num_test + num_validation
                 ]
 
-                return self[train_idxs], self[test_idxs], self[validation_idxs]
+                train_set = self[train_idxs]
+                test_set = self[test_idxs]
+                validation_set = self[validation_idxs]
+
+                # Apply label balancing if requested
+                if train_label_ratio is not None:
+                    train_set = self._balance_labels(
+                        train_set, train_label_ratio, random_seed
+                    )
+                if test_label_ratio is not None:
+                    test_set = self._balance_labels(
+                        test_set, test_label_ratio, random_seed
+                    )
+                if val_label_ratio is not None:
+                    validation_set = self._balance_labels(
+                        validation_set, val_label_ratio, random_seed
+                    )
+
+                return train_set, test_set, validation_set
             else:
                 train_idxs = idxs[:num_train]
                 test_idxs = idxs[num_train:]
 
-                return self[train_idxs], self[test_idxs]
+                train_set = self[train_idxs]
+                test_set = self[test_idxs]
+
+                # Apply label balancing if requested
+                if train_label_ratio is not None:
+                    train_set = self._balance_labels(
+                        train_set, train_label_ratio, random_seed
+                    )
+                if test_label_ratio is not None:
+                    test_set = self._balance_labels(
+                        test_set, test_label_ratio, random_seed
+                    )
+
+                return train_set, test_set
         else:
             # if we do use the graph_ids we randomly assign all items of a certain graph_id to either
             # val, test or train. We start with validation, because it's assumed to be the smallest dataset.
@@ -232,6 +279,7 @@ class CustomSpektralDataset(Dataset, Sequence):
 
             if random_seed:
                 np.random.seed(random_seed)
+
             unique_graph_ids_list = sorted(list(unique_graph_ids))
             np.random.shuffle(unique_graph_ids_list)
 
@@ -259,9 +307,138 @@ class CustomSpektralDataset(Dataset, Sequence):
             train_idxs = np.where(train_idxs)[0]
 
             if validation_idxs:
-                return self[train_idxs], self[test_idxs], self[validation_idxs]
+                train_set = self[train_idxs]
+                test_set = self[test_idxs]
+                validation_set = self[validation_idxs]
+
+                # Apply label balancing if requested
+                if train_label_ratio is not None:
+                    train_set = self._balance_labels(
+                        train_set, train_label_ratio, random_seed
+                    )
+                if test_label_ratio is not None:
+                    test_set = self._balance_labels(
+                        test_set, test_label_ratio, random_seed
+                    )
+                if val_label_ratio is not None:
+                    validation_set = self._balance_labels(
+                        validation_set, val_label_ratio, random_seed
+                    )
+
+                return train_set, test_set, validation_set
             else:
-                return self[train_idxs], self[test_idxs]
+                train_set = self[train_idxs]
+                test_set = self[test_idxs]
+
+                # Apply label balancing if requested
+                if train_label_ratio is not None:
+                    train_set = self._balance_labels(
+                        train_set, train_label_ratio, random_seed
+                    )
+                if test_label_ratio is not None:
+                    test_set = self._balance_labels(
+                        test_set, test_label_ratio, random_seed
+                    )
+
+                return train_set, test_set
+
+    def _balance_labels(self, dataset, target_ratio, random_seed):
+        """
+        Balance a dataset to achieve a target ratio of labels.
+
+        Args:
+            dataset: A CustomSpektralDataset containing Graph objects
+            target_ratio: Float between 0 and 1, representing the desired ratio of positive labels
+                        (e.g., 0.5 for a 50/50 split)
+
+        Returns:
+            A balanced subset of the dataset with the desired label ratio
+        """
+        if random_seed:
+            np.random.seed(random_seed)
+
+        if not 0 <= target_ratio <= 1:
+            raise ValueError("target_ratio must be between 0 and 1")
+
+        # Identify indices by label
+        indices_by_label = {0: [], 1: []}
+
+        for i, g in enumerate(dataset):
+            # Handle different types of label storage
+            if hasattr(g, "y"):
+                if isinstance(g.y, (np.ndarray, list)):
+                    # Check that y is not longer than 1 item
+                    if len(g.y) != 1:
+                        raise ValueError(
+                            f"Expected y to be a single value, but got array of length {len(g.y)}"
+                        )
+                    label = 1 if g.y[0] > 0.5 else 0
+                else:
+                    label = 1 if g.y > 0.5 else 0
+            elif g.get("y", None) is not None:
+                # If using dictionary access
+                y_value = g["y"]
+                if isinstance(y_value, (np.ndarray, list)):
+                    # Check that y is not longer than 1 item
+                    if len(y_value) != 1:
+                        raise ValueError(
+                            f"Expected y to be a single value, but got array of length {len(y_value)}"
+                        )
+                    label = 1 if y_value[0] > 0.5 else 0
+                else:
+                    label = 1 if y_value > 0.5 else 0
+            else:
+                raise ValueError("Graph has no attribute 'y'...")
+
+            indices_by_label[label].append(i)
+
+        # Count samples for each class
+        n_zeros = len(indices_by_label[0])
+        n_ones = len(indices_by_label[1])
+        total = n_zeros + n_ones
+
+        # Calculate current ratio
+        current_ratio = n_ones / total if total > 0 else 0
+
+        # If already matching target ratio (within 1%), return as is
+        if abs(current_ratio - target_ratio) < 0.01:
+            return dataset
+
+        # Calculate how many samples we need for each class
+        if current_ratio > target_ratio:
+            # Too many positives, keep all negatives
+            target_ones = int(n_zeros * target_ratio / (1 - target_ratio))
+            target_zeros = n_zeros
+        else:
+            # Too many negatives, keep all positives
+            target_zeros = int(n_ones * (1 - target_ratio) / target_ratio)
+            target_ones = n_ones
+
+        indices_to_keep = []
+
+        # Keep samples from class 0 (negative)
+        if n_zeros > target_zeros:
+            sampled_zeros = np.random.choice(
+                indices_by_label[0], target_zeros, replace=False
+            )
+            indices_to_keep.extend(sampled_zeros)
+        else:
+            indices_to_keep.extend(indices_by_label[0])
+
+        # Keep samples from class 1 (positive)
+        if n_ones > target_ones:
+            sampled_ones = np.random.choice(
+                indices_by_label[1], target_ones, replace=False
+            )
+            indices_to_keep.extend(sampled_ones)
+        else:
+            indices_to_keep.extend(indices_by_label[1])
+
+        # Shuffle indices
+        np.random.shuffle(indices_to_keep)
+
+        # Return a subset of the dataset using the balanced indices
+        return dataset[indices_to_keep]
 
     @property
     def signature(self):

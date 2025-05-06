@@ -1,4 +1,4 @@
-from typing import Dict, List, Literal
+from typing import Dict, List, Literal, Optional
 
 import polars as pl
 
@@ -42,16 +42,32 @@ def add_dummy_label_column(
     dataset: pl.DataFrame,
     by: List[str] = ["gameId", "playId", "frameId"],
     column_name: str = "label",
+    random_seed: Optional[float] = None,
 ):
+    unique_combinations = dataset.sort(by).select(by).unique()
+    n_combinations = len(unique_combinations)
 
-    labels = dataset.group_by(by).agg(
+    if random_seed is not None:
+        random.seed(random_seed)
+
+    random_values = [random.choice([0, 1]) for _ in range(n_combinations)]
+
+    random_labels = unique_combinations.with_columns(
+        [pl.lit(random_values).alias("__temp_random_values")]
+    ).sort(by=by)
+
+    random_labels = random_labels.with_row_index("__temp_idx").with_columns(
         [
-            pl.col("a")
-            .map_elements(lambda _: random.choice([0, 1]), return_dtype=int)
-            .alias(column_name),
+            pl.col("__temp_random_values")
+            .list.get(pl.col("__temp_idx"))
+            .alias(column_name)
         ]
     )
-    return dataset.join(labels, on=by, how="left")
+
+    random_labels = random_labels.drop(["__temp_random_values", "__temp_idx"]).sort(
+        by=by
+    )
+    return dataset.join(random_labels, on=by, how="left")
 
 
 def add_graph_id_column(
