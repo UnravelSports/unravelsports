@@ -1,0 +1,165 @@
+{
+    "package_version": "0.3.0",
+    "graph_converter_attributes": {
+        "prediction": false,
+        "self_loop_ball": true,
+        "adjacency_matrix_connect_type": "ball",
+        "adjacency_matrix_type": "split_by_team",
+        "label_type": "binary",
+        "defending_team_node_value": 0.0,
+        "random_seed": false,
+        "pad": false,
+        "verbose": false,
+        "label_col": null,
+        "graph_id_col": null,
+        "feature_specs": {
+            "node_features": {
+                "x_normed": {
+                    "value": null,
+                    "max_value": 52.5,
+                    "min_value": -52.5
+                },
+                "y_normed": {
+                    "value": null,
+                    "max_value": 100.0,
+                    "min_value": -34.0
+                },
+                "v_cos_normed": {
+                    "value": null
+                },
+                "normed_dist_to_goal": {
+                    "value": null,
+                    "max_distance": 50.0
+                }
+            },
+            "edge_features": {
+                "dist_matrix_normed": {
+                    "value": null,
+                    "max_distance": 100.0
+                },
+                "speed_diff_matrix_normed": {
+                    "s": null,
+                    "team": null,
+                    "ball_id": "ball",
+                    "settings": null
+                }
+            }
+        },
+        "chunk_size": 20000,
+        "non_potential_receiver_node_value": 0.1,
+        "graph_feature_cols": null,
+        "from_json": null,
+        "label_column": "label",
+        "graph_id_column": "graph_id"
+    },
+    "graph_settings": {
+        "infer_ball_ownership": true,
+        "max_player_speed": 12.0,
+        "max_ball_speed": 28.0,
+        "max_player_acceleration": null,
+        "max_ball_acceleration": null,
+        "self_loop_ball": true,
+        "adjacency_matrix_connect_type": "ball",
+        "adjacency_matrix_type": "split_by_team",
+        "label_type": "binary",
+        "defending_team_node_value": 0.0,
+        "random_seed": false,
+        "pad": false,
+        "verbose": false,
+        "ball_id": "ball",
+        "goalkeeper_id": "GK",
+        "boundary_correction": null,
+        "non_potential_receiver_node_value": 0.1,
+        "ball_carrier_treshold": 25.0,
+        "_pitch_dimensions": {
+            "x_dim": {
+                "min": -52.5,
+                "max": 52.5
+            },
+            "y_dim": {
+                "min": -34.0,
+                "max": 34.0
+            },
+            "standardized": false,
+            "goal_width": 7.32,
+            "goal_height": 2.44,
+            "six_yard_width": 18.32,
+            "six_yard_length": 5.5,
+            "penalty_area_width": 40.32,
+            "penalty_area_length": 16.5,
+            "circle_radius": 9.15,
+            "corner_radius": 1,
+            "penalty_spot_distance": 11,
+            "penalty_arc_radius": 9.15,
+            "pitch_length": 105,
+            "pitch_width": 68
+        }
+    },
+    "dataset_features": {
+        "ball_carrier_threshold": 25.0,
+        "max_player_speed": 12.0,
+        "max_ball_speed": 13.5,
+        "max_player_acceleration": 12.0,
+        "max_ball_acceleration": 100,
+        "orient_ball_owning": true,
+        "settings": {
+            "home_team_id": 100,
+            "away_team_id": 103,
+            "provider": "secondspectrum",
+            "pitch_dimensions": {
+                "x_dim": {
+                    "min": -52.5,
+                    "max": 52.5
+                },
+                "y_dim": {
+                    "min": -34.0,
+                    "max": 34.0
+                },
+                "standardized": false,
+                "goal_width": 7.32,
+                "goal_height": 2.44,
+                "six_yard_width": 18.32,
+                "six_yard_length": 5.5,
+                "penalty_area_width": 40.32,
+                "penalty_area_length": 16.5,
+                "circle_radius": 9.15,
+                "corner_radius": 1,
+                "penalty_spot_distance": 11,
+                "penalty_arc_radius": 9.15,
+                "pitch_length": 105,
+                "pitch_width": 68
+            },
+            "orientation": "ball-owning-team",
+            "max_player_speed": 12.0,
+            "max_ball_speed": 13.5,
+            "max_player_acceleration": 12.0,
+            "max_ball_acceleration": 100,
+            "ball_carrier_threshold": 25.0
+        }
+    },
+    "dataset_cols": [
+        "period_id",
+        "timestamp",
+        "frame_id",
+        "ball_state",
+        "id",
+        "x",
+        "y",
+        "z",
+        "team_id",
+        "position_name",
+        "game_id",
+        "vx",
+        "vy",
+        "vz",
+        "v",
+        "ax",
+        "ay",
+        "az",
+        "a",
+        "ball_owning_team_id",
+        "is_ball_carrier",
+        "label",
+        "graph_id"
+    ]
+}

@@ -1,5 +1,8 @@
 import logging
 import sys
+import os
+import json
+from inspect import signature
 
 from dataclasses import dataclass
 
@@ -8,6 +11,7 @@ from typing import List, Union, Dict, Literal, Any, Optional
 from kloppy.domain import (
     MetricPitchDimensions,
 )
+from kloppy.io import FileLike, open_as_file
 
 from spektral.data import Graph
 
@@ -17,7 +21,12 @@ from .features import (
     compute_node_features_pl,
     compute_adjacency_matrix_pl,
     compute_edge_features_pl,
+    get_node_feature_func_map,
+    get_edge_feature_func_map,
+    NodeFeatureDefaults,
+    EdgeFeatureDefaults,
 )
+from .exceptions import VersionChecker
 
 from ...utils import *
 
@@ -25,6 +34,34 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 stdout_handler = logging.StreamHandler(sys.stdout)
 logger.addHandler(stdout_handler)
+
+DEFAULT_SOCCER_FEATURE_SPECS = {
+    "node_features": {
+        "x_normed": None,
+        "y_normed": None,
+        "s_normed": None,
+        "v_sin_normed": None,
+        "v_cos_normed": None,
+        "normed_dist_to_goal": None,
+        "normed_dist_to_ball": None,
+        "is_possession_team": None,
+        "is_gk": None,
+        "is_ball": None,
+        "goal_sin_normed": None,
+        "goal_cos_normed": None,
+        "ball_sin_normed": None,
+        "ball_cos_normed": None,
+        "ball_carrier": None,
+    },
+    "edge_features": {
+        "dist_matrix_normed": None,
+        "speed_diff_matrix_normed": None,
+        "pos_cos_matrix": None,
+        "pos_sin_matrix": None,
+        "vel_cos_matrix": None,
+        "vel_sin_matrix": None,
+    },
+}
 
 
 @dataclass(repr=True)
@@ -48,6 +85,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
     chunk_size: int = 2_0000
     non_potential_receiver_node_value: float = 0.1
     graph_feature_cols: Optional[List[str]] = None
+    from_json: Optional[str] = None
 
     def __post_init__(self):
         if not isinstance(self.dataset, KloppyPolarsDataset):
@@ -58,6 +96,13 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         self.pitch_dimensions: MetricPitchDimensions = (
             self.dataset.settings.pitch_dimensions
         )
+
+        if self.from_json is not None:
+            configuration = None
+            with open_as_file(self.from_json) as f:
+                configuration = json.load(f)
+            self._load_from_json(configuration)
+
         self.label_column: str = (
             self.label_col if self.label_col is not None else self.dataset._label_column
         )
@@ -67,6 +112,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             else self.dataset._graph_id_column
         )
 
+        self.dataset_checkpoint = self.dataset
         self.dataset = self.dataset.data
 
         self._sport_specific_checks()
@@ -77,7 +123,177 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         else:
             self.dataset = self._remove_incomplete_frames()
 
+        self._validate_feature_specs_general()
         self._shuffle()
+
+    def _validate_feature_specs_general(self):
+        # Override the feature specs to the default version if they are not provided
+        if self.feature_specs == None or self.feature_specs == {}:
+            self.feature_specs = DEFAULT_SOCCER_FEATURE_SPECS
+
+        for key in self.feature_specs.keys():
+            if key not in ["node_features", "edge_features"]:
+                raise ValueError(
+                    f"feature_specs should only contain 'node_features' or 'edge_features' as keys. You provided {key}"
+                )
+
+        if "node_features" not in self.feature_specs:
+            self.feature_specs["node_features"] = {}
+        if "edge_features" not in self.feature_specs:
+            self.feature_specs["edge_features"] = {}
+
+        if (
+            self.feature_specs["node_features"] == {}
+            and self.feature_specs["edge_features"] == {}
+        ):
+            raise ValueError(
+                "Please provide feature_specs for either 'node_features' or 'edge_features' or both..."
+            )
+
+        self._validate_feature_specs(
+            self.feature_specs,
+            get_node_feature_func_map,
+            NodeFeatureDefaults,
+            "node_features",
+        )
+        self._validate_feature_specs(
+            self.feature_specs,
+            get_edge_feature_func_map,
+            EdgeFeatureDefaults,
+            "edge_features",
+        )
+        self._populate_feature_specs(get_node_feature_func_map, "node_features")
+        self._populate_feature_specs(get_edge_feature_func_map, "edge_features")
+
+    def _populate_feature_specs(self, feature_func, feature_tag):
+        """
+        Populates the feature specs with custom parameters.
+        """
+        feature_map = feature_func(settings=self.settings)
+        for feature, custom_params in self.feature_specs[feature_tag].items():
+            params = feature_map[feature]["defaults"].copy()
+            if custom_params is not None:
+                params.update(custom_params)
+
+            self.feature_specs[feature_tag][feature] = params
+
+    def _load_from_json(self, configuration: dict) -> None:
+        """
+        Load the configuration from a JSON file.
+        Args:
+            file_path (str): Path to the JSON file.
+        """
+
+        # Read configuration file
+
+        # if configuration is None:
+        #     raise ValueError("Configuration file is empty or invalid.")
+
+        # Validate version
+        config_version = configuration.get("package_version")
+        if not config_version:
+            raise ValueError("Configuration file does not specify a version.")
+
+        VersionChecker.check_versioning(config_version)
+
+        # Do not load label_column and graph_id_column from JSON file
+        configuration["graph_converter_attributes"].pop("label_column", None)
+        configuration["graph_converter_attributes"].pop("graph_id_column", None)
+
+        # validate data cols
+        if "dataset_cols" in configuration:
+            # check if all columns in the dataset specified in the JSON file are in the dataset
+            for col in self.dataset.data.columns:
+                if col not in configuration["dataset_cols"]:
+                    raise ValueError(f"Column '{col}' is missing in dataset_cols.")
+
+        # validate graph converter attributes
+        for key, value in configuration["graph_converter_attributes"].items():
+            if key == "dataset":
+                print("Dataset is not settable from JSON file.")
+            if (
+                key == "graph_feature_cols"
+                and configuration["graph_converter_attributes"]["graph_feature_cols"]
+                is not None
+            ):
+                # check if graph feature columns exist in the dataset
+                for col in configuration["graph_converter_attributes"][
+                    "graph_feature_cols"
+                ]:
+                    if col not in self.dataset.columns:
+                        raise ValueError(
+                            f"Graph feature column '{col}' not found in dataset columns."
+                        )
+            if hasattr(self, key):
+                setattr(self, key, value)
+            else:
+                raise ValueError(f"Invalid attribute '{key}' in configuration file.")
+
+        if "graph_settings" in configuration:
+            graph_settings_dict = configuration["graph_settings"]
+            valid_keys = signature(DefaultGraphSettings).parameters.keys()
+            filtered_settings = {
+                k: v for k, v in graph_settings_dict.items() if k in valid_keys
+            }
+            self.settings = DefaultGraphSettings(**filtered_settings)
+
+        # validate dataset feature columns
+        if "dataset_features" in configuration:
+            for key, value in configuration["dataset_features"].items():
+                dataset_features = self.dataset.get_features()
+                if key in dataset_features:
+                    if value != dataset_features[key]:
+                        raise ValueError(
+                            f"Feature '{key}' in dataset does not match the value in the configuration file."
+                        )
+                else:
+                    raise ValueError(f"Feature '{key}' not found in dataset features.")
+
+            # validate orientation
+            if (
+                "orientation"
+                in configuration["dataset_features"]["settings"]["pitch_dimensions"]
+            ):
+                if (
+                    configuration["dataset_features"]["settings"]["pitch_dimensions"][
+                        "orientation"
+                    ]
+                    != self.dataset.settings.pitch_dimensions.orientation
+                ):
+                    raise ValueError(
+                        f"Orientation in dataset does not match the value in the configuration file."
+                    )
+
+    def _validate_feature_specs(
+        self, feature_specs: dict, feature_func, feature_defaults, feature_tag
+    ):
+        """
+        Validate feature specs for correct feature names, parameter names and types
+        """
+        if feature_tag not in feature_specs:
+            return
+        feature_map = feature_func(settings=self.settings)
+        for feature in feature_specs[feature_tag]:
+            if feature not in feature_map:
+                raise ValueError(
+                    f"feature {feature} is not a valid {feature_tag[:4]} feature. Valid features are {list(feature_map.keys())}"
+                )
+            # if feature_specs[feature_tag][feature] is a boolean, convert it to dictionary
+            if isinstance(feature_specs[feature_tag][feature], bool):
+                if feature_specs[feature_tag][feature] == False:
+                    feature_specs[feature_tag][feature] = {"value": None}
+            if isinstance(feature_specs[feature_tag][feature], dict):
+                for key, value in feature_specs[feature_tag][feature].items():
+                    if key not in feature_map[feature]["defaults"]:
+                        raise ValueError(
+                            f"{feature_tag[:4]} feature {feature} does not have a key '{key}'. Valid keys are {list(feature_map[feature]['defaults'].keys())}"
+                        )
+
+                    expected_type = feature_defaults.__annotations__.get(key)
+                    if expected_type and not isinstance(value, expected_type):
+                        raise TypeError(
+                            f"Feature {feature} key '{key}' should be of type {expected_type}. Instead got {type(value)}"
+                        )
 
     def _shuffle(self):
         if isinstance(self.settings.random_seed, int):
@@ -365,6 +581,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             velocity=velocity,
             team=d[Column.TEAM_ID],
             settings=self.settings,
+            feature_dict=self.feature_specs["edge_features"],
         )
 
         node_features = compute_node_features_pl(
@@ -378,6 +595,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             ball_carrier=d[Column.IS_BALL_CARRIER],
             graph_features=graph_features,
             settings=self.settings,
+            feature_dict=self.feature_specs["node_features"],
         )
 
         return {
@@ -478,3 +696,63 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
 
         with gzip.open(file_path, "wb") as file:
             pickle.dump(self.graph_frames, file)
+
+    def to_dict(self):
+        def _transform_empty_dicts(d):
+            # Function to transform empty dicts to None
+            if isinstance(d, dict):
+                return {
+                    k: _transform_empty_dicts(v) if v != {} else None
+                    for k, v in d.items()
+                }
+            return d
+
+        result = {}
+        for attr, value in self.__dict__.items():
+            try:
+                json.dumps(value)  # Check if value is JSON serializable
+                result[attr] = value
+            except (TypeError, OverflowError):
+                pass  # Skip non-serializable attributes
+        return _transform_empty_dicts(result)
+
+    def save(self, file_path: str) -> None:
+        """
+        Function to save the configuration of the graph converter to a JSON file.
+        Args:
+            file_path (str): Path to the JSON file.
+        """
+
+        package_version = self._get_package_version()
+        data_to_save = {
+            "package_version": package_version,
+            "graph_converter_attributes": self.to_dict(),
+            "graph_settings": self.settings.to_dict(),
+            # "graph_feature_cols": self.dataset_checkpoint.data.columns
+            # + (self.graph_feature_cols or []),
+            "dataset_features": self.dataset_checkpoint.get_features(),
+            "dataset_cols": self.dataset_checkpoint.data.columns,
+            # "graph_feature_cols": self.graph_feature_cols or [],
+        }
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        with open(file_path, "w") as f:
+            json.dump(data_to_save, f, indent=4)
+
+        print(f"Configuration saved to {file_path}")
+
+    def _get_package_version(self):
+        version_file_path = os.path.join(os.path.dirname(__file__), "../../__init__.py")
+
+        if not os.path.exists(version_file_path):
+            raise FileNotFoundError(f"__init__.py not found at {version_file_path}")
+
+        with open(version_file_path, "r") as f:
+            lines = f.readlines()
+
+        for line in lines:
+            if line.startswith("__version__"):
+                # Extract the version value
+                version = line.split("=")[-1].strip().strip('"')
+                return version
+
+        raise ValueError("Version not found in __init__.py")

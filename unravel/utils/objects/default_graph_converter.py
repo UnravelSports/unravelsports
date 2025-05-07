@@ -92,6 +92,8 @@ class DefaultGraphConverter:
         init=False, repr=False, default_factory=DefaultGraphSettings
     )
 
+    feature_specs: dict = field(repr=False, default=None)
+
     def __post_init__(self):
         if hasattr(
             AdjacenyMatrixConnectType, self.adjacency_matrix_connect_type.upper()
@@ -139,6 +141,9 @@ class DefaultGraphConverter:
 
         if not isinstance(self.verbose, bool):
             raise Exception("'verbose' should be of type boolean (bool)")
+
+        if self.feature_specs is not None and not isinstance(self.feature_specs, dict):
+            raise ValueError("feature_specs must be a dictionary or None")
 
     def _shuffle(self):
         raise NotImplementedError()
