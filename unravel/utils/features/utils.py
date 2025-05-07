@@ -65,7 +65,7 @@ def normalize_distance(value, max_distance):
 def unit_vector(vector):
     norm = np.linalg.norm(vector)
     if norm == 0:
-        return np.zeros_like(vector)
+        return np.zeros_like(vector, dtype=float)
     return vector / norm
 
 
@@ -131,7 +131,7 @@ def unit_vector_from_angle(value, angle_radians):
     # Normalize the vector (get unit vector)
     norm = np.linalg.norm(velocity)
     if norm == 0:
-        return np.zeros_like(velocity)
+        return np.zeros_like(velocity, dtype=float)
 
     return velocity / norm
 
@@ -148,7 +148,7 @@ def normalize_acceleration(value, max_acceleration):
 
 def normalize_speeds_nfl(s, team, ball_id, settings):
     ball_mask = team == ball_id
-    s_normed = np.zeros_like(s)
+    s_normed = np.zeros_like(s, dtype=float)
 
     s_normed[ball_mask] = normalize_speed(s[ball_mask], settings.max_ball_speed)
 
@@ -163,7 +163,7 @@ def normalize_speed_differences_nfl(s, team, ball_id, settings):
 
 def normalize_accelerations_nfl(a, team, ball_id, settings):
     ball_mask = team == ball_id
-    a_normed = np.zeros_like(a)
+    a_normed = np.zeros_like(a, dtype=float)
 
     a_normed[ball_mask] = normalize_acceleration(
         a[ball_mask], settings.max_ball_acceleration
