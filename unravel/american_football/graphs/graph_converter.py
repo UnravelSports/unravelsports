@@ -63,6 +63,7 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
             else dataset._graph_id_column
         )
 
+        self.sample = 1.0 / kwargs.get("sample_rate", 1.0)
         self.chunk_size = chunk_size
         self.attacking_non_qb_node_value = attacking_non_qb_node_value
         self.graph_feature_cols = graph_feature_cols
@@ -337,6 +338,7 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
                     "id": chunk[self.graph_id_column][i],
                 }
                 for i in range(len(chunk))
+                if i % self.sample == 0
             ]
 
         graph_df = self._convert()

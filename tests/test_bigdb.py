@@ -178,6 +178,7 @@ class TestAmericanFootballDataset:
             attacking_non_qb_node_value=0.2,
             random_seed=42,
             pad=False,
+            sample_rate=(1 / 2),
         )
 
     @pytest.fixture
@@ -193,6 +194,14 @@ class TestAmericanFootballDataset:
     def test_settings(self, gnnc_non_default, non_default_arguments):
         settings = gnnc_non_default.settings
         assert isinstance(settings, AmericanFootballGraphSettings)
+
+        spektral_graphs = gnnc_non_default.to_spektral_graphs()
+
+        assert 1 == 1
+
+        data = spektral_graphs
+        assert len(data) == 132
+        assert isinstance(data[0], Graph)
 
         assert settings.pitch_dimensions.pitch_length == 120.0
         assert settings.pitch_dimensions.pitch_width == 53.3

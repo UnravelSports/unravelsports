@@ -9,8 +9,6 @@ from unravel.soccer import (
     rotate_around_line,
 )
 from unravel.utils import (
-    dummy_labels,
-    dummy_graph_ids,
     CustomSpektralDataset,
     reshape_array,
 )
@@ -87,7 +85,7 @@ class TestKloppyPolarsData:
             max_ball_speed=13.5,
             max_ball_acceleration=100,
         )
-        dataset.add_dummy_labels(by=["game_id", "frame_id"])
+        dataset.add_dummy_labels(by=["game_id", "frame_id"], random_seed=42)
         dataset.add_graph_ids(by=["game_id", "frame_id"])
         return dataset
 
@@ -107,6 +105,7 @@ class TestKloppyPolarsData:
             random_seed=False,
             pad=True,
             verbose=False,
+            sample_rate=(1 / 2),
         )
 
     @pytest.fixture()
@@ -451,7 +450,7 @@ class TestKloppyPolarsData:
         assert 1 == 1
 
         data = spektral_graphs
-        assert len(data) == 384
+        assert len(data) == 192
         assert isinstance(data[0], Graph)
 
     def spektral_graph(
@@ -472,16 +471,15 @@ class TestKloppyPolarsData:
         x = data[0].x
         n_players = x.shape[0]
         assert x.shape == (n_players, 15)
-        print(">>>", x[0, 0])
         assert 0.5475659001711429 == pytest.approx(x[0, 0], abs=1e-5)
-        assert 0.9948105277764999 == pytest.approx(x[0, 4], abs=1e-5)
+        assert 0.8997899683121747 == pytest.approx(x[0, 4], abs=1e-5)
         assert 0.2941671698429814 == pytest.approx(x[8, 2], abs=1e-5)
 
         e = data[0].e
         assert e.shape == (129, 6)
         assert 0.0 == pytest.approx(e[0, 0], abs=1e-5)
         assert 0.5 == pytest.approx(e[0, 4], abs=1e-5)
-        assert 0.7140882876637022 == pytest.approx(e[8, 2], abs=1e-5)
+        assert 0.28591171233629764 == pytest.approx(e[8, 2], abs=1e-5)
 
         a = data[0].a
         assert a.shape == (n_players, n_players)
@@ -519,6 +517,21 @@ class TestKloppyPolarsData:
         assert test.n_graphs == 64
         assert val.n_graphs == 64
 
+        train, test, val = dataset.split_test_train_validation(
+            split_train=4,
+            split_test=1,
+            split_validation=1,
+            by_graph_id=True,
+            random_seed=42,
+            test_label_ratio=(1 / 3),
+            train_label_ratio=(3 / 4),
+            val_label_ratio=(1 / 2),
+        )
+
+        assert train.n_graphs == 164
+        assert test.n_graphs == 52
+        assert val.n_graphs == 62
+
         train, test = dataset.split_test_train(
             split_train=4, split_test=1, by_graph_id=False, random_seed=42
         )
@@ -539,7 +552,7 @@ class TestKloppyPolarsData:
                 split_train=4, split_test=5, by_graph_id=True, random_seed=42
             )
 
-    def test_to_spektral_graph(
+    def test_to_spektral_graph_level_features(
         self, soccer_polars_converter_graph_level_features: SoccerGraphConverterPolars
     ):
         """

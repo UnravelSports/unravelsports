@@ -14,3 +14,6 @@ class DefaultDataset:
 
     def add_graph_ids(self):
         raise NotImplementedError()
+
+    def sample(self):
+        raise NotImplementedError()

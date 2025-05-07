@@ -85,6 +85,8 @@ class DefaultGraphConverter:
     label_col: str = None
     graph_id_col: str = None
 
+    sample_rate: float = None
+
     graph_frames: dict = field(init=False, repr=False, default=None)
     settings: DefaultGraphSettings = field(
         init=False, repr=False, default_factory=DefaultGraphSettings
