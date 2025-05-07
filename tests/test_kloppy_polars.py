@@ -104,6 +104,7 @@ class TestKloppyPolarsData:
             random_seed=False,
             pad=True,
             verbose=False,
+            sample_rate=(1 / 2),
         )
 
     @pytest.fixture()
@@ -448,7 +449,7 @@ class TestKloppyPolarsData:
         assert 1 == 1
 
         data = spektral_graphs
-        assert len(data) == 384
+        assert len(data) == 192
         assert isinstance(data[0], Graph)
 
     def test_to_spektral_graph(
