@@ -53,6 +53,8 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         if not isinstance(self.dataset, KloppyPolarsDataset):
             raise ValueError("dataset should be of type KloppyPolarsDataset...")
 
+        self.sample = 1.0 if self.sample_rate is None else 1.0 / self.sample_rate
+
         self.pitch_dimensions: MetricPitchDimensions = (
             self.dataset.settings.pitch_dimensions
         )
@@ -423,6 +425,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
                     "id": chunk[self.graph_id_column][i],
                 }
                 for i in range(len(chunk))
+                if i % self.sample == 0
             ]
 
         graph_df = self._convert()
