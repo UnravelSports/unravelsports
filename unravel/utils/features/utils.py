@@ -1,6 +1,7 @@
 import numpy as np
 from scipy import sparse
 from dataclasses import dataclass
+from typing import Literal
 
 
 class AdjacenyMatrixConnectType:
@@ -42,6 +43,35 @@ class Pad:
     n_players: int = 11
 
 
+def graph_feature(feature_type: Literal["edge", "node"], is_custom: bool = False):
+    """
+    A decorator factory that returns a decorator function.
+
+    Args:
+        feature_type: The type of feature ("edge" or "node")
+        is_custom: Whether this is a custom feature
+
+    Returns:
+        A decorator function that will mark the decorated function
+    """
+
+    def decorator(func):
+        """
+        The actual decorator that marks a function.
+
+        Args:
+            func: The function to be decorated
+
+        Returns:
+            The original function with marker attributes added
+        """
+        func.is_custom = is_custom
+        func.feature_type = feature_type
+        return func
+
+    return decorator
+
+
 def normalize_angles(angle):
     old_max = np.pi
     old_min = -np.pi
@@ -65,7 +95,7 @@ def normalize_distance(value, max_distance):
 def unit_vector(vector):
     norm = np.linalg.norm(vector)
     if norm == 0:
-        return np.zeros_like(vector)
+        return np.zeros_like(vector, dtype=float)
     return vector / norm
 
 
@@ -131,7 +161,7 @@ def unit_vector_from_angle(value, angle_radians):
     # Normalize the vector (get unit vector)
     norm = np.linalg.norm(velocity)
     if norm == 0:
-        return np.zeros_like(velocity)
+        return np.zeros_like(velocity, dtype=float)
 
     return velocity / norm
 
@@ -146,31 +176,29 @@ def normalize_acceleration(value, max_acceleration):
     return np.clip(x, -1, 1)
 
 
-def normalize_speeds_nfl(s, team, ball_id, settings):
-    ball_mask = team == ball_id
-    s_normed = np.zeros_like(s)
+def normalize_speeds(v, team_id, ball_id, settings):
+    ball_mask = team_id == ball_id
+    s_normed = np.zeros_like(v, dtype=float)
 
-    s_normed[ball_mask] = normalize_speed(s[ball_mask], settings.max_ball_speed)
-
-    s_normed[~ball_mask] = normalize_speed(s[~ball_mask], settings.max_player_speed)
+    s_normed[ball_mask] = normalize_speed(v[ball_mask], settings.max_ball_speed)
+    s_normed[~ball_mask] = normalize_speed(v[~ball_mask], settings.max_player_speed)
     return s_normed
 
 
-def normalize_speed_differences_nfl(s, team, ball_id, settings):
+def normalize_speed_differences(v, team_id, ball_id, settings, **kwargs):
+    return normalize_speeds(v, team_id, ball_id, settings) * np.sign(v)
 
-    return normalize_speeds_nfl(s, team, ball_id, settings) * np.sign(s)
 
-
-def normalize_accelerations_nfl(a, team, ball_id, settings):
+def normalize_accelerations_nfl(acceleration, team, ball_id, settings):
     ball_mask = team == ball_id
-    a_normed = np.zeros_like(a)
+    a_normed = np.zeros_like(acceleration, dtype=float)
 
     a_normed[ball_mask] = normalize_acceleration(
-        a[ball_mask], settings.max_ball_acceleration
+        acceleration[ball_mask], settings.max_ball_acceleration
     )
 
     a_normed[~ball_mask] = normalize_acceleration(
-        a[~ball_mask], settings.max_player_acceleration
+        acceleration[~ball_mask], settings.max_player_acceleration
     )
     return a_normed
 
@@ -212,7 +240,6 @@ def distance_to_ball(
 
 def get_ball_carrier_idx(x, y, z, team, possession_team, ball_id, threshold):
     _, _, dist_to_ball = distance_to_ball(x=x, y=y, z=z, team=team, ball_id=ball_id)
-    print(dist_to_ball)
     filtered_distances = np.where(
         (team != possession_team) | (dist_to_ball <= threshold), np.inf, dist_to_ball
     )

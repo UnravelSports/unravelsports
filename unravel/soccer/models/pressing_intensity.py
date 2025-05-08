@@ -164,13 +164,6 @@ class PressingIntensity:
             column_objects = np.delete(column_objects, ball_idx, axis=0)
             if self._speed_threshold:
                 column_mask = np.delete(column_mask, ball_idx, axis=0)
-        
-        print(list(xs1))
-        print(list(ys1))
-        print(list(vxs1))
-        print(list(vys1))
-        print(self.settings.pitch_dimensions)
-        print('---')
 
         if self._line_method is not None:
             if self._line_method == "touchline":
@@ -256,7 +249,7 @@ class PressingIntensity:
         orient: Literal[
             "ball_owning", "pressing", "home_away", "away_home"
         ] = "ball_owning",
-        line_method: Union[None, Literal["touchline", "byline", "all"]] = None
+        line_method: Union[None, Literal["touchline", "byline", "all"]] = None,
     ):
         """
         method: str ["teams", "full"]
@@ -283,7 +276,11 @@ class PressingIntensity:
             raise ValueError(
                 "orient should be 'ball_owning', 'pressing', 'home_away', 'away_home'"
             )
-        if line_method is not None and line_method not in ["touchline", "byline", "all"]:
+        if line_method is not None and line_method not in [
+            "touchline",
+            "byline",
+            "all",
+        ]:
             raise ValueError(
                 "line_method should be 'touchline', 'byline', 'all' or None"
             )

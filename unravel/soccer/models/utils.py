@@ -102,13 +102,13 @@ def time_to_intercept(
 def ray_line_intersections(positions, velocities, line_start, line_end):
     """
     Find intersections between multiple rays and a single line segment.
-    
+
     Parameters:
     - positions: np.array of shape (n, 2) - Starting points of the rays
     - velocities: np.array of shape (n, 2) - velocitie vectors of the rays
     - line_start: np.array([x1, y1]) - Start point of the line segment
     - line_end: np.array([x2, y2]) - End point of the line segment
-    
+
     Returns:
     - intersections: np.array of shape (n, 2) - Intersection points
     - mask: np.array of shape (n,) - Boolean mask indicating valid intersections
@@ -118,93 +118,108 @@ def ray_line_intersections(positions, velocities, line_start, line_end):
     velocities = np.asarray(velocities, dtype=float)
     line_start = np.asarray(line_start, dtype=float)
     line_end = np.asarray(line_end, dtype=float)
-    
+
     # Handle single position/velocitie case
     if positions.ndim == 1:
         positions = positions.reshape(1, 2)
     if velocities.ndim == 1:
         velocities = velocities.reshape(1, 2)
-        
+
     n = positions.shape[0]
-    
+
     # Normalize velocitie vectors
     norms = np.linalg.norm(velocities, axis=1, keepdims=True)
     velocities = velocities / norms
-    
+
     # Vector from line start to end
     line_vec = line_end - line_start
-    
+
     # Initialize results arrays
     intersections = np.zeros((n, 2))
     mask = np.zeros(n, dtype=bool)
-    
+
     # Check if line is vertical (x1 == x2)
     if abs(line_vec[0]) < 1e-10:
         # Check which rays have horizontal component
         horizontal_component = np.abs(velocities[:, 0]) >= 1e-10
-        
+
         # Calculate intersection parameters
         t = np.zeros(n)
-        t[horizontal_component] = (line_start[0] - positions[horizontal_component, 0]) / velocities[horizontal_component, 0]
-        
+        t[horizontal_component] = (
+            line_start[0] - positions[horizontal_component, 0]
+        ) / velocities[horizontal_component, 0]
+
         # Find valid intersections (t >= 0)
         valid = horizontal_component & (t >= 0)
-        
+
         # Calculate intersection points
         temp_intersections = positions[valid] + t[valid, np.newaxis] * velocities[valid]
-        
+
         # Check if intersection is within line segment bounds
-        in_bounds = (min(line_start[1], line_end[1]) <= temp_intersections[:, 1]) & (temp_intersections[:, 1] <= max(line_start[1], line_end[1]))
-        
+        in_bounds = (min(line_start[1], line_end[1]) <= temp_intersections[:, 1]) & (
+            temp_intersections[:, 1] <= max(line_start[1], line_end[1])
+        )
+
         # Update valid mask
         valid_indices = np.where(valid)[0]
         final_valid = valid_indices[in_bounds]
         mask[final_valid] = True
-        
+
         # Fill in valid intersection points
-        intersections[final_valid] = positions[final_valid] + t[final_valid, np.newaxis] * velocities[final_valid]
-        
+        intersections[final_valid] = (
+            positions[final_valid]
+            + t[final_valid, np.newaxis] * velocities[final_valid]
+        )
+
         return intersections, mask
     # Check if line is horizontal (y1 == y2)
     elif abs(line_vec[1]) < 1e-10:
         # Check which rays have vertical component
         vertical_component = np.abs(velocities[:, 1]) >= 1e-10
-        
+
         # Calculate intersection parameters
         t = np.zeros(n)
-        t[vertical_component] = (line_start[1] - positions[vertical_component, 1]) / velocities[vertical_component, 1]
-        
+        t[vertical_component] = (
+            line_start[1] - positions[vertical_component, 1]
+        ) / velocities[vertical_component, 1]
+
         # Find valid intersections (t >= 0)
         valid = vertical_component & (t >= 0)
-        
+
         # Calculate intersection points
         temp_intersections = positions[valid] + t[valid, np.newaxis] * velocities[valid]
-        
+
         # Check if intersection is within line segment bounds
-        in_bounds = (min(line_start[0], line_end[0]) <= temp_intersections[:, 0]) & (temp_intersections[:, 0] <= max(line_start[0], line_end[0]))
-        
+        in_bounds = (min(line_start[0], line_end[0]) <= temp_intersections[:, 0]) & (
+            temp_intersections[:, 0] <= max(line_start[0], line_end[0])
+        )
+
         # Update valid mask
         valid_indices = np.where(valid)[0]
         final_valid = valid_indices[in_bounds]
         mask[final_valid] = True
-        
+
         # Fill in valid intersection points
-        intersections[final_valid] = positions[final_valid] + t[final_valid, np.newaxis] * velocities[final_valid]
-        
+        intersections[final_valid] = (
+            positions[final_valid]
+            + t[final_valid, np.newaxis] * velocities[final_valid]
+        )
+
         return intersections, mask
     else:
         raise NotImplementedError("Diagonal lines are not supported...")
 
+
 def rotate_vectors(positions, velocities, pivots, valid_mask):
     """
     Rotate multiple vectors 180 degrees around corresponding pivot points.
-    
+
     Parameters:
     - positions: np.array of shape (n, 2) - Positions of the vectors
     - velocities: np.array of shape (n, 2) - velocitie/velocitie vectors
     - pivots: np.array of shape (n, 2) - Pivot points for rotation
     - valid_mask: np.array of shape (n,) - Boolean mask indicating valid pivots
-    
+
     Returns:
     - new_positions: np.array of shape (n, 2) - New positions after rotation
     - new_velocities: np.array of shape (n, 2) - New velocities after rotation
@@ -212,28 +227,29 @@ def rotate_vectors(positions, velocities, pivots, valid_mask):
     # Initialize output arrays with original values
     new_positions = positions.copy()
     new_velocities = velocities.copy()
-    
+
     # Apply the rotation only for valid pivots
     if np.any(valid_mask):
         # For a 180-degree rotation around a point:
         # new_position = 2 * pivot - position
         new_positions[valid_mask] = 2 * pivots[valid_mask] - positions[valid_mask]
-        
+
         # Reverse the velocitie velocitie
         new_velocities[valid_mask] = -velocities[valid_mask]
-    
+
     return new_positions, new_velocities
+
 
 def rotate_around_line(positions, velocities, line_start, line_end):
     """
     Rotate multiple vectors 180 degrees around the intersections of their extended velocities with a line.
-    
+
     Parameters:
     - positions: np.array of shape (n, 2) - Positions of the vectors
     - velocities: np.array of shape (n, 2) - velocitie/velocitie vectors
     - line_start: np.array([x1, y1]) - Start point of the line
     - line_end: np.array([x2, y2]) - End point of the line
-    
+
     Returns:
     - new_positions: np.array of shape (n, 2) - New positions after rotation
     - new_velocities: np.array of shape (n, 2) - New velocities after rotation
@@ -241,9 +257,13 @@ def rotate_around_line(positions, velocities, line_start, line_end):
     - valid_mask: np.array of shape (n,) - Boolean mask indicating valid intersections
     """
     # Find the intersections between the extended velocities and the line
-    intersections, valid_mask = ray_line_intersections(positions, velocities, line_start, line_end)
-    
+    intersections, valid_mask = ray_line_intersections(
+        positions, velocities, line_start, line_end
+    )
+
     # Rotate around the intersection points
-    new_positions, new_velocities = rotate_vectors(positions, velocities, intersections, valid_mask)
-    
+    new_positions, new_velocities = rotate_vectors(
+        positions, velocities, intersections, valid_mask
+    )
+
     return new_positions, new_velocities, intersections, valid_mask

@@ -132,7 +132,7 @@ class DefaultGraphFrame:
         sorted_indices = sorted(index_mapping.values())
 
         # Create an array of edge features based on the sorted indices
-        e_shuffled = np.zeros_like(e)
+        e_shuffled = np.zeros_like(e, dtype=float)
 
         # Populate the new edge features matrix
         for idx, (r, c) in enumerate(sorted_indices):

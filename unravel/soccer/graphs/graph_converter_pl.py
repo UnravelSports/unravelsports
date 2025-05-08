@@ -3,7 +3,9 @@ import sys
 
 from dataclasses import dataclass
 
-from typing import List, Union, Dict, Literal, Any, Optional
+from typing import List, Union, Dict, Literal, Any, Optional, Callable
+
+import inspect
 
 from kloppy.domain import (
     MetricPitchDimensions,
@@ -14,9 +16,10 @@ from spektral.data import Graph
 from .graph_settings_pl import GraphSettingsPolars
 from ..dataset.kloppy_polars import KloppyPolarsDataset, Column, Group, Constant
 from .features import (
-    compute_node_features_pl,
-    compute_adjacency_matrix_pl,
-    compute_edge_features_pl,
+    compute_node_features,
+    add_global_features,
+    compute_adjacency_matrix,
+    compute_edge_features,
 )
 
 from ...utils import *
@@ -36,18 +39,42 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         dataset (KloppyPolarsDataset): KloppyPolarsDataset created from a Kloppy dataset.
         chunk_size (int): Determines how many Graphs get processed simultanously.
         non_potential_receiver_node_value (float): Value between 0 and 1 to assign to the defing team players
-        graph_feature_cols (list[str]): List of columns in the dataset that are Graph level features (e.g. team strength rating, win probabilities etc)
+        global_feature_cols (list[str]): List of columns in the dataset that are Graph level features (e.g. team strength rating, win probabilities etc)
             we want to add to our model. A list of column names corresponding to the Polars dataframe within KloppyPolarsDataset.data
             that are graph level features. They should be joined to the KloppyPolarsDataset.data dataframe such that
             each Group in the group_by has the same value per column. We take the first value of the group, and assign this as a
             "graph level feature" to the ball node.
+        global_feature_type: A literal of type "ball" or "all". When set to "ball" the global features will be assigned to only the ball node, if set to "all"
+            the they will be assigned to every player and ball in the node features.
+        edge_feature_funcs: A list of functions (decorated with @graph_feature(is_custom, feature_type="edge"))
+            that take **kwargs as input and return a numpy array (dimensions should match expected (N,N) shape or tuple with multipe (N, N) numpy arrays).
+        node_feature_funcs: A list of functions (decorated with @graph_feature(is_custom, feature_type="node"))
+            that take **kwargs as input and return a numpy array (dimensions should match expected (N,) shape or (N, k) )
+        additional_feature_cols: Column the user has added to the 'KloppyPolarsDataset.data' that are not to be added as global features,
+            but can now be accessed by edge_feature_funcs and node_feature_funcs through kwargs.
+            (e.g. if the user adds "height" for each player, as a column to the 'KloppyPolarsDataset.data' and
+            they want to use it to compute the height difference between all players as an edge feature they would
+            pass additional_feature_cols=["height"] and their custom edge feature function can now access kwargs['height'])
     """
 
     dataset: KloppyPolarsDataset = None
 
     chunk_size: int = 2_0000
     non_potential_receiver_node_value: float = 0.1
-    graph_feature_cols: Optional[List[str]] = None
+
+    edge_feature_funcs: List[Callable[[Dict[str, Any]], np.ndarray]] = field(
+        repr=False, default_factory=list
+    )
+    node_feature_funcs: List[Callable[[Dict[str, Any]], np.ndarray]] = field(
+        repr=False, default_factory=list
+    )
+
+    global_feature_cols: Optional[List[str]] = field(repr=False, default_factory=list)
+    global_feature_type: Literal["ball", "all"] = "ball"
+
+    additional_feature_cols: Optional[List[str]] = field(
+        repr=False, default_factory=list
+    )
 
     def __post_init__(self):
         if not isinstance(self.dataset, KloppyPolarsDataset):
@@ -69,6 +96,16 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
 
         self.dataset = self.dataset.data
 
+        if not self.edge_feature_funcs:
+            self.edge_feature_funcs = self.default_edge_feature_funcs
+
+        self._verify_feature_funcs(self.edge_feature_funcs, feature_type="edge")
+
+        if not self.node_feature_funcs:
+            self.node_feature_funcs = self.default_node_feature_funcs
+
+        self._verify_feature_funcs(self.node_feature_funcs, feature_type="node")
+
         self._sport_specific_checks()
         self.settings = self._apply_graph_settings()
 
@@ -78,6 +115,27 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             self.dataset = self._remove_incomplete_frames()
 
         self._shuffle()
+
+    def _verify_feature_funcs(self, funcs, feature_type: Literal["edge", "node"]):
+        for i, func in enumerate(funcs):
+            # Check if it has the attributes added by the decorator
+            if not hasattr(func, "feature_type"):
+                func_str = inspect.getsource(func).strip()
+                raise Exception(
+                    f"Error processing feature function:\n"
+                    f"{func.__name__} defined as:\n"
+                    f"{func_str}\n\n"
+                    "Function is missing the @graph_feature decorator. "
+                )
+
+            if func.feature_type != feature_type:
+                func_str = inspect.getsource(func).strip()
+                raise Exception(
+                    f"Error processing feature function:\n"
+                    f"{func.__name__} defined as:\n"
+                    f"{func_str}\n\n"
+                    "Function has an incorrect feature type edge features should be 'edge', node features should be 'node'. "
+                )
 
     def _shuffle(self):
         if isinstance(self.settings.random_seed, int):
@@ -304,19 +362,72 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             self.label_column,
         ]
         exprs = (
-            exprs_variables
-            if self.graph_feature_cols is None
-            else exprs_variables + self.graph_feature_cols
+            exprs_variables + self.global_feature_cols + self.additional_feature_cols
         )
         return exprs
 
+    @property
+    def default_node_feature_funcs(self) -> list:
+        return [
+            x_normed,
+            y_normed,
+            speeds_normed,
+            velocity_components_2d_normed,
+            distance_to_goal_normed,
+            distance_to_ball_normed,
+            is_possession_team,
+            is_gk,
+            is_ball,
+            angle_to_goal_components_2d_normed,
+            angle_to_ball_components_2d_normed,
+            is_ball_carrier,
+        ]
+
+    @property
+    def default_edge_feature_funcs(self) -> list:
+        return [
+            distances_between_players_normed,
+            speed_difference_normed,
+            angle_between_players_normed,
+            velocity_difference_normed,
+        ]
+
+    def __add_additional_kwargs(self, d):
+        d["ball_id"] = Constant.BALL
+        d["possession_team_id"] = d[Column.BALL_OWNING_TEAM_ID][0]
+        d["is_gk"] = np.where(
+            d[Column.POSITION_NAME] == self.settings.goalkeeper_id, True, False
+        )
+        d["position"] = np.stack((d[Column.X], d[Column.Y], d[Column.Z]), axis=-1)
+        d["velocity"] = np.stack((d[Column.VX], d[Column.VY], d[Column.VZ]), axis=-1)
+
+        if len(np.where(d["team_id"] == d["ball_id"])[0]) >= 1:
+            ball_index = np.where(d["team_id"] == d["ball_id"])[0]
+            ball_position = d["position"][ball_index][0]
+        else:
+            ball_position = np.asarray([np.nan, np.nan])
+            ball_index = 0
+
+        ball_carriers = np.where(d[Column.IS_BALL_CARRIER] == True)[0]
+        if len(ball_carriers) == 0:
+            ball_carrier_idx = None
+        else:
+            ball_carrier_idx = ball_carriers[0]
+
+        d["ball_position"] = ball_position
+
+        d["ball_idx"] = ball_index
+        d["ball_carrier_idx"] = ball_carrier_idx
+        return d
+
     def __compute(self, args: List[pl.Series]) -> dict:
         d = {col: args[i].to_numpy() for i, col in enumerate(self.__exprs_variables)}
+        d = self.__add_additional_kwargs(d)
 
-        if self.graph_feature_cols is not None:
+        if self.global_feature_cols:
             failed = [
                 col
-                for col in self.graph_feature_cols
+                for col in self.global_feature_cols
                 if not np.all(d[col] == d[col][0])
             ]
             if failed:
@@ -324,9 +435,9 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
                     f"""graph_feature_cols contains multiple different values for a group in the groupby ({Group.BY_FRAME}) selection for the columns {failed}. Make sure each group has the same values per individual column."""
                 )
 
-        graph_features = (
-            np.asarray([d[col] for col in self.graph_feature_cols]).T[0]
-            if self.graph_feature_cols
+        global_features = (
+            np.asarray([d[col] for col in self.global_feature_cols]).T[0]
+            if self.global_feature_cols
             else None
         )
 
@@ -343,42 +454,29 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
                 make sure this is not the case. Each group can only have 1 label."""
             )
 
-        ball_carriers = np.where(d[Column.IS_BALL_CARRIER] == True)[0]
-        if len(ball_carriers) == 0:
-            ball_carrier_idx = None
-        else:
-            ball_carrier_idx = ball_carriers[0]
-
-        adjacency_matrix = compute_adjacency_matrix_pl(
-            team=d[Column.TEAM_ID],
-            ball_owning_team=d[Column.BALL_OWNING_TEAM_ID],
-            settings=self.settings,
-            ball_carrier_idx=ball_carrier_idx,
-        )
-
-        velocity = np.stack((d[Column.VX], d[Column.VY]), axis=-1)
-        edge_features = compute_edge_features_pl(
+        adjacency_matrix = compute_adjacency_matrix(settings=self.settings, **d)
+        edge_features = compute_edge_features(
             adjacency_matrix=adjacency_matrix,
-            p3d=np.stack((d[Column.X], d[Column.Y], d[Column.Z]), axis=-1),
-            p2d=np.stack((d[Column.X], d[Column.Y]), axis=-1),
-            s=d[Column.SPEED],
-            velocity=velocity,
-            team=d[Column.TEAM_ID],
+            funcs=self.edge_feature_funcs,
+            opts=self.feature_opts,
             settings=self.settings,
+            **d,
         )
 
-        node_features = compute_node_features_pl(
-            d[Column.X],
-            d[Column.Y],
-            s=d[Column.SPEED],
-            velocity=velocity,
-            team=d[Column.TEAM_ID],
-            possession_team=d[Column.BALL_OWNING_TEAM_ID],
-            is_gk=(d[Column.POSITION_NAME] == self.settings.goalkeeper_id).astype(int),
-            ball_carrier=d[Column.IS_BALL_CARRIER],
-            graph_features=graph_features,
+        node_features = compute_node_features(
+            funcs=self.node_feature_funcs,
+            opts=self.feature_opts,
             settings=self.settings,
+            **d,
         )
+
+        if global_features is not None:
+            node_features = add_global_features(
+                node_features=node_features,
+                global_features=global_features,
+                global_feature_type=self.global_feature_type,
+                **d,
+            )
 
         return {
             "e": edge_features.tolist(),
