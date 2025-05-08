@@ -1,134 +1,88 @@
-import math
 import numpy as np
 
-from ....utils import (
-    normalize_coords,
-    normalize_speeds_nfl,
-    normalize_sincos,
-    normalize_distance,
-    unit_vector_from_angle,
-    normalize_speeds_nfl,
-    normalize_accelerations_nfl,
-    normalize_between,
-    unit_vector,
-    unit_vectors,
-    normalize_angles,
-    normalize_distance,
-    normalize_coords,
-    normalize_speed,
-    distance_to_ball,
-)
-from ...dataset.kloppy_polars import Constant
 
-
-def compute_node_features_pl(
-    x,
-    y,
-    s,
-    velocity,
-    team,
-    possession_team,
-    is_gk,
-    ball_carrier,
-    graph_features,
-    settings,
-):
-    ball_id = Constant.BALL
-
-    position = np.stack((x, y), axis=-1)
-
-    if len(np.where(team == ball_id)) >= 1:
-        ball_index = np.where(team == ball_id)[0]
-        ball_position = position[ball_index][0]
+def add_global_features(node_features, global_features, global_feature_type, **kwargs):
+    if global_feature_type == "ball":
+        eg = np.ones((node_features.shape[0], global_features.shape[0])) * 0.0
+        eg[kwargs["ball_idx"]] = global_features
+        node_features = np.hstack((node_features, eg))
+    elif global_feature_type == "all":
+        eg = np.tile(global_features, (node_features.shape[0], 1))
+        node_features = np.hstack((node_features, eg))
     else:
-        ball_position = np.asarray([np.nan, np.nan])
-        ball_index = 0
+        raise ValueError("global_features_type should be either of {ball, all}")
+    return node_features
 
-    goal_mouth_position = (
-        settings.pitch_dimensions.x_dim.max,
-        (settings.pitch_dimensions.y_dim.max + settings.pitch_dimensions.y_dim.min) / 2,
-    )
-    max_dist_to_player = np.sqrt(
-        settings.pitch_dimensions.pitch_length**2
-        + settings.pitch_dimensions.pitch_width**2
-    )
-    max_dist_to_goal = np.sqrt(
-        settings.pitch_dimensions.pitch_length**2
-        + settings.pitch_dimensions.pitch_width**2
-    )
 
-    position, ball_position, dist_to_ball = distance_to_ball(
-        x=x, y=y, team=team, ball_id=ball_id
-    )
+def compute_node_features(
+    funcs,
+    opts,
+    settings,
+    **kwargs,
+):
+    """
+    Parameters:
+    - funcs: List of node feature functions
+    - opts: Dictionary with additional options
+    - settings: The settings object containing pitch dimensions
+    - **kwargs: Dictionary of numpy arrays coming from `exprs_variables`.
 
-    x_normed = normalize_between(
-        value=x,
-        max_value=settings.pitch_dimensions.x_dim.max,
-        min_value=settings.pitch_dimensions.x_dim.min,
-    )
-    y_normed = normalize_between(
-        value=y,
-        max_value=settings.pitch_dimensions.y_dim.max,
-        min_value=settings.pitch_dimensions.y_dim.min,
-    )
-    s_normed = normalize_speeds_nfl(s, team, ball_id=ball_id, settings=settings)
-    uv_velocity = unit_vectors(velocity)
+    Returns:
+    - X: Computed node features
+    """
+    reference_shape = kwargs["team_id"].shape
 
-    angles = normalize_angles(np.arctan2(uv_velocity[:, 1], uv_velocity[:, 0]))
-    v_sin_normed = normalize_sincos(np.sin(angles))
-    v_cos_normed = normalize_sincos(np.cos(angles))
+    if opts is not None:
+        combined_opts = {**kwargs, **opts}
+    else:
+        combined_opts = {**kwargs}
 
-    dist_to_goal = np.linalg.norm(position - goal_mouth_position, axis=1)
-    normed_dist_to_goal = normalize_distance(
-        value=dist_to_goal, max_distance=max_dist_to_goal
-    )
+    if "settings" in combined_opts:
+        raise ValueError(
+            "settings is a reserved keyword in the node feature options, it should not be in 'kwargs' and 'node_feature_opts'"
+        )
 
-    normed_dist_to_ball = normalize_distance(
-        value=dist_to_ball, max_distance=max_dist_to_player
-    )
+    combined_opts.update({"settings": settings})
+    node_feature_values = []
 
-    vec_to_goal = goal_mouth_position - position
-    angle_to_goal = np.arctan2(vec_to_goal[:, 1], vec_to_goal[:, 0])
-    goal_sin_normed = normalize_sincos(np.sin(angle_to_goal))
-    goal_cos_normed = normalize_sincos(np.cos(angle_to_goal))
+    for func in funcs:
+        try:
+            value = func(**combined_opts)
 
-    vec_to_ball = ball_position - position
-    angle_to_ball = np.arctan2(vec_to_ball[:, 1], vec_to_ball[:, 0])
-    ball_sin_normed = normalize_sincos(np.sin(angle_to_ball))
-    ball_cos_normed = normalize_sincos(np.cos(angle_to_ball))
+            # Ensure value is a numpy array
+            if not isinstance(value, np.ndarray):
+                raise ValueError(f"Function {func.__name__} must return a numpy array")
 
-    is_possession_team = np.where(
-        team == possession_team, 1, settings.defending_team_node_value
-    )
+            # Handle different shapes
+            if value.shape == reference_shape:
+                # Single column case
+                node_feature_values.append(value)
+            elif value.shape[0] == reference_shape[0] and len(value.shape) > 1:
+                # Multi-column case - split and append each column
+                node_feature_values.extend([value[:, i] for i in range(value.shape[1])])
+            else:
+                raise ValueError(
+                    f"Shape mismatch: expected first dimension to be {reference_shape[0]}, got {value.shape}"
+                )
 
-    is_ball = np.where(team == ball_id, 1, 0)
+        except Exception as e:
+            # Include useful context in error
+            import inspect
+
+            func_str = inspect.getsource(func).strip()
+            error_msg = (
+                f"Error processing node feature function:\n"
+                f"{func.__name__} defined as:\n"
+                f"{func_str}\n\n"
+                f"Error: {str(e)}\n"
+                f"Expected shape: ({reference_shape[0]}, k) (try np.column_stack) or {reference_shape}"
+            )
+            raise ValueError(error_msg) from e
 
     X = np.nan_to_num(
         np.stack(
-            (
-                x_normed,
-                y_normed,
-                s_normed,
-                v_sin_normed,
-                v_cos_normed,
-                normed_dist_to_goal,
-                normed_dist_to_ball,
-                is_possession_team,
-                is_gk,
-                is_ball,
-                goal_sin_normed,
-                goal_cos_normed,
-                ball_sin_normed,
-                ball_cos_normed,
-                ball_carrier,
-            ),
+            node_feature_values,
             axis=-1,
         )
     )
-
-    if graph_features is not None:
-        eg = np.ones((X.shape[0], graph_features.shape[0])) * 0.0
-        eg[ball_index] = graph_features
-        X = np.hstack((X, eg))
-
     return X

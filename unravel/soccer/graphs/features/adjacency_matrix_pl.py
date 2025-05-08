@@ -2,11 +2,15 @@ import numpy as np
 from scipy.spatial import Delaunay
 
 
-from ....utils import AdjacencyMatrixType, AdjacenyMatrixConnectType, distance_to_ball
+from ....utils import AdjacencyMatrixType, AdjacenyMatrixConnectType
 from ...dataset.kloppy_polars import Constant
 
 
-def compute_adjacency_matrix_pl(team, ball_owning_team, settings, ball_carrier_idx):
+def compute_adjacency_matrix(settings, **kwargs):
+    team = kwargs["team_id"]
+    ball_owning_team = kwargs["ball_owning_team_id"]
+    ball_carrier_idx = kwargs["ball_carrier_idx"]
+
     adjacency_matrix_type = settings.adjacency_matrix_type
     adjacency_matrix_connect_type = settings.adjacency_matrix_connect_type
     ball_id = Constant.BALL

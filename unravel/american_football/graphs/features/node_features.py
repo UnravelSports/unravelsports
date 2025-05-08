@@ -3,11 +3,11 @@ import numpy as np
 
 from ....utils import (
     normalize_coords,
-    normalize_speeds_nfl,
+    normalize_speeds,
     normalize_sincos,
     normalize_distance,
     unit_vector_from_angle,
-    normalize_speeds_nfl,
+    normalize_speeds,
     normalize_accelerations_nfl,
     normalize_between,
 )
@@ -65,7 +65,7 @@ def compute_node_features(
         min_value=settings.pitch_dimensions.y_dim.min,
     )
     uv_sa = unit_vector_from_angle(value=s, angle_radians=dir)
-    s_normed = normalize_speeds_nfl(s, team, ball_id=Constant.BALL, settings=settings)
+    s_normed = normalize_speeds(s, team, ball_id=Constant.BALL, settings=settings)
 
     uv_aa = unit_vector_from_angle(value=a, angle_radians=dir)
     a_normed = normalize_accelerations_nfl(

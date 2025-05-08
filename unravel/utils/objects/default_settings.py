@@ -1,6 +1,6 @@
 import numpy as np
-from dataclasses import dataclass, field
-from typing import Union
+from dataclasses import dataclass, field, fields, asdict
+from typing import Union, Any, Dict
 
 from kloppy.domain import Dimension, Unit, MetricPitchDimensions, Provider, Orientation
 
@@ -42,3 +42,21 @@ class DefaultSettings:
     max_player_acceleration: float = 6.0
     max_ball_acceleration: float = 13.5
     ball_carrier_threshold: float = 25.0
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert the dataclass instance to a dictionary.
+
+        If an attribute has a to_dict method, that method will be called.
+        """
+        result = {}
+
+        for field in fields(self):
+            value = getattr(self, field.name)
+
+            # Check if the attribute has a to_dict method
+            if hasattr(value, "to_dict") and callable(getattr(value, "to_dict")):
+                result[field.name] = value.to_dict()
+            else:
+                result[field.name] = value
+
+        return result

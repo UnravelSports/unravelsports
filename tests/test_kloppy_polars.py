@@ -6,10 +6,33 @@ from unravel.soccer import (
     Constant,
     Column,
     Group,
+    rotate_around_line,
+)
+from unravel.soccer.graphs.features import (
+    compute_node_features,
+    compute_edge_features,
+    compute_adjacency_matrix,
 )
 from unravel.utils import (
     CustomSpektralDataset,
     reshape_array,
+    distances_between_players_normed,
+    speed_difference_normed,
+    angle_between_players_normed,
+    velocity_difference_normed,
+    graph_feature,
+    x_normed,
+    y_normed,
+    speeds_normed,
+    velocity_components_2d_normed,
+    distance_to_goal_normed,
+    distance_to_ball_normed,
+    is_possession_team,
+    is_gk,
+    is_ball,
+    angle_to_goal_components_2d_normed,
+    angle_to_ball_components_2d_normed,
+    is_ball_carrier,
 )
 
 from kloppy import skillcorner, sportec
@@ -24,6 +47,7 @@ import numpy as np
 import numpy.testing as npt
 
 import polars as pl
+import json
 
 
 class TestKloppyPolarsData:
@@ -42,6 +66,47 @@ class TestKloppyPolarsData:
     @pytest.fixture
     def meta_sportec(self, base_dir: Path) -> str:
         return base_dir / "files" / "sportec_meta.xml"
+
+    @pytest.fixture
+    def single_frame_file(self, base_dir: Path) -> str:
+        return base_dir / "files" / "test_frame.json"
+
+    @pytest.fixture
+    def single_frame_node_feature_result_file(self, base_dir) -> str:
+        return base_dir / "files" / "node_features.npy"
+
+    @pytest.fixture
+    def single_frame_edge_feature_result_file(self, base_dir) -> str:
+        return base_dir / "files" / "edge_features.npy"
+
+    @pytest.fixture
+    def single_frame_adj_matrix_result_file(self, base_dir) -> str:
+        return base_dir / "files" / "adjacency_matrix.npy"
+
+    @pytest.fixture()
+    def single_frame(self, single_frame_file) -> dict:
+        with open(single_frame_file, "r") as file:
+            loaded_data = json.load(file)
+
+        return {k: np.asarray(v) for k, v in loaded_data.items()}
+
+    @pytest.fixture()
+    def single_frame_node_feature_result(
+        self, single_frame_node_feature_result_file
+    ) -> np.ndarray:
+        return np.load(single_frame_node_feature_result_file)
+
+    @pytest.fixture()
+    def single_frame_edge_feature_result(
+        self, single_frame_edge_feature_result_file
+    ) -> np.ndarray:
+        return np.load(single_frame_edge_feature_result_file)
+
+    @pytest.fixture()
+    def single_frame_adj_matrix_result(
+        self, single_frame_adj_matrix_result_file
+    ) -> np.ndarray:
+        return np.load(single_frame_adj_matrix_result_file)
 
     @pytest.fixture()
     def kloppy_dataset(self, match_data: str, structured_data: str) -> TrackingDataset:
@@ -127,7 +192,15 @@ class TestKloppyPolarsData:
         )
 
     @pytest.fixture()
-    def soccer_polars_converter_graph_level_features(
+    def soccer_polars_converter_sportec(
+        self, kloppy_polars_sportec_dataset: KloppyPolarsDataset
+    ) -> SoccerGraphConverterPolars:
+        kloppy_polars_sportec_dataset.add_dummy_labels()
+        kloppy_polars_sportec_dataset.add_graph_ids()
+        return SoccerGraphConverterPolars(dataset=kloppy_polars_sportec_dataset)
+
+    @pytest.fixture()
+    def soccer_polars_converter_graph_and_additional_features(
         self, kloppy_polars_dataset: KloppyPolarsDataset
     ) -> SoccerGraphConverterPolars:
 
@@ -138,13 +211,48 @@ class TestKloppyPolarsData:
                 [
                     pl.lit(1).alias("fake_graph_feature_a"),
                     pl.lit(0.12).alias("fake_graph_feature_b"),
+                    pl.lit(0.45).alias("fake_additional_feature_a"),
                 ]
             )
         )
 
+        @graph_feature(is_custom=True, feature_type="edge")
+        def custom_edge_feature(**kwargs):
+            return (
+                kwargs["fake_additional_feature_a"][None, :]
+                + kwargs["fake_additional_feature_a"][:, None]
+            )
+
+        @graph_feature(is_custom=True, feature_type="node")
+        def custom_node_feature(**kwargs):
+            return kwargs["fake_additional_feature_a"]
+
         return SoccerGraphConverterPolars(
             dataset=kloppy_polars_dataset,
-            graph_feature_cols=["fake_graph_feature_a", "fake_graph_feature_b"],
+            global_feature_cols=["fake_graph_feature_a", "fake_graph_feature_b"],
+            additional_feature_cols=["fake_additional_feature_a"],
+            edge_feature_funcs=[
+                distances_between_players_normed,
+                speed_difference_normed,
+                angle_between_players_normed,
+                velocity_difference_normed,
+                custom_edge_feature,
+            ],
+            node_feature_funcs=[
+                x_normed,
+                y_normed,
+                speeds_normed,
+                velocity_components_2d_normed,
+                distance_to_goal_normed,
+                distance_to_ball_normed,
+                is_possession_team,
+                is_gk,
+                is_ball,
+                angle_to_goal_components_2d_normed,
+                angle_to_ball_components_2d_normed,
+                is_ball_carrier,
+                custom_node_feature,
+            ],
             chunk_size=2_0000,
             non_potential_receiver_node_value=0.1,
             self_loop_ball=True,
@@ -155,6 +263,200 @@ class TestKloppyPolarsData:
             random_seed=False,
             pad=False,
             verbose=False,
+        )
+
+    def test_incorrect_custom_features(
+        self, kloppy_polars_dataset: KloppyPolarsDataset
+    ) -> SoccerGraphConverterPolars:
+
+        kloppy_polars_dataset.data = (
+            kloppy_polars_dataset.data
+            # note, normally you'd join these columns on a frame level
+            .with_columns(
+                [
+                    pl.lit(1).alias("fake_graph_feature_a"),
+                    pl.lit(0.12).alias("fake_graph_feature_b"),
+                    pl.lit(0.45).alias("fake_additional_feature_a"),
+                ]
+            )
+        )
+
+        @graph_feature(is_custom=True, feature_type="node")
+        def custom_edge_feature(**kwargs):
+            return (
+                kwargs["fake_additional_feature_a"][None, :]
+                + kwargs["fake_additional_feature_a"][:, None]
+            )
+
+        with pytest.raises(Exception):
+            SoccerGraphConverterPolars(
+                dataset=kloppy_polars_dataset,
+                global_feature_cols=["fake_graph_feature_a", "fake_graph_feature_b"],
+                additional_feature_cols=["fake_additional_feature_a"],
+                edge_feature_funcs=[
+                    distances_between_players_normed,
+                    speed_difference_normed,
+                    angle_between_players_normed,
+                    velocity_difference_normed,
+                    custom_edge_feature,
+                ],
+                chunk_size=2_0000,
+                non_potential_receiver_node_value=0.1,
+                self_loop_ball=True,
+                adjacency_matrix_connect_type="ball",
+                adjacency_matrix_type="split_by_team",
+                label_type="binary",
+                defending_team_node_value=0.0,
+                random_seed=False,
+                pad=False,
+                verbose=False,
+            )
+
+    def test_incorrect_custom_features_no_decorator(
+        self, kloppy_polars_dataset: KloppyPolarsDataset
+    ) -> SoccerGraphConverterPolars:
+
+        kloppy_polars_dataset.data = (
+            kloppy_polars_dataset.data
+            # note, normally you'd join these columns on a frame level
+            .with_columns(
+                [
+                    pl.lit(1).alias("fake_graph_feature_a"),
+                    pl.lit(0.12).alias("fake_graph_feature_b"),
+                    pl.lit(0.45).alias("fake_additional_feature_a"),
+                ]
+            )
+        )
+
+        def custom_edge_feature(**kwargs):
+            return (
+                kwargs["fake_additional_feature_a"][None, :]
+                + kwargs["fake_additional_feature_a"][:, None]
+            )
+
+        with pytest.raises(Exception):
+            SoccerGraphConverterPolars(
+                dataset=kloppy_polars_dataset,
+                global_feature_cols=["fake_graph_feature_a", "fake_graph_feature_b"],
+                additional_feature_cols=["fake_additional_feature_a"],
+                edge_feature_funcs=[
+                    distances_between_players_normed,
+                    speed_difference_normed,
+                    angle_between_players_normed,
+                    velocity_difference_normed,
+                    custom_edge_feature,
+                ],
+                chunk_size=2_0000,
+                non_potential_receiver_node_value=0.1,
+                self_loop_ball=True,
+                adjacency_matrix_connect_type="ball",
+                adjacency_matrix_type="split_by_team",
+                label_type="binary",
+                defending_team_node_value=0.0,
+                random_seed=False,
+                pad=False,
+                verbose=False,
+            )
+
+    def test_node_feature_computation(
+        self,
+        soccer_polars_converter_sportec: SoccerGraphConverterPolars,
+        single_frame: dict,
+        single_frame_node_feature_result: np.ndarray,
+    ):
+
+        d = single_frame
+        d["ball_id"] = Constant.BALL
+        d["possession_team_id"] = d[Column.BALL_OWNING_TEAM_ID][0]
+        d["is_gk"] = np.where(
+            d[Column.POSITION_NAME]
+            == soccer_polars_converter_sportec.settings.goalkeeper_id,
+            True,
+            False,
+        )
+        d["position"] = np.stack((d[Column.X], d[Column.Y], d[Column.Z]), axis=-1)
+        d["velocity"] = np.stack((d[Column.VX], d[Column.VY], d[Column.VZ]), axis=-1)
+
+        if len(np.where(d["team_id"] == d["ball_id"])[0]) >= 1:
+            ball_index = np.where(d["team_id"] == d["ball_id"])[0]
+            ball_position = d["position"][ball_index][0]
+        else:
+            ball_position = np.asarray([np.nan, np.nan])
+            ball_index = 0
+
+        ball_carriers = np.where(d[Column.IS_BALL_CARRIER] == True)[0]
+        if len(ball_carriers) == 0:
+            ball_carrier_idx = None
+        else:
+            ball_carrier_idx = ball_carriers[0]
+
+        d["ball_position"] = ball_position
+        d["ball_idx"] = ball_index
+        d["ball_carrier_idx"] = ball_carrier_idx
+
+        node_features = compute_node_features(
+            funcs=soccer_polars_converter_sportec.default_node_feature_funcs,
+            opts=soccer_polars_converter_sportec.feature_opts,
+            settings=soccer_polars_converter_sportec.settings,
+            **d,
+        )
+        np.testing.assert_allclose(
+            node_features, single_frame_node_feature_result, rtol=1e-3
+        )
+
+    def test_edge_feature_computation(
+        self,
+        soccer_polars_converter_sportec: SoccerGraphConverterPolars,
+        single_frame: dict,
+        single_frame_edge_feature_result: np.ndarray,
+        single_frame_adj_matrix_result: np.ndarray,
+    ):
+
+        d = single_frame
+        d["ball_id"] = Constant.BALL
+        d["possession_team_id"] = d[Column.BALL_OWNING_TEAM_ID][0]
+        d["is_gk"] = np.where(
+            d[Column.POSITION_NAME]
+            == soccer_polars_converter_sportec.settings.goalkeeper_id,
+            True,
+            False,
+        )
+        d["position"] = np.stack((d[Column.X], d[Column.Y], d[Column.Z]), axis=-1)
+        d["velocity"] = np.stack((d[Column.VX], d[Column.VY], d[Column.VZ]), axis=-1)
+
+        if len(np.where(d["team_id"] == d["ball_id"])[0]) >= 1:
+            ball_index = np.where(d["team_id"] == d["ball_id"])[0]
+            ball_position = d["position"][ball_index][0]
+        else:
+            ball_position = np.asarray([np.nan, np.nan])
+            ball_index = 0
+
+        ball_carriers = np.where(d[Column.IS_BALL_CARRIER] == True)[0]
+        if len(ball_carriers) == 0:
+            ball_carrier_idx = None
+        else:
+            ball_carrier_idx = ball_carriers[0]
+
+        d["ball_position"] = ball_position
+        d["ball_idx"] = ball_index
+        d["ball_carrier_idx"] = ball_carrier_idx
+
+        adjacency_matrix = compute_adjacency_matrix(
+            settings=soccer_polars_converter_sportec.settings, **d
+        )
+        np.testing.assert_allclose(
+            adjacency_matrix, single_frame_adj_matrix_result, rtol=1e-3
+        )
+
+        edge_features = compute_edge_features(
+            adjacency_matrix=adjacency_matrix,
+            funcs=soccer_polars_converter_sportec.default_edge_feature_funcs,
+            opts=soccer_polars_converter_sportec.feature_opts,
+            settings=soccer_polars_converter_sportec.settings,
+            **d,
+        )
+        np.testing.assert_allclose(
+            edge_features, single_frame_edge_feature_result, rtol=1e-3
         )
 
     def test_pi_teams_max_home_away(
@@ -452,9 +754,7 @@ class TestKloppyPolarsData:
         assert len(data) == 192
         assert isinstance(data[0], Graph)
 
-    def test_to_spektral_graph(
-        self, soccer_polars_converter: SoccerGraphConverterPolars
-    ):
+    def spektral_graph(self, soccer_polars_converter: SoccerGraphConverterPolars):
         """
         Test navigating (next/prev) through events
         """
@@ -552,14 +852,16 @@ class TestKloppyPolarsData:
             )
 
     def test_to_spektral_graph_level_features(
-        self, soccer_polars_converter_graph_level_features: SoccerGraphConverterPolars
+        self,
+        soccer_polars_converter_graph_and_additional_features: SoccerGraphConverterPolars,
     ):
         """
         Test navigating (next/prev) through events
         """
-        frame = soccer_polars_converter_graph_level_features.dataset.filter(
+        frame = soccer_polars_converter_graph_and_additional_features.dataset.filter(
             pl.col("graph_id") == "2417-1529"
         )
+
         ball_index = (
             frame.select(pl.arg_where(pl.col("team_id") == Constant.BALL))
             .to_series()
@@ -568,7 +870,7 @@ class TestKloppyPolarsData:
         assert len(frame) == 15
 
         spektral_graphs = (
-            soccer_polars_converter_graph_level_features.to_spektral_graphs()
+            soccer_polars_converter_graph_and_additional_features.to_spektral_graphs()
         )
 
         assert 1 == 1
@@ -580,11 +882,52 @@ class TestKloppyPolarsData:
 
         x = data[0].x
         n_players = x.shape[0]
-        assert x.shape == (n_players, 17)
+
+        assert x.shape == (n_players, 18)
         assert 0.5475659001711429 == pytest.approx(x[0, 0], abs=1e-5)
         assert 0.8997899683121747 == pytest.approx(x[0, 4], abs=1e-5)
         assert 0.2941671698429814 == pytest.approx(x[8, 2], abs=1e-5)
-        assert 1 == pytest.approx(x[ball_index, 15])
-        assert 0.12 == pytest.approx(x[ball_index, 16])
-        assert 0 == pytest.approx(x[0, 15])
-        assert 0 == pytest.approx(x[13, 16])
+        assert 1 == pytest.approx(x[ball_index, 16])  # graph feature
+        assert 0.12 == pytest.approx(x[ball_index, 17])  # graph feature
+        assert 0 == pytest.approx(x[0, 16])
+        assert 0 == pytest.approx(x[13, 17])
+        assert 0.45 == pytest.approx(x[0][15])  # custom added node feature
+
+        e = data[0].e
+        n_players = e.shape[0]
+        assert e.shape == (129, 7)
+        assert e[:, 6][0] == 0.90
+
+    def test_line_method(self):
+        positions = np.array([[1.0, 1.0], [2.0, 3.0], [0.5, 2.5], [4.0, 1.0]])
+
+        velocities = np.array([[3.0, 2.0], [2.0, 1.0], [1.0, 3.0], [-2.0, 1.5]])
+
+        # Define line (vertical line from (6, 0) to (6, 7))
+        line_start = np.array([6.0, 0.0])
+        line_end = np.array([6.0, 7.0])
+
+        # Perform the rotation for all vectors
+        new_positions, new_velocities, intersections, valid_mask = rotate_around_line(
+            positions, velocities, line_start, line_end
+        )
+
+        assert new_positions == pytest.approx(
+            np.array([[11.0, 7.666666666666668], [10.0, 7.0], [0.5, 2.5], [4.0, 1.0]]),
+            rel=1e-5,
+            abs=1e-8,
+        )
+
+        assert new_velocities == pytest.approx(
+            np.array([[-3.0, -2.0], [-2.0, -1.0], [1.0, 3.0], [-2.0, 1.5]]),
+            rel=1e-5,
+            abs=1e-8,
+        )
+
+        assert intersections == pytest.approx(
+            np.array([[6.0, 4.333333333333334], [6.0, 5.0], [0.0, 0.0], [0.0, 0.0]]),
+            rel=1e-5,
+            abs=1e-8,
+        )
+
+        assert np.array_equal(valid_mask, np.array([True, True, False, False]))

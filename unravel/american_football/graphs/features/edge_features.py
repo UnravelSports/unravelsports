@@ -5,7 +5,7 @@ from ....utils import (
     normalize_sincos,
     non_zeros,
     reindex,
-    normalize_speed_differences_nfl,
+    normalize_speed_differences,
     normalize_accelerations_nfl,
 )
 from ...dataset import Constant
@@ -24,15 +24,15 @@ def compute_edge_features(adjacency_matrix, p, s, a, o, dir, team, settings):
     )  # 11x11
 
     speed_diff_matrix = np.nan_to_num(s[None, :] - s[:, None])  # NxNx1
-    speed_diff_matrix_normed = normalize_speed_differences_nfl(
-        s=speed_diff_matrix,
-        team=team,
+    speed_diff_matrix_normed = normalize_speed_differences(
+        v=speed_diff_matrix,
+        team_id=team,
         ball_id=Constant.BALL,
         settings=settings,
     )
     acc_diff_matrix = np.nan_to_num(a[None, :] - a[:, None])  # NxNx1
     acc_diff_matrix_normed = normalize_accelerations_nfl(
-        a=acc_diff_matrix,
+        acceleration=acc_diff_matrix,
         team=team,
         ball_id=Constant.BALL,
         settings=settings,
