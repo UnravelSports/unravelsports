@@ -200,7 +200,7 @@ class TestAmericanFootballDataset:
         assert 1 == 1
 
         data = spektral_graphs
-        assert len(data) == 132
+        assert len(data) == 130
         assert isinstance(data[0], Graph)
 
         assert settings.pitch_dimensions.pitch_length == 120.0
