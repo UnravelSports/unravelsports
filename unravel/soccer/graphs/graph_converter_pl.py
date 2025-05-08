@@ -80,8 +80,6 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         if not isinstance(self.dataset, KloppyPolarsDataset):
             raise ValueError("dataset should be of type KloppyPolarsDataset...")
 
-        self.sample = 1.0 if self.sample_rate is None else 1.0 / self.sample_rate
-
         self.pitch_dimensions: MetricPitchDimensions = (
             self.dataset.settings.pitch_dimensions
         )
@@ -114,7 +112,16 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         else:
             self.dataset = self._remove_incomplete_frames()
 
+        self._sample()
         self._shuffle()
+
+    def _sample(self):
+        if self.sample_rate is None:
+            return
+        else:
+            self.dataset = self.dataset.filter(
+                pl.col(Column.FRAME_ID) % (1.0 / self.sample_rate) == 0
+            )
 
     def _verify_feature_funcs(self, funcs, feature_type: Literal["edge", "node"]):
         for i, func in enumerate(funcs):
@@ -523,7 +530,6 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
                     "id": chunk[self.graph_id_column][i],
                 }
                 for i in range(len(chunk))
-                if i % self.sample == 0
             ]
 
         graph_df = self._convert()

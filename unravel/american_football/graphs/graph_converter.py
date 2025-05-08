@@ -63,7 +63,7 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
             else dataset._graph_id_column
         )
 
-        self.sample = 1.0 / kwargs.get("sample_rate", 1.0)
+        self.sample_rate = kwargs.get("sample_rate", None)
         self.chunk_size = chunk_size
         self.attacking_non_qb_node_value = attacking_non_qb_node_value
         self.graph_feature_cols = graph_feature_cols
@@ -72,6 +72,27 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
         self.dataset: pl.DataFrame = dataset.data
 
         self._sport_specific_checks()
+
+        self._sample()
+        self._shuffle()
+
+    def _sample(self):
+        if self.sample_rate is None:
+            return
+        else:
+            self.dataset = self.dataset.filter(
+                pl.col(Column.FRAME_ID) % (1.0 / self.sample_rate) == 0
+            )
+
+    def _shuffle(self):
+        if isinstance(self.settings.random_seed, int):
+            self.dataset = self.dataset.sample(
+                fraction=1.0, seed=self.settings.random_seed
+            )
+        elif self.settings.random_seed == True:
+            self.dataset = self.dataset.sample(fraction=1.0)
+        else:
+            pass
 
     def _sport_specific_checks(self):
         def __remove_with_missing_values(min_object_count: int = 10):
@@ -338,7 +359,6 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
                     "id": chunk[self.graph_id_column][i],
                 }
                 for i in range(len(chunk))
-                if i % self.sample == 0
             ]
 
         graph_df = self._convert()
