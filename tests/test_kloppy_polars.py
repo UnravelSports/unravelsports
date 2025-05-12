@@ -157,6 +157,38 @@ class TestKloppyPolarsData:
     def spc_padding(
         self, kloppy_polars_dataset: KloppyPolarsDataset
     ) -> SoccerGraphConverterPolars:
+        ds = kloppy_polars_dataset
+        ds.data = ds.data.with_columns(
+            [pl.lit(1.0).alias("fake_global_feature_column")]
+        )
+
+        ds.data = (
+            ds.data.join(
+                (
+                    ds.data.filter(pl.col("team_id") == Constant.BALL)
+                    .select(["frame_id", "x", "y", "z"])
+                    .rename({"x": "ball_x", "y": "ball_y", "z": "ball_z"})
+                ),
+                on=["frame_id"],
+                how="left",
+            )
+            .with_columns(
+                [
+                    pl.when(pl.col("team_id") != Constant.BALL)
+                    .then(
+                        (
+                            (pl.col("x") - pl.col("ball_x")) ** 2
+                            + (pl.col("y") - pl.col("ball_y")) ** 2
+                            + (pl.col("z") - pl.col("ball_z")) ** 2
+                        ).sqrt()
+                    )
+                    .otherwise(999.9)
+                    .alias("ball_dist"),
+                ]
+            )
+            .drop(["ball_x", "ball_y", "ball_z"])
+        )
+
         return SoccerGraphConverterPolars(
             dataset=kloppy_polars_dataset,
             chunk_size=2_0000,
@@ -170,6 +202,7 @@ class TestKloppyPolarsData:
             pad=True,
             verbose=False,
             sample_rate=(1 / 2),
+            global_feature_cols=["fake_global_feature_column"],
         )
 
     @pytest.fixture()
