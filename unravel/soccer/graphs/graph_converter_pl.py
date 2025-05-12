@@ -203,6 +203,12 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             Column.BALL_OWNING_TEAM_ID,
         ]
 
+        user_defined_columns = [
+            x
+            for x in df.columns
+            if x not in keep_columns + group_by_columns + empty_columns
+        ]
+
         counts = df.group_by(group_by_columns).agg(
             pl.len().alias("count"), *[pl.first(col).alias(col) for col in keep_columns]
         )
@@ -233,6 +239,12 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         padding_df = pl.DataFrame(padding_rows)
 
         schema = df.schema
+        print(">>", df.columns)
+        print(">>", padding_df.columns)
+        print("keep_columns", keep_columns)
+        print("empty_columns", empty_columns)
+        print("group_by_columns", group_by_columns)
+        print("user_defined_columns", user_defined_columns)
         padding_df = padding_df.with_columns(
             [
                 pl.lit(0.0 if schema[col] != pl.String else "None")
@@ -240,8 +252,10 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
                 .alias(col)
                 for col in empty_columns
             ]
+            +
+            # Set all user define columns to Null
+            [pl.lit(None).cast(schema[col]).alias(col) for col in user_defined_columns]
         )
-
         padding_df = padding_df.select(df.columns)
 
         result = pl.concat([df, padding_df], how="vertical")
