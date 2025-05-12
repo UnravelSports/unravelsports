@@ -76,3 +76,20 @@ def add_graph_id_column(
     column_name: str = "graph_id",
 ):
     return dataset.with_columns([pl.concat_str(by, separator="-").alias(column_name)])
+
+
+def create_default_expression(col_name, dtype):
+    if dtype == pl.Boolean:
+        return pl.lit(False).alias(col_name)
+    elif dtype == pl.Int32:
+        return pl.lit(0).cast(pl.Int32).alias(col_name)
+    elif dtype == pl.Int64:
+        return pl.lit(0).cast(pl.Int64).alias(col_name)
+    elif dtype == pl.Float32:
+        return pl.lit(0.0).cast(pl.Float32).alias(col_name)
+    elif dtype == pl.Float64:
+        return pl.lit(0.0).alias(col_name)
+    elif dtype == pl.Utf8:
+        return pl.lit("").alias(col_name)
+    else:
+        return pl.lit(None).cast(dtype).alias(col_name)
