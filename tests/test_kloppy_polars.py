@@ -49,6 +49,8 @@ import numpy.testing as npt
 import polars as pl
 import json
 
+from os.path import join
+
 
 class TestKloppyPolarsData:
     @pytest.fixture
@@ -427,7 +429,7 @@ class TestKloppyPolarsData:
         d["ball_idx"] = ball_index
         d["ball_carrier_idx"] = ball_carrier_idx
 
-        node_features = compute_node_features(
+        node_features, _ = compute_node_features(
             funcs=soccer_polars_converter_sportec.default_node_feature_funcs,
             opts=soccer_polars_converter_sportec.feature_opts,
             settings=soccer_polars_converter_sportec.settings,
@@ -481,13 +483,14 @@ class TestKloppyPolarsData:
             adjacency_matrix, single_frame_adj_matrix_result, rtol=1e-3
         )
 
-        edge_features = compute_edge_features(
+        edge_features, _ = compute_edge_features(
             adjacency_matrix=adjacency_matrix,
             funcs=soccer_polars_converter_sportec.default_edge_feature_funcs,
             opts=soccer_polars_converter_sportec.feature_opts,
             settings=soccer_polars_converter_sportec.settings,
             **d,
         )
+
         np.testing.assert_allclose(
             edge_features, single_frame_edge_feature_result, rtol=1e-3
         )
@@ -891,6 +894,10 @@ class TestKloppyPolarsData:
         """
         Test navigating (next/prev) through events
         """
+        soccer_polars_converter_graph_and_additional_features.settings.orientation = (
+            Orientation.STATIC_HOME_AWAY
+        )
+
         frame = soccer_polars_converter_graph_and_additional_features.dataset.filter(
             pl.col("graph_id") == "2417-1529"
         )
@@ -917,8 +924,8 @@ class TestKloppyPolarsData:
         n_players = x.shape[0]
 
         assert x.shape == (n_players, 18)
-        assert 0.5475659001711429 == pytest.approx(x[0, 0], abs=1e-5)
-        assert 0.8997899683121747 == pytest.approx(x[0, 4], abs=1e-5)
+        assert 1 - 0.5475659001711429 == pytest.approx(x[0, 0], abs=1e-5)
+        assert 0.9948105277764999 == pytest.approx(x[0, 4], abs=1e-5)
         assert 0.2941671698429814 == pytest.approx(x[8, 2], abs=1e-5)
         assert 1 == pytest.approx(x[ball_index, 16])  # graph feature
         assert 0.12 == pytest.approx(x[ball_index, 17])  # graph feature
@@ -964,3 +971,18 @@ class TestKloppyPolarsData:
         )
 
         assert np.array_equal(valid_mask, np.array([True, True, False, False]))
+
+    def test_plot_graph(self, soccer_polars_converter: SoccerGraphConverterPolars):
+
+        plot_path = join("tests", "files", "plot", "test-1.mp4")
+        soccer_polars_converter.plot(
+            file_path=plot_path,
+            fps=10,
+            start_time=pl.duration(seconds=11, milliseconds=800),
+            end_time=pl.duration(seconds=11, milliseconds=1000),
+            period_id=1,
+            team_color_a="#CD0E61",
+            team_color_b="#0066CC",
+            ball_color="black",
+            color_by="ball_owning",
+        )

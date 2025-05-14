@@ -7,9 +7,7 @@ from typing import List, Union, Dict, Literal, Any, Optional, Callable
 
 import inspect
 
-from kloppy.domain import (
-    MetricPitchDimensions,
-)
+from kloppy.domain import MetricPitchDimensions, Orientation
 
 from spektral.data import Graph
 
@@ -76,6 +74,13 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         repr=False, default_factory=list
     )
 
+    _edge_feature_dims: Dict[str, int] = field(
+        repr=False, default_factory=dict, init=False
+    )
+    _node_feature_dims: Dict[str, int] = field(
+        repr=False, default_factory=dict, init=False
+    )
+
     def __post_init__(self):
         if not isinstance(self.dataset, KloppyPolarsDataset):
             raise ValueError("dataset should be of type KloppyPolarsDataset...")
@@ -83,6 +88,8 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         self.pitch_dimensions: MetricPitchDimensions = (
             self.dataset.settings.pitch_dimensions
         )
+        self._kloppy_settings = self.dataset.settings
+
         self.label_column: str = (
             self.label_col if self.label_col is not None else self.dataset._label_column
         )
@@ -152,7 +159,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         elif self.settings.random_seed == True:
             self.dataset = self.dataset.sample(fraction=1.0)
         else:
-            pass
+            self.dataset = self.dataset.sort(Group.BY_FRAME + [Column.OBJECT_ID])
 
     def _remove_incomplete_frames(self) -> pl.DataFrame:
         df = self.dataset
@@ -323,6 +330,9 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
 
     def _apply_graph_settings(self):
         return GraphSettingsPolars(
+            home_team_id=str(self._kloppy_settings.home_team_id),
+            away_team_id=str(self._kloppy_settings.away_team_id),
+            orientation=self._kloppy_settings.orientation,
             pitch_dimensions=self.pitch_dimensions,
             max_player_speed=self.settings.max_player_speed,
             max_ball_speed=self.settings.max_ball_speed,
@@ -372,7 +382,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             )
 
     @property
-    def __exprs_variables(self):
+    def _exprs_variables(self):
         exprs_variables = [
             Column.X,
             Column.Y,
@@ -451,70 +461,76 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         d["ball_carrier_idx"] = ball_carrier_idx
         return d
 
-    def __compute(self, args: List[pl.Series]) -> dict:
-        d = {col: args[i].to_numpy() for i, col in enumerate(self.__exprs_variables)}
-        d = self.__add_additional_kwargs(d)
+    def _compute(self, args: List[pl.Series]) -> dict:
+        frame_data: dict = {
+            col: args[i].to_numpy() for i, col in enumerate(self._exprs_variables)
+        }
+        frame_data = self.__add_additional_kwargs(frame_data)
 
-        if self.global_feature_cols:
-            failed = [
-                col
-                for col in self.global_feature_cols
-                if not np.all(d[col] == d[col][0])
-            ]
-            if failed:
-                raise ValueError(
-                    f"""graph_feature_cols contains multiple different values for a group in the groupby ({Group.BY_FRAME}) selection for the columns {failed}. Make sure each group has the same values per individual column."""
-                )
-
-        global_features = (
-            np.asarray([d[col] for col in self.global_feature_cols]).T[0]
-            if self.global_feature_cols
-            else None
-        )
-
-        if not np.all(d[self.graph_id_column] == d[self.graph_id_column][0]):
+        if not np.all(
+            frame_data[self.graph_id_column] == frame_data[self.graph_id_column][0]
+        ):
             raise ValueError(
                 "graph_id selection contains multiple different values. Make sure each graph_id is unique by at least game_id and frame_id..."
             )
 
         if not self.prediction and not np.all(
-            d[self.label_column] == d[self.label_column][0]
+            frame_data[self.label_column] == frame_data[self.label_column][0]
         ):
             raise ValueError(
                 """Label selection contains multiple different values for a single selection (group by) of game_id and frame_id, 
                 make sure this is not the case. Each group can only have 1 label."""
             )
 
-        adjacency_matrix = compute_adjacency_matrix(settings=self.settings, **d)
-        edge_features = compute_edge_features(
+        adjacency_matrix = compute_adjacency_matrix(
+            settings=self.settings, **frame_data
+        )
+        edge_features, self._edge_feature_dims = compute_edge_features(
             adjacency_matrix=adjacency_matrix,
             funcs=self.edge_feature_funcs,
             opts=self.feature_opts,
             settings=self.settings,
-            **d,
+            **frame_data,
         )
 
-        node_features = compute_node_features(
+        node_features, self._node_feature_dims = compute_node_features(
             funcs=self.node_feature_funcs,
             opts=self.feature_opts,
             settings=self.settings,
-            **d,
+            **frame_data,
         )
 
-        if global_features is not None:
+        if self.global_feature_cols:
+            failed = [
+                col
+                for col in self.global_feature_cols
+                if not np.all(frame_data[col] == frame_data[col][0])
+            ]
+            if failed:
+                raise ValueError(
+                    f"""graph_feature_cols contains multiple different values for a group in the groupby ({Group.BY_FRAME}) selection for the columns {failed}. Make sure each group has the same values per individual column."""
+                )
+
+            global_features = (
+                np.asarray([frame_data[col] for col in self.global_feature_cols]).T[0]
+                if self.global_feature_cols
+                else None
+            )
+            for col in self.global_feature_cols:
+                self._node_feature_dims[col] = 1
+
             node_features = add_global_features(
                 node_features=node_features,
                 global_features=global_features,
                 global_feature_type=self.global_feature_type,
-                **d,
+                **frame_data,
             )
-
         return {
             "e": edge_features.tolist(),
             "x": node_features.tolist(),
             "a": adjacency_matrix.tolist(),
-            self.graph_id_column: d[self.graph_id_column][0],
-            self.label_column: d[self.label_column][0],
+            self.graph_id_column: frame_data[self.graph_id_column][0],
+            self.label_column: frame_data[self.label_column][0],
         }
 
     @property
@@ -535,8 +551,8 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             self.dataset.group_by(Group.BY_FRAME, maintain_order=True)
             .agg(
                 pl.map_groups(
-                    exprs=self.__exprs_variables,
-                    function=self.__compute,
+                    exprs=self._exprs_variables,
+                    function=self._compute,
                     return_dtype=self.return_dtypes,
                 ).alias("result_dict")
             )
@@ -606,3 +622,291 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
 
         with gzip.open(file_path, "wb") as file:
             pickle.dump(self.graph_frames, file)
+
+    def plot(
+        self,
+        file_path: str,
+        fps: int = 25,
+        start_time: pl.duration = None,
+        end_time: pl.duration = None,
+        period_id: int = None,
+        team_color_a: str = "#CD0E61",
+        team_color_b: str = "#0066CC",
+        ball_color: str = "black",
+        color_by: Literal["ball_owning", "static_home_away"] = "ball_owning",
+    ):
+
+        self._team_color_a = team_color_a
+        self._team_color_b = team_color_b
+        self._ball_color = ball_color
+        self._color_by = color_by
+
+        try:
+            import matplotlib.animation as animation
+            import matplotlib.pyplot as plt
+            from matplotlib.gridspec import GridSpec
+        except ImportError:
+            raise ImportError(
+                "Seems like you don't have matplotlib installed. Please"
+                " install it using: pip install matplotlib"
+            )
+
+        if period_id is not None and not isinstance(period_id, int):
+            raise TypeError("period_id should be of type integer")
+
+        if all(x is None for x in [start_time, end_time, period_id]):
+            df = self.dataset
+        elif all(x is not None for x in [start_time, end_time, period_id]):
+            df = self.dataset.filter(
+                (pl.col(Column.TIMESTAMP).is_between(start_time, end_time))
+                & (pl.col(Column.PERIOD_ID) == period_id)
+            )
+        else:
+            raise ValueError(
+                "Please specificy all of start_time, end_time and period_id or none of them..."
+            )
+
+        def plot_graph():
+            import matplotlib.pyplot as plt
+
+            # Plot node features in top-left
+            ax1 = self._fig.add_subplot(self._gs[0, 0])
+            ax1.imshow(self._graph.x, aspect="auto", cmap="YlOrRd")
+            ax1.set_xlabel(f"Node Features {self._graph.x.shape}")
+
+            # Set y labels to integers
+            num_rows = self._graph.x.shape[0]
+            ax1.set_yticks(range(num_rows))
+            ax1.set_yticklabels([str(i) for i in range(num_rows)])
+
+            node_feature_yticklabels = feature_ticklabels(self._node_feature_dims)
+            ax1.xaxis.set_ticks_position("top")
+            ax1.set_xticks(range(len(node_feature_yticklabels)))
+            ax1.set_xticklabels(node_feature_yticklabels, rotation=45, ha="left")
+
+            # Plot ajacency matrix in bottom-left
+            ax2 = self._fig.add_subplot(self._gs[1, 0])
+            ax2.imshow(self._graph.a.toarray(), aspect="auto", cmap="YlOrRd")
+            ax2.set_xlabel(f"Adjacency Matrix {self._graph.a.shape}")
+
+            # Set both x and y labels to integers
+            num_rows_a = self._graph.a.toarray().shape[0]
+            num_cols_a = self._graph.a.toarray().shape[1]
+
+            ax2.set_yticks(range(num_rows_a))
+            ax2.set_yticklabels([str(i) for i in range(num_rows_a)])
+            ax2.xaxis.set_ticks_position("top")
+            ax2.set_xticks(range(num_cols_a))
+            ax2.set_xticklabels([str(i) for i in range(num_cols_a)])
+
+            # Plot Edge Features on the right (spanning both rows)
+            ax3 = self._fig.add_subplot(self._gs[:, 1])
+
+            _, size_a = non_zeros(self._graph.a.toarray()[0 : self._ball_carrier_idx])
+            ball_carrier_edge_idx, num_rows_e = non_zeros(
+                np.asarray(
+                    [list(x) for x in self._graph.a.toarray()][self._ball_carrier_idx]
+                )
+            )
+
+            im3 = ax3.imshow(
+                self._graph.e[size_a : num_rows_e + size_a, :],
+                aspect="auto",
+                cmap="YlOrRd",
+            )
+
+            ax3.set_yticks(range(num_rows_e))
+            ax3.set_yticklabels(list(ball_carrier_edge_idx[0]), fontsize=18)
+            ax3.set_xlabel(f"Edge Features {self._graph.e.shape}")
+
+            labels = ax3.get_yticklabels()
+            if self._ball_carrier_idx in ball_carrier_edge_idx[0]:
+                idx_position = list(ball_carrier_edge_idx[0]).index(
+                    self._ball_carrier_idx
+                )
+                # Modify just that specific label
+                labels[idx_position].set_color(self._ball_carrier_color)
+                labels[idx_position].set_fontweight("bold")
+                # Set the modified labels back
+                ax3.set_yticklabels(labels)
+
+            # Set x labels to edge function names at the top, rotated 45 degrees
+            edge_feature_xticklabels = feature_ticklabels(self._edge_feature_dims)
+            ax3.xaxis.set_ticks_position("top")
+            ax3.set_xticks(range(len(edge_feature_xticklabels)))
+            ax3.set_xticklabels(edge_feature_xticklabels, rotation=45, ha="left")
+
+            plt.colorbar(im3, ax=ax3, fraction=0.1, pad=0.2)
+
+        def plot_vertical_pitch(frame_data: pl.DataFrame):
+            try:
+                from mplsoccer import VerticalPitch
+            except ImportError:
+                raise ImportError(
+                    "Seems like you don't have mplsoccer installed. Please"
+                    " install it using: pip install mplsoccer"
+                )
+
+            ax4 = self._fig.add_subplot(self._gs[:, 2])
+            pitch = VerticalPitch(
+                pitch_type="secondspectrum",
+                pitch_length=self.pitch_dimensions.pitch_length,
+                pitch_width=self.pitch_dimensions.pitch_width,
+                pitch_color="#ffffff",
+                pad_top=-0.05,
+            )
+            pitch.draw(ax=ax4)
+            player_and_ball(frame_data=frame_data, ax=ax4)
+            direction_of_play_arrow(ax=ax4)
+
+        def feature_ticklabels(feature_dims):
+            _feature_ticklabels = []
+            for key, value in feature_dims.items():
+                if value == 1:
+                    _feature_ticklabels.append(key)
+                else:
+                    _feature_ticklabels.extend([key] + [None] * (value - 1))
+            return _feature_ticklabels
+
+        def direction_of_play_arrow(ax):
+            arrow_x = -30
+            arrow_y = -7.5
+            arrow_dx = 0
+            arrow_dy = 15
+
+            if self.settings.orientation == Orientation.STATIC_HOME_AWAY:
+                if self._ball_owning_team_id != self.settings.home_team_id:
+                    arrow_y = arrow_y * -1
+                    arrow_dy = arrow_dy * -1
+            elif self.settings.orientation == Orientation.BALL_OWNING_TEAM:
+                pass
+            else:
+                raise ValueError(f"Unsupported orientation {self.settings.orientation}")
+
+            # Create the arrow to indicate direction of play
+            ax.arrow(
+                arrow_x,
+                arrow_y,
+                arrow_dx,
+                arrow_dy,
+                head_width=3,
+                head_length=2,
+                fc="#c2c2c2",
+                ec="#c2c2c2",
+                width=0.5,
+                length_includes_head=True,
+                zorder=1,
+            )
+
+        def player_and_ball(frame_data, ax):
+            if self._color_by == "ball_owning":
+                team_id = self._ball_owning_team_id
+            elif self._color_by == "static_home_away":
+                team_id = self.settings.home_team_id
+            else:
+                raise ValueError(f"Unsupported color_by {self._color_by}")
+
+            self._ball_carrier_color = None
+
+            for i, r in enumerate(frame_data.iter_rows(named=True)):
+                v, vy, vx, y, x = (
+                    r[Column.SPEED],
+                    r[Column.VX],
+                    r[Column.VY],
+                    r[Column.X],
+                    r[Column.Y],
+                )
+                is_ball = True if r[Column.TEAM_ID] == self.settings.ball_id else False
+
+                if not is_ball:
+                    if team_id is None:
+                        team_id = r[Column.TEAM_ID]
+
+                    color = (
+                        self._team_color_a
+                        if r[Column.TEAM_ID] == team_id
+                        else self._team_color_b
+                    )
+
+                    if r[Column.IS_BALL_CARRIER] == True:
+                        self._ball_carrier_color = color
+
+                    ax.scatter(x, y, color=color, s=450)
+
+                    if v > 1.0:
+                        ax.annotate(
+                            "",
+                            xy=(x + vx, y + vy),
+                            xytext=(x, y),
+                            arrowprops=dict(arrowstyle="->", color=color, lw=3),
+                        )
+
+                else:
+                    ax.scatter(x, y, color=self._ball_color, s=250, zorder=10)
+                # # Text with white border
+                text = ax.text(
+                    x + (-1.2 if is_ball else 0.0),
+                    y + (-1.2 if is_ball else 0.0),
+                    i,
+                    color=self._ball_color if is_ball else color,
+                    fontsize=12,
+                    ha="center",
+                    va="center",
+                    zorder=15 if is_ball else 5,
+                )
+
+                import matplotlib.patheffects as path_effects
+
+                text.set_path_effects(
+                    [
+                        path_effects.Stroke(linewidth=6, foreground="white"),
+                        path_effects.Normal(),
+                    ]
+                )
+                ax.set_xlabel(f"Label: {frame_data['label'][0]}", fontsize=22)
+
+        writer = animation.FFMpegWriter(fps=fps, bitrate=1800)
+
+        self._fig = plt.figure(figsize=(25, 18))
+        self._fig.subplots_adjust(left=0.06, right=1.0, bottom=0.05)
+
+        with writer.saving(self._fig, file_path, dpi=300):
+            for group_id, frame_data in df.sort(
+                Group.BY_FRAME + [Column.OBJECT_ID]
+            ).group_by(Group.BY_FRAME, maintain_order=True):
+                self._fig.clear()
+                self._gs = GridSpec(
+                    2,
+                    3,
+                    width_ratios=[2, 1, 3],
+                    height_ratios=[1, 1],
+                    wspace=0.1,
+                    hspace=0.06,
+                    left=0.05,
+                    right=1.0,
+                    bottom=0.05,
+                )
+
+                # Process the current frame
+                features = self._compute(
+                    [frame_data[col] for col in self._exprs_variables]
+                )
+                self._graph = Graph(
+                    a=make_sparse(np.asarray(features["a"])),
+                    x=np.asarray(features["x"]),
+                    e=np.asarray(features["e"]),
+                    y=np.asarray(features[self.label_column]),
+                )
+
+                self._ball_carrier_idx = np.where(
+                    frame_data[Column.IS_BALL_CARRIER] == True
+                )[0][0]
+                self._ball_owning_team_id = list(
+                    frame_data[Column.BALL_OWNING_TEAM_ID]
+                )[0]
+
+                plot_vertical_pitch(frame_data)
+                plot_graph()
+
+                plt.tight_layout()
+                writer.grab_frame()

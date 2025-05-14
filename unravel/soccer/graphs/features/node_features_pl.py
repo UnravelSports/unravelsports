@@ -1,5 +1,7 @@
 import numpy as np
 
+from typing import Dict
+
 
 def add_global_features(node_features, global_features, global_feature_type, **kwargs):
     if global_feature_type == "ball":
@@ -44,6 +46,7 @@ def compute_node_features(
 
     combined_opts.update({"settings": settings})
     node_feature_values = []
+    _node_feature_dims: Dict[str, int] = {}  # not used for anything other than plotting
 
     for func in funcs:
         try:
@@ -55,9 +58,11 @@ def compute_node_features(
 
             # Handle different shapes
             if value.shape == reference_shape:
+                _node_feature_dims[func.__name__] = 1
                 # Single column case
                 node_feature_values.append(value)
             elif value.shape[0] == reference_shape[0] and len(value.shape) > 1:
+                _node_feature_dims[func.__name__] = value.shape[1]
                 # Multi-column case - split and append each column
                 node_feature_values.extend([value[:, i] for i in range(value.shape[1])])
             else:
@@ -85,4 +90,4 @@ def compute_node_features(
             axis=-1,
         )
     )
-    return X
+    return X, _node_feature_dims

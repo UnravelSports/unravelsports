@@ -102,22 +102,11 @@ class KloppyPolarsDataset(DefaultDataset):
             pitch_width=self.kloppy_dataset.metadata.pitch_dimensions.pitch_width,
         )
 
-        if self.kloppy_dataset.metadata.orientation not in [
-            Orientation.STATIC_HOME_AWAY,
-            Orientation.STATIC_AWAY_HOME,
-            Orientation.HOME_AWAY,
-            Orientation.AWAY_HOME,
-        ]:
-            kloppy_static = DatasetTransformer.transform_dataset(
-                dataset=self.kloppy_dataset,
-                to_orientation=Orientation.STATIC_HOME_AWAY,
-                to_coordinate_system=secondspectrum_coordinate_system,
-            )
-        else:
-            kloppy_static = DatasetTransformer.transform_dataset(
-                dataset=self.kloppy_dataset,
-                to_coordinate_system=secondspectrum_coordinate_system,
-            )
+        kloppy_static = DatasetTransformer.transform_dataset(
+            dataset=self.kloppy_dataset,
+            to_coordinate_system=secondspectrum_coordinate_system,
+            to_orientation=Orientation.STATIC_HOME_AWAY,
+        )
 
         return kloppy_static
 
@@ -708,7 +697,6 @@ class KloppyPolarsDataset(DefaultDataset):
             self._orient_ball_owning
             and self.settings.orientation != Orientation.BALL_OWNING_TEAM
         ):
-
             df = self.convert_orientation_to_ball_owning(df)
 
         if self._infer_goalkeepers:

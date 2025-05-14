@@ -42,6 +42,9 @@ setup(
         "test": [
             "pytest==8.2.2",
             "black[jupyter]==24.4.2",
+            "matplotlib>=3.9",
+            "mplsoccer>=1.4",
+            "ffmpeg-python==0.2.0",
         ]
     },
 )
