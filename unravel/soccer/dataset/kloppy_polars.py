@@ -117,6 +117,7 @@ class KloppyPolarsDataset(DefaultDataset):
             kloppy_static = DatasetTransformer.transform_dataset(
                 dataset=self.kloppy_dataset,
                 to_coordinate_system=secondspectrum_coordinate_system,
+                to_orientation=Orientation.STATIC_HOME_AWAY,
             )
 
         return kloppy_static
@@ -708,7 +709,6 @@ class KloppyPolarsDataset(DefaultDataset):
             self._orient_ball_owning
             and self.settings.orientation != Orientation.BALL_OWNING_TEAM
         ):
-
             df = self.convert_orientation_to_ball_owning(df)
 
         if self._infer_goalkeepers:
