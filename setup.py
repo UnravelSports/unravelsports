@@ -43,7 +43,7 @@ setup(
             "pytest==8.2.2",
             "black[jupyter]==24.4.2",
             "matplotlib>=3.9",
-            "mplsoccer>=1.4"
+            "mplsoccer>=1.4",
         ]
     },
 )
