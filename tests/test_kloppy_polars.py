@@ -973,9 +973,7 @@ class TestKloppyPolarsData:
         assert np.array_equal(valid_mask, np.array([True, True, False, False]))
 
     def test_plot_graph(self, soccer_polars_converter: SoccerGraphConverterPolars):
-        """
-        Test navigating (next/prev) through events
-        """
+
         plot_path = join("tests", "files", "plot", "test-1.mp4")
         soccer_polars_converter.plot(
             file_path=plot_path,
