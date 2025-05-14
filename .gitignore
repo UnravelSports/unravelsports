@@ -177,6 +177,7 @@ BUILD.md
 build.py
 
 /.data
+/data
 /pickle_files
 **/pickles
 **/pickle_files

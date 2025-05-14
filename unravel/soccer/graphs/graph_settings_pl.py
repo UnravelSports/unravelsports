@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from ...utils import DefaultGraphSettings
 
 from dataclasses import dataclass, field
-from kloppy.domain import MetricPitchDimensions
+from kloppy.domain import MetricPitchDimensions, Orientation
 
 from ..dataset import Constant
 
@@ -15,6 +15,9 @@ class GraphSettingsPolars(DefaultGraphSettings):
     ball_id: str = Constant.BALL
     goalkeeper_id: str = "GK"
     boundary_correction: float = None
+    home_team_id: str = None
+    away_team_id: str = None
+    orientation: Orientation = None
     non_potential_receiver_node_value: float = 0.1
     ball_carrier_treshold: float = 25.0
     pitch_dimensions: MetricPitchDimensions = field(
