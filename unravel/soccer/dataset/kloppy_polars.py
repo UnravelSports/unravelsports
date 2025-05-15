@@ -613,6 +613,11 @@ class KloppyPolarsDataset(DefaultDataset):
     def convert_orientation_to_ball_owning(self, df: pl.DataFrame):
         # When orient_ball_owning is True, it means the orientation has to flip from "STATIC_HOME_AWAY" to "BALL_OWNING" in the Polars dataframe
         # This means that when away is the attacking team we can flip all coordinates by -1.0
+        if self.settings.orientation == Orientation.BALL_OWNING_TEAM:
+            raise ValueError(
+                "Orientation is already BALL_OWNING_TEAM this operation is not possible..."
+            )
+
         flip_columns = [Column.X, Column.Y, Column.VX, Column.VY, Column.AX, Column.AY]
 
         self.settings.orientation = Orientation.BALL_OWNING_TEAM

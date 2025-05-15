@@ -882,7 +882,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             arrow_dy = 15
 
             if self.settings.orientation == Orientation.STATIC_HOME_AWAY:
-                if self._ball_owning_team_id != self.settings.home_team_id:
+                if self._ball_owning_team_id != str(self.settings.home_team_id):
                     arrow_y = arrow_y * -1
                     arrow_dy = arrow_dy * -1
             elif self.settings.orientation == Orientation.BALL_OWNING_TEAM:
@@ -909,7 +909,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             if self._color_by == "ball_owning":
                 team_id = self._ball_owning_team_id
             elif self._color_by == "static_home_away":
-                team_id = self.settings.home_team_id
+                team_id = str(self.settings.home_team_id)
             else:
                 raise ValueError(f"Unsupported color_by {self._color_by}")
 
@@ -923,7 +923,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
                     r[Column.X],
                     r[Column.Y],
                 )
-                is_ball = True if r[Column.TEAM_ID] == self.settings.ball_id else False
+                is_ball = True if r[Column.TEAM_ID] == Constant.BALL else False
 
                 if not is_ball:
                     if team_id is None:
@@ -970,7 +970,10 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
                         path_effects.Normal(),
                     ]
                 )
-                ax.set_xlabel(f"Label: {frame_data['label'][0]}", fontsize=22)
+                ax.set_xlabel(
+                    f"Label: {frame_data[self.label_column][0]} - Ball Owning Team Id: {frame_data[Column.BALL_OWNING_TEAM_ID][0]}",
+                    fontsize=22,
+                )
 
         def frame_plot(self, frame_data):
             self._gs = GridSpec(
