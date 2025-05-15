@@ -50,6 +50,9 @@ import polars as pl
 import json
 
 from os.path import join
+        
+import os
+from unittest.mock import patch, MagicMock
 
 
 class TestKloppyPolarsData:
@@ -978,11 +981,118 @@ class TestKloppyPolarsData:
         soccer_polars_converter.plot(
             file_path=plot_path,
             fps=10,
-            start_time=pl.duration(seconds=11, milliseconds=800),
-            end_time=pl.duration(seconds=11, milliseconds=1000),
+            timestamp=pl.duration(seconds=11, milliseconds=800),
+            end_timestamp=pl.duration(seconds=11, milliseconds=1000),
             period_id=1,
             team_color_a="#CD0E61",
             team_color_b="#0066CC",
             ball_color="black",
             color_by="ball_owning",
         )
+
+    def test_plot_png_success(self, soccer_polars_converter: SoccerGraphConverterPolars):
+        """Test successful PNG generation with correct parameters."""
+        # Setup test file path
+        plot_path = os.path.join("tests", "files", "plot", "test-png.png")
+        
+        # Ensure the directory exists
+        os.makedirs(os.path.dirname(plot_path), exist_ok=True)
+        
+        # If the file already exists, remove it to start clean
+        if os.path.exists(plot_path):
+            os.remove(plot_path)
+        
+        # Call the plot function
+        soccer_polars_converter.plot(
+            file_path=plot_path,
+            timestamp=pl.duration(seconds=11, milliseconds=800),
+            period_id=1,
+            color_by="static_home_away",
+        )
+        
+        # Check that the file was created
+        assert os.path.exists(plot_path)
+        assert plot_path.endswith(".png")
+
+    def test_plot_png_no_extension(self, soccer_polars_converter: SoccerGraphConverterPolars):
+        """Test PNG generation when no file extension is provided."""
+        # Setup test file path without extension
+        plot_path = os.path.join("tests", "files", "plot", "test-no-extension")
+        
+        # Ensure the directory exists
+        os.makedirs(os.path.dirname(plot_path), exist_ok=True)
+        
+        # Expected path with .png extension
+        expected_path = f"{plot_path}.png"
+        
+        # If the file already exists, remove it to start clean
+        if os.path.exists(expected_path):
+            os.remove(expected_path)
+        
+        # Call the plot function
+        soccer_polars_converter.plot(
+            file_path=plot_path,
+            timestamp=pl.duration(seconds=11, milliseconds=800),
+            period_id=1,
+        )
+        
+        # Check that the file was created with .png extension
+        assert os.path.exists(expected_path)
+
+    def test_plot_error_only_fps(self, soccer_polars_converter: SoccerGraphConverterPolars):
+        """Test error is raised when only fps is provided without end_timestamp."""
+        with pytest.raises(ValueError):
+            soccer_polars_converter.plot(
+                file_path='output_img.png',
+                fps=10,  # Only fps provided
+                timestamp=pl.duration(seconds=11, milliseconds=800),
+                period_id=1,
+            )
+            
+    def test_plot_error_empty_selection(self, soccer_polars_converter: SoccerGraphConverterPolars):
+        with pytest.raises(ValueError):
+            soccer_polars_converter.plot(
+                file_path='output_img.png',
+                timestamp=pl.duration(minutes=1, seconds=19),
+                period_id=1,
+            )
+
+    def test_plot_error_only_end_timestamp(self, soccer_polars_converter: SoccerGraphConverterPolars):
+        """Test error is raised when only end_timestamp is provided without fps."""
+        with pytest.raises(ValueError):
+            soccer_polars_converter.plot(
+                file_path='output_img.png',
+                end_timestamp=pl.duration(seconds=11, milliseconds=800),
+                timestamp=pl.duration(minutes=1, seconds=18),
+                period_id=1,
+            )
+
+    def test_plot_error_mp4_extension_without_video_params(self, soccer_polars_converter: SoccerGraphConverterPolars):
+        """Test error when .mp4 extension is used but video parameters are not provided."""
+        with pytest.raises(ValueError):
+            soccer_polars_converter.plot(
+                file_path='output_video.mp4',  # MP4 extension
+                timestamp=pl.duration(seconds=11, milliseconds=800),
+                period_id=1,
+                # Missing both fps and end_timestamp
+            )
+
+    def test_plot_error_wrong_extension_for_png(self, soccer_polars_converter: SoccerGraphConverterPolars):
+        """Test error when non-png/mp4 extension is used for image output."""
+        with pytest.raises(ValueError):
+            soccer_polars_converter.plot(
+                file_path='output_img.jpg',  # Using .jpg extension
+                timestamp=pl.duration(seconds=11, milliseconds=800),
+                period_id=1,
+            )
+
+    def test_plot_error_wrong_extension_for_mp4(self, soccer_polars_converter: SoccerGraphConverterPolars):
+        """Test error when non-mp4 extension is used for video output."""
+        with pytest.raises(ValueError):
+            soccer_polars_converter.plot(
+                file_path='output_video.avi',  # Using .avi extension
+                fps=10,
+                timestamp=pl.duration(seconds=11, milliseconds=800),
+                end_timestamp=pl.duration(seconds=11, milliseconds=900),
+                period_id=1,
+            )

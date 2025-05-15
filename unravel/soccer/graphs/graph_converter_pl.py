@@ -7,6 +7,8 @@ from typing import List, Union, Dict, Literal, Any, Optional, Callable
 
 import inspect
 
+import pathlib
+
 from kloppy.domain import MetricPitchDimensions, Orientation
 
 from spektral.data import Graph
@@ -626,21 +628,62 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
     def plot(
         self,
         file_path: str,
-        fps: int = 25,
-        start_time: pl.duration = None,
-        end_time: pl.duration = None,
+        fps: int = None,
+        timestamp: pl.duration = None,
+        end_timestamp: pl.duration = None,
         period_id: int = None,
         team_color_a: str = "#CD0E61",
         team_color_b: str = "#0066CC",
         ball_color: str = "black",
         color_by: Literal["ball_owning", "static_home_away"] = "ball_owning",
     ):
+        """
+        Plot tracking data as a static image or video file.
 
-        self._team_color_a = team_color_a
-        self._team_color_b = team_color_b
-        self._ball_color = ball_color
-        self._color_by = color_by
+        This method visualizes tracking data for players and the ball. It can generate either:
+        - A single PNG image (if either fps or end_timestamp is None, or both are None)
+        - An MP4 video (if both fps and end_timestamp are provided)
 
+        Parameters
+        ----------
+        file_path : str
+            The output path where the PNG or MP4 file will be saved
+        fps : int, optional
+            Frames per second for video output. If None, a static image is generated
+        timestamp : pl.duration, optional
+            The starting timestamp to plot. If None, starts from the beginning of available data
+        end_timestamp : pl.duration, optional
+            The ending timestamp for video output. If None, a static image is generated
+        period_id : int, optional
+            ID of the match period to visualize. If None, all periods are included
+        team_color_a : str, default "#CD0E61"
+            Hex color code for Team A visualization
+        team_color_b : str, default "#0066CC"
+            Hex color code for Team B visualization
+        ball_color : str, default "black"
+            Color for ball visualization
+        color_by : Literal["ball_owning", "static_home_away"], default "ball_owning"
+            Method for coloring the teams:
+            - "ball_owning": Colors teams based on ball possession
+            - "static_home_away": Uses static colors for home and away teams
+
+        Returns
+        -------
+        None
+            The function saves the output file to the specified file_path but doesn't return any value
+
+        Notes
+        -----
+        Output file type is determined by parameters:
+        - PNG: Generated when either fps or end_timestamp is None, or both are None
+        - MP4: Generated when both fps and end_timestamp are provided
+
+        Raises
+        ------
+        ValueError
+            If file extension doesn't match the parameters provided (e.g., .mp4 extension
+            but missing fps or end_timestamp, or .png extension with both fps and end_timestamp)
+        """
         try:
             import matplotlib.animation as animation
             import matplotlib.pyplot as plt
@@ -651,20 +694,84 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
                 " install it using: pip install matplotlib"
             )
 
+        if (fps is None and end_timestamp is not None) or (
+            fps is not None and end_timestamp is None
+        ):
+            raise ValueError(
+                "Both 'fps' and 'end_timestamp' must be provided together to generate a video. "
+            )
+
+        # Determine the output type based on parameters
+        generate_video = fps is not None and end_timestamp is not None
+
+        # Get file extension if it exists
+        path = pathlib.Path(file_path)
+        file_extension = path.suffix.lower() if path.suffix else ""
+
+        # If no extension, add the appropriate one based on parameters
+        if not file_extension:
+            suffix = ".mp4" if generate_video else ".png"
+            file_path = str(path.with_suffix(suffix))
+
+        # Otherwise, validate that the extension matches the parameters
+        else:
+            if generate_video and file_extension != ".mp4":
+                raise ValueError(
+                    f"Parameters fps and end_timestamp indicate video output, "
+                    f"but file extension is '{file_extension}'. Use '.mp4' extension for video output."
+                )
+            elif not generate_video and file_extension == ".mp4":
+                raise ValueError(
+                    "To generate an MP4 video, both 'fps' and 'end_timestamp' must be provided. "
+                    "For static image output, use a '.png' extension."
+                )
+            elif not generate_video and file_extension != ".png":
+                raise ValueError(
+                    f"For static image output, use '.png' extension instead of '{file_extension}'."
+                )
+
+        self._team_color_a = team_color_a
+        self._team_color_b = team_color_b
+        self._ball_color = ball_color
+        self._color_by = color_by
+
         if period_id is not None and not isinstance(period_id, int):
             raise TypeError("period_id should be of type integer")
 
-        if all(x is None for x in [start_time, end_time, period_id]):
+        if all(x is None for x in [timestamp, end_timestamp, period_id]):
+            # No filters specified, use the entire dataset
             df = self.dataset
-        elif all(x is not None for x in [start_time, end_time, period_id]):
-            df = self.dataset.filter(
-                (pl.col(Column.TIMESTAMP).is_between(start_time, end_time))
-                & (pl.col(Column.PERIOD_ID) == period_id)
-            )
+        elif timestamp is not None and period_id is not None:
+            if end_timestamp is not None:
+                # Both timestamp and end_timestamp provided - filter for a range
+                df = self.dataset.filter(
+                    (pl.col(Column.TIMESTAMP).is_between(timestamp, end_timestamp))
+                    & (pl.col(Column.PERIOD_ID) == period_id)
+                )
+            else:
+                # Only timestamp provided (no end_timestamp) - filter for specific timestamp
+                df = self.dataset.filter(
+                    (pl.col(Column.TIMESTAMP) == timestamp)
+                    & (pl.col(Column.PERIOD_ID) == period_id)
+                )
+                # Handle the case where a single timestamp has multiple frame_ids
+                df = (
+                    df.with_columns(
+                        pl.col(Column.FRAME_ID)
+                        .rank(method="min")
+                        .over(Column.TIMESTAMP)
+                        .alias("frame_rank")
+                    )
+                    # Keep only rows where the frame has rank = 1 (first frame for each timestamp)
+                    .filter(pl.col("frame_rank") == 1).drop("frame_rank")
+                )
         else:
             raise ValueError(
-                "Please specificy all of start_time, end_time and period_id or none of them..."
+                "Please specify both timestamp and period_id, or specify all of timestamp, end_timestamp, and period_id, or none of them."
             )
+
+        if df.is_empty():
+            raise ValueError("Selection is empty, please try different timestamp(s)")
 
         def plot_graph():
             import matplotlib.pyplot as plt
@@ -865,48 +972,52 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
                 )
                 ax.set_xlabel(f"Label: {frame_data['label'][0]}", fontsize=22)
 
-        writer = animation.FFMpegWriter(fps=fps, bitrate=1800)
+        def frame_plot(self, frame_data):
+            self._gs = GridSpec(
+                2,
+                3,
+                width_ratios=[2, 1, 3],
+                height_ratios=[1, 1],
+                wspace=0.1,
+                hspace=0.06,
+                left=0.05,
+                right=1.0,
+                bottom=0.05,
+            )
+
+            # Process the current frame
+            features = self._compute([frame_data[col] for col in self._exprs_variables])
+            self._graph = Graph(
+                a=make_sparse(np.asarray(features["a"])),
+                x=np.asarray(features["x"]),
+                e=np.asarray(features["e"]),
+                y=np.asarray(features[self.label_column]),
+            )
+
+            self._ball_carrier_idx = np.where(
+                frame_data[Column.IS_BALL_CARRIER] == True
+            )[0][0]
+            self._ball_owning_team_id = list(frame_data[Column.BALL_OWNING_TEAM_ID])[0]
+
+            plot_vertical_pitch(frame_data)
+            plot_graph()
+
+            plt.tight_layout()
 
         self._fig = plt.figure(figsize=(25, 18))
         self._fig.subplots_adjust(left=0.06, right=1.0, bottom=0.05)
 
-        with writer.saving(self._fig, file_path, dpi=300):
-            for group_id, frame_data in df.sort(
-                Group.BY_FRAME + [Column.OBJECT_ID]
-            ).group_by(Group.BY_FRAME, maintain_order=True):
-                self._fig.clear()
-                self._gs = GridSpec(
-                    2,
-                    3,
-                    width_ratios=[2, 1, 3],
-                    height_ratios=[1, 1],
-                    wspace=0.1,
-                    hspace=0.06,
-                    left=0.05,
-                    right=1.0,
-                    bottom=0.05,
-                )
+        if generate_video:
+            writer = animation.FFMpegWriter(fps=fps, bitrate=1800)
 
-                # Process the current frame
-                features = self._compute(
-                    [frame_data[col] for col in self._exprs_variables]
-                )
-                self._graph = Graph(
-                    a=make_sparse(np.asarray(features["a"])),
-                    x=np.asarray(features["x"]),
-                    e=np.asarray(features["e"]),
-                    y=np.asarray(features[self.label_column]),
-                )
+            with writer.saving(self._fig, file_path, dpi=300):
+                for group_id, frame_data in df.sort(
+                    Group.BY_FRAME + [Column.OBJECT_ID]
+                ).group_by(Group.BY_FRAME, maintain_order=True):
+                    self._fig.clear()
+                    frame_plot(self, frame_data)
+                    writer.grab_frame()
 
-                self._ball_carrier_idx = np.where(
-                    frame_data[Column.IS_BALL_CARRIER] == True
-                )[0][0]
-                self._ball_owning_team_id = list(
-                    frame_data[Column.BALL_OWNING_TEAM_ID]
-                )[0]
-
-                plot_vertical_pitch(frame_data)
-                plot_graph()
-
-                plt.tight_layout()
-                writer.grab_frame()
+        else:
+            frame_plot(self, frame_data=df)
+            plt.savefig(file_path, dpi=300)
