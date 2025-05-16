@@ -25,6 +25,8 @@ from .utils import apply_speed_acceleration_filters
 
 import polars as pl
 
+import warnings
+
 
 DEFAULT_PLAYER_SMOOTHING_PARAMS = {"window_length": 7, "polyorder": 1}
 DEFAULT_BALL_SMOOTHING_PARAMS = {"window_length": 3, "polyorder": 1}
@@ -688,13 +690,16 @@ class KloppyPolarsDataset(DefaultDataset):
         df = df.drop(["dx", "dy", "dz", "dt", "dvx", "dvy", "dvz"])
         df = df.filter(~(pl.col(Column.X).is_null() & pl.col(Column.Y).is_null()))
 
-        if (
-            df[Column.BALL_OWNING_TEAM_ID].is_null().all()
-            and self.ball_carrier_threshold is None
-        ):
-            raise ValueError(
-                f"This dataset requires us to infer the {Column.BALL_OWNING_TEAM_ID}, please specifiy a ball_carrier_threshold (float) to do so."
-            )
+        if df[Column.BALL_OWNING_TEAM_ID].is_null().all():
+            if self.ball_carrier_threshold is None:
+                raise ValueError(
+                    f"This dataset requires us to infer the {Column.BALL_OWNING_TEAM_ID}, please specifiy a ball_carrier_threshold (float) to do so."
+                )
+            else:
+                warnings.warn(
+                    "This dataset does not come with 'ball owning team' information. As a result we infer this using distance to ball using the 'ball_carrier_threshold'. Please note this might cause unexpected results.",
+                    UserWarning,
+                )
 
         df = self.__infer_ball_carrier(df)
 

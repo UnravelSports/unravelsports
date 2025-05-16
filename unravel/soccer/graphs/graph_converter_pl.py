@@ -260,6 +260,11 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
                 for col in user_defined_columns
             ]
         )
+
+        padding_df = padding_df.with_columns(
+            [pl.col(col).cast(df.schema[col]).alias(col) for col in group_by_columns]
+        )
+
         padding_df = padding_df.join(
             (
                 df.unique(group_by_columns).select(

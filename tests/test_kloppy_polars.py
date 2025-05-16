@@ -350,6 +350,21 @@ class TestKloppyPolarsData:
                 verbose=False,
             )
 
+    # def test_skillcorner_warning(
+    #     self, kloppy_dataset: TrackingDataset
+    # ) -> KloppyPolarsDataset:
+    #     with pytest.warns(UserWarning):
+    #         dataset = KloppyPolarsDataset(
+    #             kloppy_dataset=kloppy_dataset,
+    #             ball_carrier_threshold=25.0,
+    #             max_player_speed=12.0,
+    #             max_player_acceleration=12.0,
+    #             max_ball_speed=13.5,
+    #             max_ball_acceleration=100,
+    #         )
+    #         dataset.add_dummy_labels(by=["game_id", "frame_id"], random_seed=42)
+    #         dataset.add_graph_ids(by=["game_id", "frame_id"])
+
     def test_incorrect_custom_features_no_decorator(
         self, kloppy_polars_dataset: KloppyPolarsDataset
     ) -> SoccerGraphConverterPolars:
