@@ -59,6 +59,7 @@ class KloppyPolarsDataset(DefaultDataset):
         max_player_acceleration: float = 6.0,
         max_ball_acceleration: float = 13.5,
         orient_ball_owning: bool = True,
+        add_smoothing: bool = True,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -71,6 +72,7 @@ class KloppyPolarsDataset(DefaultDataset):
         self._max_ball_acceleration = max_ball_acceleration
         self._orient_ball_owning = orient_ball_owning
         self._infer_goalkeepers: bool = False
+        self._add_smoothing: bool = add_smoothing
 
         if not isinstance(self.kloppy_dataset, TrackingDataset):
             raise Exception("'kloppy_dataset' should be of type float")
@@ -311,7 +313,7 @@ class KloppyPolarsDataset(DefaultDataset):
             )
         )
 
-        if player_smoothing_params:
+        if self._add_smoothing and player_smoothing_params:
             player_df = self.__apply_smoothing(
                 df=df.filter(pl.col(Column.OBJECT_ID) != self._ball_object.id),
                 smoothing_params=player_smoothing_params,
@@ -319,13 +321,14 @@ class KloppyPolarsDataset(DefaultDataset):
         else:
             player_df = df.filter(pl.col(Column.OBJECT_ID) != self._ball_object.id)
 
-        if ball_smoothing_params:
+        if self._add_smoothing and ball_smoothing_params:
             ball_df = self.__apply_smoothing(
                 df.filter(pl.col(Column.OBJECT_ID) == self._ball_object.id),
                 smoothing_params=ball_smoothing_params,
             )
         else:
             ball_df = df.filter(pl.col(Column.OBJECT_ID) == self._ball_object.id)
+
         df = pl.concat([player_df, ball_df])
         df = df.with_columns(
             [

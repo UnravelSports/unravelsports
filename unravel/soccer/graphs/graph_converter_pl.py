@@ -453,7 +453,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             ball_index = np.where(d["team_id"] == d["ball_id"])[0]
             ball_position = d["position"][ball_index][0]
         else:
-            ball_position = np.asarray([np.nan, np.nan])
+            ball_position = np.asarray([0.0, 0.0, 0.0])
             ball_index = 0
 
         ball_carriers = np.where(d[Column.IS_BALL_CARRIER] == True)[0]
@@ -582,7 +582,9 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         graph_df = self._convert()
         self.graph_frames = [
             graph
-            for chunk in graph_df.lazy().collect().iter_slices(self.chunk_size)
+            for chunk in graph_df.lazy()
+            .collect(engine="gpu")
+            .iter_slices(self.chunk_size)
             for graph in process_chunk(chunk)
         ]
         return self.graph_frames
@@ -641,6 +643,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         team_color_b: str = "#0066CC",
         ball_color: str = "black",
         color_by: Literal["ball_owning", "static_home_away"] = "ball_owning",
+        sort: bool = True,
     ):
         """
         Plot tracking data as a static image or video file.
@@ -1018,10 +1021,12 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         if generate_video:
             writer = animation.FFMpegWriter(fps=fps, bitrate=1800)
 
+            if sort:
+                df = df.sort(Group.BY_FRAME + [Column.OBJECT_ID])
             with writer.saving(self._fig, file_path, dpi=300):
-                for group_id, frame_data in df.sort(
-                    Group.BY_FRAME + [Column.OBJECT_ID]
-                ).group_by(Group.BY_FRAME, maintain_order=True):
+                for group_id, frame_data in df.group_by(
+                    Group.BY_FRAME, maintain_order=True
+                ):
                     self._fig.clear()
                     frame_plot(self, frame_data)
                     writer.grab_frame()
