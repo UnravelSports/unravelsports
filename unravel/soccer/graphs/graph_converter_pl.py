@@ -1082,11 +1082,11 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         self._fig = plt.figure(figsize=(25, 18))
         self._fig.subplots_adjust(left=0.06, right=1.0, bottom=0.05)
 
+        if sort:
+            df = self._sort(df)
+
         if generate_video:
             writer = animation.FFMpegWriter(fps=fps, bitrate=1800)
-
-            if sort:
-                df = self._sort(df)
 
             with writer.saving(self._fig, file_path, dpi=300):
                 for group_id, frame_data in df.group_by(
