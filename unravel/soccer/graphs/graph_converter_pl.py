@@ -161,7 +161,6 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         ).cast(int)
 
         df = df.sort([*Group.BY_FRAME, sort_expr, pl.col(Column.OBJECT_ID)])
-        df = df.sort(Group.BY_FRAME + [Column.OBJECT_ID])
         return df
 
     def _shuffle(self):
