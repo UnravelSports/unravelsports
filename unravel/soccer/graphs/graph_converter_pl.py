@@ -161,6 +161,15 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         elif self.settings.random_seed == True:
             self.dataset = self.dataset.sample(fraction=1.0)
         else:
+
+            sort_expr = (pl.col(Column.TEAM_ID) == Constant.BALL).cast(int) * 2 - (
+                (pl.col(Column.BALL_OWNING_TEAM_ID) == pl.col(Column.TEAM_ID))
+                & (pl.col(Column.TEAM_ID) != Constant.BALL)
+            ).cast(int)
+
+            self.dataset = self.dataset.sort(
+                [*Group.BY_FRAME, sort_expr, pl.col(Column.OBJECT_ID)]
+            )
             self.dataset = self.dataset.sort(Group.BY_FRAME + [Column.OBJECT_ID])
 
     def _remove_incomplete_frames(self) -> pl.DataFrame:
