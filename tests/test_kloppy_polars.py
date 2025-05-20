@@ -805,7 +805,10 @@ class TestKloppyPolarsData:
         assert 1 == 1
 
         data = spektral_graphs
-        assert len(data) == 192
+        for graph in data:
+            assert graph.n_nodes == 23
+
+        assert len(data) == 245
         assert isinstance(data[0], Graph)
 
     def spektral_graph(self, soccer_polars_converter: SoccerGraphConverterPolars):

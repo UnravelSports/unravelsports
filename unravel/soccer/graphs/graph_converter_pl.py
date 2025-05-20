@@ -161,6 +161,15 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         elif self.settings.random_seed == True:
             self.dataset = self.dataset.sample(fraction=1.0)
         else:
+
+            sort_expr = (pl.col(Column.TEAM_ID) == Constant.BALL).cast(int) * 2 - (
+                (pl.col(Column.BALL_OWNING_TEAM_ID) == pl.col(Column.TEAM_ID))
+                & (pl.col(Column.TEAM_ID) != Constant.BALL)
+            ).cast(int)
+
+            self.dataset = self.dataset.sort(
+                [*Group.BY_FRAME, sort_expr, pl.col(Column.OBJECT_ID)]
+            )
             self.dataset = self.dataset.sort(Group.BY_FRAME + [Column.OBJECT_ID])
 
     def _remove_incomplete_frames(self) -> pl.DataFrame:
@@ -185,11 +194,11 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         keep_columns = [
             Column.TIMESTAMP,
             Column.BALL_STATE,
-            Column.POSITION_NAME,
             self.label_column,
             self.graph_id_column,
         ]
         empty_columns = [
+            Column.POSITION_NAME,
             Column.OBJECT_ID,
             Column.IS_BALL_CARRIER,
             Column.X,
@@ -223,7 +232,11 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         ]
 
         counts = df.group_by(group_by_columns).agg(
-            pl.len().alias("count"), *[pl.first(col).alias(col) for col in keep_columns]
+            pl.len().alias("count"),
+            *[
+                pl.first(col).alias(col)
+                for col in keep_columns + self.global_feature_cols
+            ],
         )
 
         counts = counts.with_columns(
@@ -241,13 +254,66 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             pl.col("count") < pl.col("target_length")
         ).with_columns((pl.col("target_length") - pl.col("count")).alias("repeats"))
 
-        if len(groups_to_pad) == 0:
-            return df
-
         padding_rows = []
+        # This is where we pad players (missing balls get skipped because of 'target_length')
         for row in groups_to_pad.iter_rows(named=True):
-            base_row = {col: row[col] for col in keep_columns + group_by_columns}
+            base_row = {
+                col: row[col]
+                for col in keep_columns + group_by_columns + self.global_feature_cols
+            }
             padding_rows.extend([base_row] * row["repeats"])
+
+        # Now check if there are frames without ball rows
+        # Get all unique frames
+        all_frames = df.select(
+            [
+                Column.GAME_ID,
+                Column.PERIOD_ID,
+                Column.FRAME_ID,
+                Column.BALL_OWNING_TEAM_ID,
+            ]
+            + keep_columns
+            + self.global_feature_cols
+        ).unique()
+
+        # Get frames that have ball rows
+        frames_with_ball = (
+            df.filter(pl.col(Column.TEAM_ID) == Constant.BALL)
+            .select([Column.GAME_ID, Column.PERIOD_ID, Column.FRAME_ID])
+            .unique()
+        )
+
+        # Find frames missing ball rows
+        frames_missing_ball = all_frames.join(
+            frames_with_ball,
+            on=[Column.GAME_ID, Column.PERIOD_ID, Column.FRAME_ID],
+            how="anti",
+        )
+
+        # Create a dataframe of ball rows to add with appropriate columns
+        if frames_missing_ball.height > 0:
+            # Create base rows for missing balls
+            ball_rows_to_add = frames_missing_ball.with_columns(
+                [
+                    pl.lit(Constant.BALL).alias(Column.TEAM_ID),
+                    pl.lit(Constant.BALL).alias(Column.POSITION_NAME),
+                ]
+            )
+
+            # Add to padding rows using same pattern as for players
+            for row in ball_rows_to_add.iter_rows(named=True):
+                base_row = {
+                    col: row[col]
+                    for col in keep_columns
+                    + group_by_columns
+                    + [Column.POSITION_NAME]
+                    + self.global_feature_cols
+                    if col in row
+                }
+                padding_rows.append(base_row)
+
+        if len(padding_rows) == 0:
+            return df
 
         padding_df = pl.DataFrame(padding_rows)
 
@@ -260,7 +326,6 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
                 for col in user_defined_columns
             ]
         )
-
         padding_df = padding_df.with_columns(
             [pl.col(col).cast(df.schema[col]).alias(col) for col in group_by_columns]
         )
@@ -643,7 +708,6 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         team_color_b: str = "#0066CC",
         ball_color: str = "black",
         color_by: Literal["ball_owning", "static_home_away"] = "ball_owning",
-        sort: bool = True,
     ):
         """
         Plot tracking data as a static image or video file.
@@ -890,7 +954,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             arrow_dy = 15
 
             if self.settings.orientation == Orientation.STATIC_HOME_AWAY:
-                if self._ball_owning_team_id != str(self.settings.home_team_id):
+                if self._ball_owning_team_id != self.settings.home_team_id:
                     arrow_y = arrow_y * -1
                     arrow_dy = arrow_dy * -1
             elif self.settings.orientation == Orientation.BALL_OWNING_TEAM:
@@ -917,7 +981,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
             if self._color_by == "ball_owning":
                 team_id = self._ball_owning_team_id
             elif self._color_by == "static_home_away":
-                team_id = str(self.settings.home_team_id)
+                team_id = self.settings.home_team_id
             else:
                 raise ValueError(f"Unsupported color_by {self._color_by}")
 
@@ -931,7 +995,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
                     r[Column.X],
                     r[Column.Y],
                 )
-                is_ball = True if r[Column.TEAM_ID] == Constant.BALL else False
+                is_ball = True if r[Column.TEAM_ID] == self.settings.ball_id else False
 
                 if not is_ball:
                     if team_id is None:
@@ -978,10 +1042,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
                         path_effects.Normal(),
                     ]
                 )
-                ax.set_xlabel(
-                    f"Label: {frame_data[self.label_column][0]} - Ball Owning Team Id: {frame_data[Column.BALL_OWNING_TEAM_ID][0]}",
-                    fontsize=22,
-                )
+                ax.set_xlabel(f"Label: {frame_data['label'][0]}", fontsize=22)
 
         def frame_plot(self, frame_data):
             self._gs = GridSpec(
@@ -1021,12 +1082,10 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         if generate_video:
             writer = animation.FFMpegWriter(fps=fps, bitrate=1800)
 
-            if sort:
-                df = df.sort(Group.BY_FRAME + [Column.OBJECT_ID])
             with writer.saving(self._fig, file_path, dpi=300):
-                for group_id, frame_data in df.group_by(
-                    Group.BY_FRAME, maintain_order=True
-                ):
+                for group_id, frame_data in df.sort(
+                    Group.BY_FRAME + [Column.OBJECT_ID]
+                ).group_by(Group.BY_FRAME, maintain_order=True):
                     self._fig.clear()
                     frame_plot(self, frame_data)
                     writer.grab_frame()
