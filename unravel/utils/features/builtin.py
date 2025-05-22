@@ -77,12 +77,12 @@ def is_possession_team(**kwargs):
 
 @graph_feature(is_custom=False, feature_type="node")
 def is_gk(**kwargs):
-    return kwargs["is_gk"]
+    return np.where(kwargs["is_gk"], 1, 0.1)
 
 
 @graph_feature(is_custom=False, feature_type="node")
 def is_ball(**kwargs):
-    return np.where(kwargs["team_id"] == kwargs["ball_id"], 1, 0)
+    return np.where(kwargs["team_id"] == kwargs["ball_id"], 1, 0.1)
 
 
 @graph_feature(is_custom=False, feature_type="node")
@@ -123,7 +123,7 @@ def angle_to_ball_normed(**kwargs):
 
 @graph_feature(is_custom=False, feature_type="node")
 def is_ball_carrier(**kwargs):
-    return kwargs["is_ball_carrier"]
+    return np.where((kwargs["is_ball_carrier"]), 1, 0.1)
 
 
 @graph_feature(is_custom=False, feature_type="edge")

@@ -164,6 +164,8 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         return df
 
     def _shuffle(self):
+        if self.settings.random_seed is None or self.settings.random_seed == False:
+            self.dataset = self._sort(self.dataset)
         if isinstance(self.settings.random_seed, int):
             self.dataset = self.dataset.sample(
                 fraction=1.0, seed=self.settings.random_seed
@@ -599,9 +601,21 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
                 **frame_data,
             )
         return {
-            "e": edge_features.tolist(),
-            "x": node_features.tolist(),
-            "a": adjacency_matrix.tolist(),
+            "e": pl.Series(
+                [edge_features.tolist()], dtype=pl.List(pl.List(pl.Float64))
+            ),
+            "x": pl.Series(
+                [node_features.tolist()], dtype=pl.List(pl.List(pl.Float64))
+            ),
+            "a": pl.Series(
+                [adjacency_matrix.tolist()], dtype=pl.List(pl.List(pl.Int32))
+            ),
+            "e_shape_0": edge_features.shape[0],
+            "e_shape_1": edge_features.shape[1],
+            "x_shape_0": node_features.shape[0],
+            "x_shape_1": node_features.shape[1],
+            "a_shape_0": adjacency_matrix.shape[0],
+            "a_shape_1": adjacency_matrix.shape[1],
             self.graph_id_column: frame_data[self.graph_id_column][0],
             self.label_column: frame_data[self.label_column][0],
         }
@@ -613,6 +627,12 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
                 "e": pl.List(pl.List(pl.Float64)),
                 "x": pl.List(pl.List(pl.Float64)),
                 "a": pl.List(pl.List(pl.Float64)),
+                "e_shape_0": pl.Int64,
+                "e_shape_1": pl.Int64,
+                "x_shape_0": pl.Int64,
+                "x_shape_1": pl.Int64,
+                "a_shape_0": pl.Int64,
+                "a_shape_1": pl.Int64,
                 self.graph_id_column: pl.String,
                 self.label_column: pl.Int64,
             }
@@ -629,16 +649,45 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
                     return_dtype=self.return_dtypes,
                 ).alias("result_dict")
             )
-            .unnest("result_dict")
+            .with_columns(
+                [
+                    *[
+                        pl.col("result_dict").struct.field(f).alias(f)
+                        for f in [
+                            "a",
+                            "e",
+                            "x",
+                            self.graph_id_column,
+                            self.label_column,
+                        ]
+                    ],
+                    *[
+                        pl.col("result_dict")
+                        .struct.field(f"{m}_shape_{i}")
+                        .alias(f"{m}_shape_{i}")
+                        for m in ["a", "e", "x"]
+                        for i in [0, 1]
+                    ],
+                ]
+            )
+            .drop("result_dict")
         )
 
     def to_graph_frames(self) -> List[dict]:
         def process_chunk(chunk: pl.DataFrame) -> List[dict]:
             return [
                 {
-                    "a": make_sparse(reshape_array(arr=chunk["a"][i])),
-                    "x": reshape_array(arr=chunk["x"][i]),
-                    "e": reshape_array(arr=chunk["e"][i]),
+                    "a": make_sparse(
+                        reshape_from_size(
+                            chunk["a"][i], chunk["a_shape_0"][i], chunk["a_shape_1"][i]
+                        )
+                    ),
+                    "x": reshape_from_size(
+                        chunk["x"][i], chunk["x_shape_0"][i], chunk["x_shape_1"][i]
+                    ),
+                    "e": reshape_from_size(
+                        chunk["e"][i], chunk["e_shape_0"][i], chunk["e_shape_1"][i]
+                    ),
                     "y": np.asarray([chunk[self.label_column][i]]),
                     "id": chunk[self.graph_id_column][i],
                 }
@@ -648,9 +697,7 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
         graph_df = self._convert()
         self.graph_frames = [
             graph
-            for chunk in graph_df.lazy()
-            .collect(engine="gpu")
-            .iter_slices(self.chunk_size)
+            for chunk in graph_df.lazy().collect().iter_slices(self.chunk_size)
             for graph in process_chunk(chunk)
         ]
         return self.graph_frames
@@ -1061,11 +1108,24 @@ class SoccerGraphConverterPolars(DefaultGraphConverter):
 
             # Process the current frame
             features = self._compute([frame_data[col] for col in self._exprs_variables])
+            a = make_sparse(
+                reshape_from_size(
+                    features["a"], features["a_shape_0"], features["a_shape_1"]
+                )
+            )
+            x = reshape_from_size(
+                features["x"], features["x_shape_0"], features["x_shape_1"]
+            )
+            e = reshape_from_size(
+                features["e"], features["e_shape_0"], features["e_shape_1"]
+            )
+            y = np.asarray([features[self.label_column]])
+
             self._graph = Graph(
-                a=make_sparse(np.asarray(features["a"])),
-                x=np.asarray(features["x"]),
-                e=np.asarray(features["e"]),
-                y=np.asarray(features[self.label_column]),
+                a=a,
+                x=x,
+                e=e,
+                y=y,
             )
 
             self._ball_carrier_idx = np.where(
