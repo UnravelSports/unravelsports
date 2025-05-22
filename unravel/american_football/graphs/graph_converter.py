@@ -364,7 +364,9 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
         graph_df = self._convert()
         self.graph_frames = [
             graph
-            for chunk in graph_df.lazy().collect().iter_slices(self.chunk_size)
+            for chunk in graph_df.lazy()
+            .collect(engine="gpu")
+            .iter_slices(self.chunk_size)
             for graph in process_chunk(chunk)
         ]
         return self.graph_frames
