@@ -88,6 +88,10 @@ class TestKloppyPolarsData:
     def single_frame_adj_matrix_result_file(self, base_dir) -> str:
         return base_dir / "files" / "adjacency_matrix.npy"
 
+    @pytest.fixture
+    def single_frame_node_feature_global_result_file(self, base_dir) -> str:
+        return base_dir / "files" / "node_features-global.npy"
+
     @pytest.fixture()
     def single_frame(self, single_frame_file) -> dict:
         with open(single_frame_file, "r") as file:
@@ -349,21 +353,6 @@ class TestKloppyPolarsData:
                 pad=False,
                 verbose=False,
             )
-
-    # def test_skillcorner_warning(
-    #     self, kloppy_dataset: TrackingDataset
-    # ) -> KloppyPolarsDataset:
-    #     with pytest.warns(UserWarning):
-    #         dataset = KloppyPolarsDataset(
-    #             kloppy_dataset=kloppy_dataset,
-    #             ball_carrier_threshold=25.0,
-    #             max_player_speed=12.0,
-    #             max_player_acceleration=12.0,
-    #             max_ball_speed=13.5,
-    #             max_ball_acceleration=100,
-    #         )
-    #         dataset.add_dummy_labels(by=["game_id", "frame_id"], random_seed=42)
-    #         dataset.add_graph_ids(by=["game_id", "frame_id"])
 
     def test_incorrect_custom_features_no_decorator(
         self, kloppy_polars_dataset: KloppyPolarsDataset
@@ -911,6 +900,7 @@ class TestKloppyPolarsData:
     def test_to_spektral_graph_level_features(
         self,
         soccer_polars_converter_graph_and_additional_features: SoccerGraphConverterPolars,
+        single_frame_node_feature_global_result_file: str,
     ):
         """
         Test navigating (next/prev) through events
@@ -923,11 +913,6 @@ class TestKloppyPolarsData:
             pl.col("graph_id") == "2417-1529"
         )
 
-        ball_index = (
-            frame.select(pl.arg_where(pl.col("team_id") == Constant.BALL))
-            .to_series()
-            .to_list()[0]
-        )
         assert len(frame) == 15
 
         spektral_graphs = (
@@ -937,27 +922,23 @@ class TestKloppyPolarsData:
         assert 1 == 1
 
         data = spektral_graphs
-        assert data[0].id == "2417-1529"
+        assert data[5].id == "2417-1529"
         assert len(data) == 384
         assert isinstance(data[0], Graph)
 
-        x = data[0].x
-        n_players = x.shape[0]
+        x = data[5].x
 
-        assert x.shape == (n_players, 18)
-        assert 1 - 0.5475659001711429 == pytest.approx(x[0, 0], abs=1e-5)
-        assert 0.9948105277764999 == pytest.approx(x[0, 4], abs=1e-5)
-        assert 0.2941671698429814 == pytest.approx(x[8, 2], abs=1e-5)
-        assert 1 == pytest.approx(x[ball_index, 16])  # graph feature
-        assert 0.12 == pytest.approx(x[ball_index, 17])  # graph feature
-        assert 0 == pytest.approx(x[0, 16])
-        assert 0 == pytest.approx(x[13, 17])
-        assert 0.45 == pytest.approx(x[0][15])  # custom added node feature
+        np.testing.assert_allclose(
+            x, np.load(single_frame_node_feature_global_result_file), rtol=1e-3
+        )
 
-        e = data[0].e
-        n_players = e.shape[0]
+        e = data[5].e
         assert e.shape == (129, 7)
         assert e[:, 6][0] == 0.90
+
+        assert data[0] != data[5]
+        assert not np.array_equal(data[0].x, data[5].x)
+        assert not np.array_equal(data[0].e, data[5].e)
 
     def test_line_method(self):
         positions = np.array([[1.0, 1.0], [2.0, 3.0], [0.5, 2.5], [4.0, 1.0]])
@@ -999,7 +980,7 @@ class TestKloppyPolarsData:
         soccer_polars_converter.plot(
             file_path=plot_path,
             fps=10,
-            timestamp=pl.duration(seconds=11, milliseconds=800),
+            timestamp=pl.duration(seconds=11, milliseconds=600),
             end_timestamp=pl.duration(seconds=11, milliseconds=1000),
             period_id=1,
             team_color_a="#CD0E61",
