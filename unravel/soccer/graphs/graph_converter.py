@@ -132,27 +132,6 @@ class SoccerGraphConverter(DefaultGraphConverter):
                 pl.col(Column.FRAME_ID) % (1.0 / self.sample_rate) == 0
             )
 
-    def _verify_feature_funcs(self, funcs, feature_type: Literal["edge", "node"]):
-        for i, func in enumerate(funcs):
-            # Check if it has the attributes added by the decorator
-            if not hasattr(func, "feature_type"):
-                func_str = inspect.getsource(func).strip()
-                raise Exception(
-                    f"Error processing feature function:\n"
-                    f"{func.__name__} defined as:\n"
-                    f"{func_str}\n\n"
-                    "Function is missing the @graph_feature decorator. "
-                )
-
-            if func.feature_type != feature_type:
-                func_str = inspect.getsource(func).strip()
-                raise Exception(
-                    f"Error processing feature function:\n"
-                    f"{func.__name__} defined as:\n"
-                    f"{func_str}\n\n"
-                    "Function has an incorrect feature type edge features should be 'edge', node features should be 'node'. "
-                )
-
     @staticmethod
     def _sort(df):
         sort_expr = (pl.col(Column.TEAM_ID) == Constant.BALL).cast(int) * 2 - (
@@ -608,24 +587,6 @@ class SoccerGraphConverter(DefaultGraphConverter):
             self.label_column: frame_data[self.label_column][0],
         }
 
-    @property
-    def return_dtypes(self):
-        return pl.Struct(
-            {
-                "e": pl.List(pl.List(pl.Float64)),
-                "x": pl.List(pl.List(pl.Float64)),
-                "a": pl.List(pl.List(pl.Float64)),
-                "e_shape_0": pl.Int64,
-                "e_shape_1": pl.Int64,
-                "x_shape_0": pl.Int64,
-                "x_shape_1": pl.Int64,
-                "a_shape_0": pl.Int64,
-                "a_shape_1": pl.Int64,
-                self.graph_id_column: pl.String,
-                self.label_column: pl.Int64,
-            }
-        )
-
     def _convert(self):
         # Group and aggregate in one step
         return (
@@ -660,80 +621,6 @@ class SoccerGraphConverter(DefaultGraphConverter):
             )
             .drop("result_dict")
         )
-
-    def to_graph_frames(self) -> List[dict]:
-        def process_chunk(chunk: pl.DataFrame) -> List[dict]:
-            return [
-                {
-                    "a": make_sparse(
-                        reshape_from_size(
-                            chunk["a"][i], chunk["a_shape_0"][i], chunk["a_shape_1"][i]
-                        )
-                    ),
-                    "x": reshape_from_size(
-                        chunk["x"][i], chunk["x_shape_0"][i], chunk["x_shape_1"][i]
-                    ),
-                    "e": reshape_from_size(
-                        chunk["e"][i], chunk["e_shape_0"][i], chunk["e_shape_1"][i]
-                    ),
-                    "y": np.asarray([chunk[self.label_column][i]]),
-                    "id": chunk[self.graph_id_column][i],
-                }
-                for i in range(len(chunk))
-            ]
-
-        graph_df = self._convert()
-        self.graph_frames = [
-            graph
-            for chunk in graph_df.lazy()
-            .collect(engine="gpu")
-            .iter_slices(self.chunk_size)
-            for graph in process_chunk(chunk)
-        ]
-        return self.graph_frames
-
-    def to_spektral_graphs(self) -> List[Graph]:
-        if not self.graph_frames:
-            self.to_graph_frames()
-
-        return [
-            Graph(
-                x=d["x"],
-                a=d["a"],
-                e=d["e"],
-                y=d["y"],
-                id=d["id"],
-            )
-            for d in self.graph_frames
-        ]
-
-    def to_pickle(self, file_path: str, verbose: bool = False) -> None:
-        """
-        We store the 'dict' version of the Graphs to pickle each graph is now a dict with keys x, a, e, and y
-        To use for training with Spektral feed the loaded pickle data to CustomDataset(data=pickled_data)
-        """
-        if not file_path.endswith("pickle.gz"):
-            raise ValueError(
-                "Only compressed pickle files of type 'some_file_name.pickle.gz' are supported..."
-            )
-
-        if not self.graph_frames:
-            self.to_graph_frames()
-
-        if verbose:
-            print(f"Storing {len(self.graph_frames)} Graphs in {file_path}...")
-
-        import pickle
-        import gzip
-        from pathlib import Path
-
-        path = Path(file_path)
-
-        directories = path.parent
-        directories.mkdir(parents=True, exist_ok=True)
-
-        with gzip.open(file_path, "wb") as file:
-            pickle.dump(self.graph_frames, file)
 
     def plot(
         self,

@@ -171,7 +171,7 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
         )
 
     @property
-    def __exprs_variables(self):
+    def _exprs_variables(self):
         exprs_variables = [
             Column.X,
             Column.Y,
@@ -194,8 +194,8 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
         )
         return exprs
 
-    def __compute(self, args: List[pl.Series]) -> dict:
-        d = {col: args[i].to_numpy() for i, col in enumerate(self.__exprs_variables)}
+    def _compute(self, args: List[pl.Series]) -> dict:
+        d = {col: args[i].to_numpy() for i, col in enumerate(self._exprs_variables)}
 
         if self.graph_feature_cols is not None:
             failed = [
@@ -277,32 +277,14 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
             self.label_column: d[self.label_column][0],
         }
 
-    @property
-    def return_dtypes(self):
-        return pl.Struct(
-            {
-                "e": pl.List(pl.List(pl.Float64)),
-                "x": pl.List(pl.List(pl.Float64)),
-                "a": pl.List(pl.List(pl.Float64)),
-                "e_shape_0": pl.Int64,
-                "e_shape_1": pl.Int64,
-                "x_shape_0": pl.Int64,
-                "x_shape_1": pl.Int64,
-                "a_shape_0": pl.Int64,
-                "a_shape_1": pl.Int64,
-                self.graph_id_column: pl.String,
-                self.label_column: pl.Int64,
-            }
-        )
-
     def _convert(self):
         # Group and aggregate in one step
         return (
             self.dataset.group_by(Group.BY_FRAME, maintain_order=True)
             .agg(
                 pl.map_groups(
-                    exprs=self.__exprs_variables,
-                    function=self.__compute,
+                    exprs=self._exprs_variables,
+                    function=self._compute,
                     return_dtype=self.return_dtypes,
                 ).alias("result_dict")
             )
@@ -330,76 +312,33 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
             .drop("result_dict")
         )
 
-    def to_graph_frames(self) -> List[dict]:
-        def process_chunk(chunk: pl.DataFrame) -> List[dict]:
-            return [
-                {
-                    "a": make_sparse(
-                        reshape_from_size(
-                            chunk["a"][i], chunk["a_shape_0"][i], chunk["a_shape_1"][i]
-                        )
-                    ),
-                    "x": reshape_from_size(
-                        chunk["x"][i], chunk["x_shape_0"][i], chunk["x_shape_1"][i]
-                    ),
-                    "e": reshape_from_size(
-                        chunk["e"][i], chunk["e_shape_0"][i], chunk["e_shape_1"][i]
-                    ),
-                    "y": np.asarray([chunk[self.label_column][i]]),
-                    "id": chunk[self.graph_id_column][i],
-                }
-                for i in range(len(chunk))
-            ]
+    # def to_graph_frames(self) -> List[dict]:
+    #     def process_chunk(chunk: pl.DataFrame) -> List[dict]:
+    #         return [
+    #             {
+    #                 "a": make_sparse(
+    #                     reshape_from_size(
+    #                         chunk["a"][i], chunk["a_shape_0"][i], chunk["a_shape_1"][i]
+    #                     )
+    #                 ),
+    #                 "x": reshape_from_size(
+    #                     chunk["x"][i], chunk["x_shape_0"][i], chunk["x_shape_1"][i]
+    #                 ),
+    #                 "e": reshape_from_size(
+    #                     chunk["e"][i], chunk["e_shape_0"][i], chunk["e_shape_1"][i]
+    #                 ),
+    #                 "y": np.asarray([chunk[self.label_column][i]]),
+    #                 "id": chunk[self.graph_id_column][i],
+    #             }
+    #             for i in range(len(chunk))
+    #         ]
 
-        graph_df = self._convert()
-        self.graph_frames = [
-            graph
-            for chunk in graph_df.lazy()
-            .collect(engine="gpu")
-            .iter_slices(self.chunk_size)
-            for graph in process_chunk(chunk)
-        ]
-        return self.graph_frames
-
-    def to_spektral_graphs(self) -> List[Graph]:
-        if not self.graph_frames:
-            self.to_graph_frames()
-
-        return [
-            Graph(
-                x=d["x"],
-                a=d["a"],
-                e=d["e"],
-                y=d["y"],
-                id=d["id"],
-            )
-            for d in self.graph_frames
-        ]
-
-    def to_pickle(self, file_path: str, verbose: bool = False) -> None:
-        """
-        We store the 'dict' version of the Graphs to pickle each graph is now a dict with keys x, a, e, and y
-        To use for training with Spektral feed the loaded pickle data to CustomDataset(data=pickled_data)
-        """
-        if not file_path.endswith("pickle.gz"):
-            raise ValueError(
-                "Only compressed pickle files of type 'some_file_name.pickle.gz' are supported..."
-            )
-
-        if not self.graph_frames:
-            self.to_graph_frames()
-
-        if verbose:
-            print(f"Storing {len(self.graph_frames)} Graphs in {file_path}...")
-
-        import pickle
-        import gzip
-        from pathlib import Path
-
-        path = Path(file_path)
-
-        directories = path.parent
-        directories.mkdir(parents=True, exist_ok=True)
-
-        with gzip.open(file_path, "wb") as file:
-            pickle.dump(self.graph_frames, file)
+    #     graph_df = self._convert()
+    #     self.graph_frames = [
+    #         graph
+    #         for chunk in graph_df.lazy()
+    #         .collect(engine="gpu")
+    #         .iter_slices(self.chunk_size)
+    #         for graph in process_chunk(chunk)
+    #     ]
+    #     return self.graph_frames
