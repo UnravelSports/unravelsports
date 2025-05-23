@@ -84,16 +84,6 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
                 pl.col(Column.FRAME_ID) % (1.0 / self.sample_rate) == 0
             )
 
-    def _shuffle(self):
-        if isinstance(self.settings.random_seed, int):
-            self.dataset = self.dataset.sample(
-                fraction=1.0, seed=self.settings.random_seed
-            )
-        elif self.settings.random_seed == True:
-            self.dataset = self.dataset.sample(fraction=1.0)
-        else:
-            pass
-
     def _sport_specific_checks(self):
         def __remove_with_missing_values(min_object_count: int = 10):
             cs = (

@@ -142,7 +142,16 @@ class DefaultGraphConverter:
             raise Exception("'verbose' should be of type boolean (bool)")
 
     def _shuffle(self):
-        raise NotImplementedError()
+        if self.settings.random_seed is None or self.settings.random_seed == False:
+            self.dataset = self._sort(self.dataset)
+        if isinstance(self.settings.random_seed, int):
+            self.dataset = self.dataset.sample(
+                fraction=1.0, seed=self.settings.random_seed
+            )
+        elif self.settings.random_seed == True:
+            self.dataset = self.dataset.sample(fraction=1.0)
+        else:
+            self.dataset = self._sort(self.dataset)
 
     def _sport_specific_checks(self):
         raise NotImplementedError(
