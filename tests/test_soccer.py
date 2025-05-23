@@ -1,6 +1,6 @@
 from pathlib import Path
 from unravel.soccer import (
-    SoccerGraphConverterPolars,
+    SoccerGraphConverter,
     KloppyPolarsDataset,
     PressingIntensity,
     Constant,
@@ -165,7 +165,7 @@ class TestKloppyPolarsData:
     @pytest.fixture()
     def spc_padding(
         self, kloppy_polars_dataset: KloppyPolarsDataset
-    ) -> SoccerGraphConverterPolars:
+    ) -> SoccerGraphConverter:
         ds = kloppy_polars_dataset
         ds.data = ds.data.with_columns(
             [pl.lit(1.0).alias("fake_global_feature_column")]
@@ -198,7 +198,7 @@ class TestKloppyPolarsData:
             .drop(["ball_x", "ball_y", "ball_z"])
         )
 
-        return SoccerGraphConverterPolars(
+        return SoccerGraphConverter(
             dataset=kloppy_polars_dataset,
             chunk_size=2_0000,
             non_potential_receiver_node_value=0.1,
@@ -217,9 +217,9 @@ class TestKloppyPolarsData:
     @pytest.fixture()
     def soccer_polars_converter(
         self, kloppy_polars_dataset: KloppyPolarsDataset
-    ) -> SoccerGraphConverterPolars:
+    ) -> SoccerGraphConverter:
 
-        return SoccerGraphConverterPolars(
+        return SoccerGraphConverter(
             dataset=kloppy_polars_dataset,
             chunk_size=2_0000,
             non_potential_receiver_node_value=0.1,
@@ -236,15 +236,15 @@ class TestKloppyPolarsData:
     @pytest.fixture()
     def soccer_polars_converter_sportec(
         self, kloppy_polars_sportec_dataset: KloppyPolarsDataset
-    ) -> SoccerGraphConverterPolars:
+    ) -> SoccerGraphConverter:
         kloppy_polars_sportec_dataset.add_dummy_labels()
         kloppy_polars_sportec_dataset.add_graph_ids()
-        return SoccerGraphConverterPolars(dataset=kloppy_polars_sportec_dataset)
+        return SoccerGraphConverter(dataset=kloppy_polars_sportec_dataset)
 
     @pytest.fixture()
     def soccer_polars_converter_graph_and_additional_features(
         self, kloppy_polars_dataset: KloppyPolarsDataset
-    ) -> SoccerGraphConverterPolars:
+    ) -> SoccerGraphConverter:
 
         kloppy_polars_dataset.data = (
             kloppy_polars_dataset.data
@@ -269,7 +269,7 @@ class TestKloppyPolarsData:
         def custom_node_feature(**kwargs):
             return kwargs["fake_additional_feature_a"]
 
-        return SoccerGraphConverterPolars(
+        return SoccerGraphConverter(
             dataset=kloppy_polars_dataset,
             global_feature_cols=["fake_graph_feature_a", "fake_graph_feature_b"],
             additional_feature_cols=["fake_additional_feature_a"],
@@ -309,7 +309,7 @@ class TestKloppyPolarsData:
 
     def test_incorrect_custom_features(
         self, kloppy_polars_dataset: KloppyPolarsDataset
-    ) -> SoccerGraphConverterPolars:
+    ) -> SoccerGraphConverter:
 
         kloppy_polars_dataset.data = (
             kloppy_polars_dataset.data
@@ -331,7 +331,7 @@ class TestKloppyPolarsData:
             )
 
         with pytest.raises(Exception):
-            SoccerGraphConverterPolars(
+            SoccerGraphConverter(
                 dataset=kloppy_polars_dataset,
                 global_feature_cols=["fake_graph_feature_a", "fake_graph_feature_b"],
                 additional_feature_cols=["fake_additional_feature_a"],
@@ -356,7 +356,7 @@ class TestKloppyPolarsData:
 
     def test_incorrect_custom_features_no_decorator(
         self, kloppy_polars_dataset: KloppyPolarsDataset
-    ) -> SoccerGraphConverterPolars:
+    ) -> SoccerGraphConverter:
 
         kloppy_polars_dataset.data = (
             kloppy_polars_dataset.data
@@ -377,7 +377,7 @@ class TestKloppyPolarsData:
             )
 
         with pytest.raises(Exception):
-            SoccerGraphConverterPolars(
+            SoccerGraphConverter(
                 dataset=kloppy_polars_dataset,
                 global_feature_cols=["fake_graph_feature_a", "fake_graph_feature_b"],
                 additional_feature_cols=["fake_additional_feature_a"],
@@ -402,7 +402,7 @@ class TestKloppyPolarsData:
 
     def test_node_feature_computation(
         self,
-        soccer_polars_converter_sportec: SoccerGraphConverterPolars,
+        soccer_polars_converter_sportec: SoccerGraphConverter,
         single_frame: dict,
         single_frame_node_feature_result: np.ndarray,
     ):
@@ -448,7 +448,7 @@ class TestKloppyPolarsData:
 
     def test_edge_feature_computation(
         self,
-        soccer_polars_converter_sportec: SoccerGraphConverterPolars,
+        soccer_polars_converter_sportec: SoccerGraphConverter,
         single_frame: dict,
         single_frame_edge_feature_result: np.ndarray,
         single_frame_adj_matrix_result: np.ndarray,
@@ -788,7 +788,7 @@ class TestKloppyPolarsData:
         count = np.count_nonzero(np.isclose(arr, 0.0, atol=1e-5))
         assert count == 117
 
-    def test_padding(self, spc_padding: SoccerGraphConverterPolars):
+    def test_padding(self, spc_padding: SoccerGraphConverter):
         spektral_graphs = spc_padding.to_spektral_graphs()
 
         assert 1 == 1
@@ -800,7 +800,7 @@ class TestKloppyPolarsData:
         assert len(data) == 245
         assert isinstance(data[0], Graph)
 
-    def spektral_graph(self, soccer_polars_converter: SoccerGraphConverterPolars):
+    def spektral_graph(self, soccer_polars_converter: SoccerGraphConverter):
         """
         Test navigating (next/prev) through events
         """
@@ -899,7 +899,7 @@ class TestKloppyPolarsData:
 
     def test_to_spektral_graph_level_features(
         self,
-        soccer_polars_converter_graph_and_additional_features: SoccerGraphConverterPolars,
+        soccer_polars_converter_graph_and_additional_features: SoccerGraphConverter,
         single_frame_node_feature_global_result_file: str,
     ):
         """
@@ -974,7 +974,7 @@ class TestKloppyPolarsData:
 
         assert np.array_equal(valid_mask, np.array([True, True, False, False]))
 
-    def test_plot_graph(self, soccer_polars_converter: SoccerGraphConverterPolars):
+    def test_plot_graph(self, soccer_polars_converter: SoccerGraphConverter):
 
         plot_path = join("tests", "files", "plot", "test-1.mp4")
         soccer_polars_converter.plot(
@@ -989,9 +989,7 @@ class TestKloppyPolarsData:
             color_by="ball_owning",
         )
 
-    def test_plot_png_success(
-        self, soccer_polars_converter: SoccerGraphConverterPolars
-    ):
+    def test_plot_png_success(self, soccer_polars_converter: SoccerGraphConverter):
         """Test successful PNG generation with correct parameters."""
         # Setup test file path
         plot_path = os.path.join("tests", "files", "plot", "test-png.png")
@@ -1015,9 +1013,7 @@ class TestKloppyPolarsData:
         assert os.path.exists(plot_path)
         assert plot_path.endswith(".png")
 
-    def test_plot_png_no_extension(
-        self, soccer_polars_converter: SoccerGraphConverterPolars
-    ):
+    def test_plot_png_no_extension(self, soccer_polars_converter: SoccerGraphConverter):
         """Test PNG generation when no file extension is provided."""
         # Setup test file path without extension
         plot_path = os.path.join("tests", "files", "plot", "test-no-extension")
@@ -1042,9 +1038,7 @@ class TestKloppyPolarsData:
         # Check that the file was created with .png extension
         assert os.path.exists(expected_path)
 
-    def test_plot_error_only_fps(
-        self, soccer_polars_converter: SoccerGraphConverterPolars
-    ):
+    def test_plot_error_only_fps(self, soccer_polars_converter: SoccerGraphConverter):
         """Test error is raised when only fps is provided without end_timestamp."""
         with pytest.raises(ValueError):
             soccer_polars_converter.plot(
@@ -1055,7 +1049,7 @@ class TestKloppyPolarsData:
             )
 
     def test_plot_error_empty_selection(
-        self, soccer_polars_converter: SoccerGraphConverterPolars
+        self, soccer_polars_converter: SoccerGraphConverter
     ):
         with pytest.raises(ValueError):
             soccer_polars_converter.plot(
@@ -1065,7 +1059,7 @@ class TestKloppyPolarsData:
             )
 
     def test_plot_error_only_end_timestamp(
-        self, soccer_polars_converter: SoccerGraphConverterPolars
+        self, soccer_polars_converter: SoccerGraphConverter
     ):
         """Test error is raised when only end_timestamp is provided without fps."""
         with pytest.raises(ValueError):
@@ -1077,7 +1071,7 @@ class TestKloppyPolarsData:
             )
 
     def test_plot_error_mp4_extension_without_video_params(
-        self, soccer_polars_converter: SoccerGraphConverterPolars
+        self, soccer_polars_converter: SoccerGraphConverter
     ):
         """Test error when .mp4 extension is used but video parameters are not provided."""
         with pytest.raises(ValueError):
@@ -1089,7 +1083,7 @@ class TestKloppyPolarsData:
             )
 
     def test_plot_error_wrong_extension_for_png(
-        self, soccer_polars_converter: SoccerGraphConverterPolars
+        self, soccer_polars_converter: SoccerGraphConverter
     ):
         """Test error when non-png/mp4 extension is used for image output."""
         with pytest.raises(ValueError):
@@ -1100,7 +1094,7 @@ class TestKloppyPolarsData:
             )
 
     def test_plot_error_wrong_extension_for_mp4(
-        self, soccer_polars_converter: SoccerGraphConverterPolars
+        self, soccer_polars_converter: SoccerGraphConverter
     ):
         """Test error when non-mp4 extension is used for video output."""
         with pytest.raises(ValueError):

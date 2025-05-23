@@ -72,7 +72,7 @@ def add_dummy_label_column(
 
 def add_graph_id_column(
     dataset: pl.DataFrame,
-    by: List[str] = ["gameId", "playId"],
+    by: List[str] = ["game_id", "play_id"],
     column_name: str = "graph_id",
 ):
     return dataset.with_columns([pl.concat_str(by, separator="-").alias(column_name)])

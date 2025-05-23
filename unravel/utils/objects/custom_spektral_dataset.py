@@ -19,8 +19,6 @@ from collections.abc import Sequence
 from spektral.data import Dataset, Graph
 from spektral.data.utils import get_spec
 
-from .default_graph_frame import DefaultGraphFrame
-
 from ..exceptions import NoGraphIdsWarning
 
 
@@ -84,12 +82,6 @@ class CustomSpektralDataset(Dataset, Sequence):
         """
         if isinstance(data[0], Graph):
             return [g for i, g in enumerate(data) if i % self.sample == 0]
-        elif isinstance(data[0], DefaultGraphFrame):
-            return [
-                g.to_spektral_graph()
-                for i, g in enumerate(self.data)
-                if i % self.sample == 0
-            ]
         elif isinstance(data[0], dict):
             return [
                 Graph(x=g["x"], a=g["a"], e=g["e"], y=g["y"], id=g["id"])

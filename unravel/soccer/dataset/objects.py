@@ -3,17 +3,10 @@ class Constant:
 
 
 class Column:
-    BALL_OWNING_TEAM_ID = "ball_owning_team_id"
-    BALL_OWNING_PLAYER_ID = "ball_owning_player_id"
-    IS_BALL_CARRIER = "is_ball_carrier"
-    PERIOD_ID = "period_id"
-    TIMESTAMP = "timestamp"
-    BALL_STATE = "ball_state"
-    FRAME_ID = "frame_id"
-    GAME_ID = "game_id"
-    TEAM_ID = "team_id"
     OBJECT_ID = "id"
-    POSITION_NAME = "position_name"
+
+    GAME_ID = "game_id"
+    FRAME_ID = "frame_id"
 
     X = "x"
     Y = "y"
@@ -28,6 +21,15 @@ class Column:
     AX = "ax"
     AY = "ay"
     AZ = "az"
+
+    BALL_OWNING_TEAM_ID = "ball_owning_team_id"
+    BALL_OWNING_PLAYER_ID = "ball_owning_player_id"
+    IS_BALL_CARRIER = "is_ball_carrier"
+    PERIOD_ID = "period_id"
+    TIMESTAMP = "timestamp"
+    BALL_STATE = "ball_state"
+    TEAM_ID = "team_id"
+    POSITION_NAME = "position_name"
 
 
 class Group:
