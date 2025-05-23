@@ -55,8 +55,8 @@ class TestAmericanFootballDataset:
             max_player_acceleration=10.0,
             max_ball_acceleration=10.0,
         )
-        bdb_dataset.add_graph_ids(by=["gameId", "playId"])
-        bdb_dataset.add_dummy_labels(by=["gameId", "playId", "frameId"])
+        bdb_dataset.add_graph_ids(by=["game_id", "play_id"])
+        bdb_dataset.add_dummy_labels(by=["game_id", "play_id", "frame_id"])
         return bdb_dataset
 
     @pytest.fixture
@@ -70,8 +70,8 @@ class TestAmericanFootballDataset:
             max_player_acceleration=11.0,
             max_ball_acceleration=12.0,
         )
-        bdb_dataset.add_graph_ids(by=["gameId", "playId"])
-        bdb_dataset.add_dummy_labels(by=["gameId", "playId", "frameId"])
+        bdb_dataset.add_graph_ids(by=["game_id", "play_id"])
+        bdb_dataset.add_dummy_labels(by=["game_id", "play_id", "frame_id"])
         return bdb_dataset
 
     @pytest.fixture
@@ -280,24 +280,24 @@ class TestAmericanFootballDataset:
 
         row_10 = data[10].to_dict()
 
-        assert row_10["gameId"][0] == 2021091300
-        assert row_10["playId"][0] == 4845
-        assert row_10["nflId"][0] == 33131
-        assert row_10["frameId"][0] == 11
+        assert row_10["game_id"][0] == 2021091300
+        assert row_10["play_id"][0] == 4845
+        assert row_10["id"][0] == 33131
+        assert row_10["frame_id"][0] == 11
         assert row_10["time"][0] == datetime(2021, 9, 14, 3, 54, 18, 700000)
         assert row_10["jerseyNumber"][0] == 93
-        assert row_10["team"][0] == "BAL"
+        assert row_10["team_id"][0] == "BAL"
         assert row_10["playDirection"][0] == "left"
         assert row_10["x"][0] == pytest.approx(19.770000000000003, rel=1e-9)
         assert row_10["y"][0] == pytest.approx(4.919999999999998, rel=1e-9)
-        assert row_10["s"][0] == pytest.approx(1.5, rel=1e-9)
+        assert row_10["v"][0] == pytest.approx(1.5, rel=1e-9)
         assert row_10["a"][0] == pytest.approx(2.13, rel=1e-9)
         assert row_10["dis"][0] == pytest.approx(0.19, rel=1e-9)
         assert row_10["o"][0] == pytest.approx(-1.3828243663551074, rel=1e-9)
         assert row_10["dir"][0] == pytest.approx(-2.176600110162128, rel=1e-9)
         assert row_10["event"][0] == None
-        assert row_10["officialPosition"][0] == "DE"
-        assert row_10["possessionTeam"][0] == "LV"
+        assert row_10["position_name"][0] == "DE"
+        assert row_10["ball_owning_team_id"][0] == "LV"
         assert row_10["graph_id"][0] == "2021091300-4845"
         assert "label" in data.columns
 

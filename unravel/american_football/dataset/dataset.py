@@ -87,8 +87,9 @@ class BigDataBowlDataset(DefaultDataset):
         play_direction = "left"
 
         if "club" in df.collect_schema().names():
-            df = df.with_columns(pl.col(Column.CLUB).alias(Column.TEAM))
-            df = df.drop(Column.CLUB)
+            df = df.rename({"club": Column.TEAM_ID})
+        elif "team" in df.collect_schema().names():
+            df = df.rename({"team": Column.TEAM_ID})
 
         if self._orient_ball_owning:
             df = (
@@ -130,10 +131,10 @@ class BigDataBowlDataset(DefaultDataset):
                         .otherwise(pl.col(Column.Y))
                         .alias(Column.Y),
                         # set "football" to nflId -9999 for ordering purposes
-                        pl.when(pl.col(Column.TEAM) == Constant.BALL)
+                        pl.when(pl.col(Column.TEAM_ID) == Constant.BALL)
                         .then(-9999.9)
-                        .otherwise(pl.col(Column.OBJECT_ID))
-                        .alias(Column.OBJECT_ID),
+                        .otherwise(pl.col("nflId"))
+                        .alias("nflId"),
                     ]
                 )
                 .with_columns(
@@ -141,7 +142,7 @@ class BigDataBowlDataset(DefaultDataset):
                         pl.lit(play_direction).alias("playDirection"),
                     ]
                 )
-                .filter((pl.col(Column.FRAME_ID) % sample) == 0)
+                .filter((pl.col("frameId") % sample) == 0)
             ).collect()
         else:
             raise NotImplementedError(
@@ -157,15 +158,12 @@ class BigDataBowlDataset(DefaultDataset):
             ignore_errors=True,
         )
         if "position" in players.columns:
-            players = players.with_columns(
-                pl.col("position").alias(Column.OFFICIAL_POSITION)
-            )
-            players = players.drop("position")
+            players = players.rename({"position": Column.POSITION_NAME})
+        elif "officialPosition" in players.columns:
+            players = players.rename({"officialPosition": Column.POSITION_NAME})
 
         players = players.with_columns(
-            pl.col(Column.OBJECT_ID)
-            .cast(pl.Float64, strict=False)
-            .alias(Column.OBJECT_ID)
+            pl.col("nflId").cast(pl.Float64, strict=False).alias("nflId")
         )
         players = self._convert_weight_height_to_metric(df=players)
 
@@ -175,27 +173,45 @@ class BigDataBowlDataset(DefaultDataset):
             encoding="utf8",
             null_values=["NA", "NULL", ""],
             try_parse_dates=True,
+        ).rename(
+            {
+                "gameId": Column.GAME_ID,
+                "playId": Column.PLAY_ID,
+                "possessionTeam": Column.BALL_OWNING_TEAM_ID,
+            }
         )
 
         df = df.join(
             (
                 players.select(
                     [
-                        Column.OBJECT_ID,
-                        Column.OFFICIAL_POSITION,
+                        "nflId",
+                        Column.POSITION_NAME,
                         Column.HEIGHT_CM,
                         Column.WEIGHT_KG,
                     ]
                 )
             ),
-            on=Column.OBJECT_ID,
+            on="nflId",
             how="left",
         )
+
+        df = df.rename(
+            {
+                "nflId": Column.OBJECT_ID,
+                "gameId": Column.GAME_ID,
+                "frameId": Column.FRAME_ID,
+                "playId": Column.PLAY_ID,
+                "s": Column.SPEED,
+            }
+        )
+
         df = df.join(
-            (plays.select(Group.BY_PLAY_POSSESSION_TEAM)),
+            (plays.select(Group.BY_PLAY_BALL_OWNING)),
             on=[Column.GAME_ID, Column.PLAY_ID],
             how="left",
         )
+
         self.data = df
 
         # update pitch dimensions to how it looks after loading
@@ -211,12 +227,14 @@ class BigDataBowlDataset(DefaultDataset):
         return self.data, self.settings
 
     def add_dummy_labels(
-        self, by: List[str] = ["gameId", "playId", "frameId"]
+        self, by: List[str] = [Column.GAME_ID, Column.PLAY_ID, Column.FRAME_ID]
     ) -> pl.DataFrame:
         self.data = add_dummy_label_column(self.data, by, self._label_column)
         return self.data
 
-    def add_graph_ids(self, by: List[str] = ["gameId", "playId"]) -> pl.DataFrame:
+    def add_graph_ids(
+        self, by: List[str] = [Column.GAME_ID, Column.PLAY_ID]
+    ) -> pl.DataFrame:
         self.data = add_graph_id_column(self.data, by, self._graph_id_column)
         return self.data
 

@@ -107,8 +107,8 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
                 .agg(
                     [
                         pl.len().alias("size"),  # Count total rows in each group
-                        pl.col(Column.TEAM)
-                        .filter(pl.col(Column.TEAM) == Constant.BALL)
+                        pl.col(Column.TEAM_ID)
+                        .filter(pl.col(Column.TEAM_ID) == Constant.BALL)
                         .count()
                         .alias("football_count"),  # Count rows where team == 'football'
                     ]
@@ -179,9 +179,9 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
             Column.ACCELERATION,
             Column.ORIENTATION,
             Column.DIRECTION,
-            Column.TEAM,
-            Column.OFFICIAL_POSITION,
-            Column.POSSESSION_TEAM,
+            Column.TEAM_ID,
+            Column.POSITION_NAME,
+            Column.BALL_OWNING_TEAM_ID,
             Column.HEIGHT_CM,
             Column.WEIGHT_KG,
             self.graph_id_column,
@@ -228,8 +228,8 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
             )
 
         adjacency_matrix = compute_adjacency_matrix(
-            team=d[Column.TEAM],
-            possession_team=d[Column.POSSESSION_TEAM],
+            team=d[Column.TEAM_ID],
+            possession_team=d[Column.BALL_OWNING_TEAM_ID],
             settings=self.settings,
         )
         edge_features = compute_edge_features(
@@ -239,7 +239,7 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
             a=d[Column.ACCELERATION],
             dir=d[Column.DIRECTION],
             o=d[Column.ORIENTATION],
-            team=d[Column.TEAM],
+            team=d[Column.TEAM_ID],
             settings=self.settings,
         )
         node_features = compute_node_features(
@@ -249,9 +249,9 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
             a=d[Column.ACCELERATION],
             dir=d[Column.DIRECTION],
             o=d[Column.ORIENTATION],
-            team=d[Column.TEAM],
-            official_position=d[Column.OFFICIAL_POSITION],
-            possession_team=d[Column.POSSESSION_TEAM],
+            team=d[Column.TEAM_ID],
+            official_position=d[Column.POSITION_NAME],
+            possession_team=d[Column.BALL_OWNING_TEAM_ID],
             height=d[Column.HEIGHT_CM],
             weight=d[Column.WEIGHT_KG],
             graph_features=graph_features,

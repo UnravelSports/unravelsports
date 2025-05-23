@@ -4,27 +4,30 @@ class Constant:
 
 
 class Column:
-    OBJECT_ID = "nflId"
+    OBJECT_ID = "id"
 
-    GAME_ID = "gameId"
-    FRAME_ID = "frameId"
-    PLAY_ID = "playId"
+    GAME_ID = "game_id"
+    FRAME_ID = "frame_id"
+    PLAY_ID = "play_id"
 
     X = "x"
     Y = "y"
 
+    SPEED = "v"
+
     ACCELERATION = "a"
-    SPEED = "s"
+
+    TEAM_ID = "team_id"
+    POSITION_NAME = "position_name"
+
+    BALL_OWNING_TEAM_ID = "ball_owning_team_id"
+
     ORIENTATION = "o"
     DIRECTION = "dir"
-    TEAM = "team"
-    CLUB = "club"
-    OFFICIAL_POSITION = "officialPosition"
-    POSSESSION_TEAM = "possessionTeam"
     HEIGHT_CM = "height_cm"
     WEIGHT_KG = "weight_kg"
 
 
 class Group:
     BY_FRAME = [Column.GAME_ID, Column.PLAY_ID, Column.FRAME_ID]
-    BY_PLAY_POSSESSION_TEAM = [Column.GAME_ID, Column.PLAY_ID, Column.POSSESSION_TEAM]
+    BY_PLAY_BALL_OWNING = [Column.GAME_ID, Column.PLAY_ID, Column.BALL_OWNING_TEAM_ID]
