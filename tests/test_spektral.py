@@ -48,8 +48,8 @@ class TestSpektral:
             max_player_acceleration=10.0,
             max_ball_acceleration=10.0,
         )
-        bdb_dataset.add_graph_ids(by=["gameId", "playId"])
-        bdb_dataset.add_dummy_labels(by=["gameId", "playId", "frameId"])
+        bdb_dataset.add_graph_ids(by=["game_id", "play_id"])
+        bdb_dataset.add_dummy_labels(by=["game_id", "play_id", "frame_id"])
         return bdb_dataset
 
     @pytest.fixture
