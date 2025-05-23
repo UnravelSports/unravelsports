@@ -311,34 +311,3 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
             )
             .drop("result_dict")
         )
-
-    # def to_graph_frames(self) -> List[dict]:
-    #     def process_chunk(chunk: pl.DataFrame) -> List[dict]:
-    #         return [
-    #             {
-    #                 "a": make_sparse(
-    #                     reshape_from_size(
-    #                         chunk["a"][i], chunk["a_shape_0"][i], chunk["a_shape_1"][i]
-    #                     )
-    #                 ),
-    #                 "x": reshape_from_size(
-    #                     chunk["x"][i], chunk["x_shape_0"][i], chunk["x_shape_1"][i]
-    #                 ),
-    #                 "e": reshape_from_size(
-    #                     chunk["e"][i], chunk["e_shape_0"][i], chunk["e_shape_1"][i]
-    #                 ),
-    #                 "y": np.asarray([chunk[self.label_column][i]]),
-    #                 "id": chunk[self.graph_id_column][i],
-    #             }
-    #             for i in range(len(chunk))
-    #         ]
-
-    #     graph_df = self._convert()
-    #     self.graph_frames = [
-    #         graph
-    #         for chunk in graph_df.lazy()
-    #         .collect(engine="gpu")
-    #         .iter_slices(self.chunk_size)
-    #         for graph in process_chunk(chunk)
-    #     ]
-    #     return self.graph_frames
