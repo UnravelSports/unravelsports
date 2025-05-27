@@ -518,6 +518,7 @@ class SoccerGraphConverter(DefaultGraphConverter):
             col: args[i].to_numpy() for i, col in enumerate(self._exprs_variables)
         }
         frame_data = self.__add_additional_kwargs(frame_data)
+        frame_id = args[-1][0]
 
         if not np.all(
             frame_data[self.graph_id_column] == frame_data[self.graph_id_column][0]
@@ -595,6 +596,7 @@ class SoccerGraphConverter(DefaultGraphConverter):
             "a_shape_1": adjacency_matrix.shape[1],
             self.graph_id_column: frame_data[self.graph_id_column][0],
             self.label_column: frame_data[self.label_column][0],
+            "frame_id": frame_id,
         }
 
     def _convert(self):
@@ -603,7 +605,7 @@ class SoccerGraphConverter(DefaultGraphConverter):
             self.dataset.group_by(Group.BY_FRAME, maintain_order=True)
             .agg(
                 pl.map_groups(
-                    exprs=self._exprs_variables,
+                    exprs=self._exprs_variables + [Column.FRAME_ID],
                     function=self._compute,
                     return_dtype=self.return_dtypes,
                 ).alias("result_dict")
@@ -618,6 +620,7 @@ class SoccerGraphConverter(DefaultGraphConverter):
                             "x",
                             self.graph_id_column,
                             self.label_column,
+                            "frame_id",
                         ]
                     ],
                     *[
@@ -1007,6 +1010,7 @@ class SoccerGraphConverter(DefaultGraphConverter):
                 features["e"], features["e_shape_0"], features["e_shape_1"]
             )
             y = np.asarray([features[self.label_column]])
+            frame_id = features["frame_id"]
 
             self._graph = Graph(
                 a=a,

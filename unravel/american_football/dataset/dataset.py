@@ -200,7 +200,6 @@ class BigDataBowlDataset(DefaultDataset):
             {
                 "nflId": Column.OBJECT_ID,
                 "gameId": Column.GAME_ID,
-                "frameId": Column.FRAME_ID,
                 "playId": Column.PLAY_ID,
                 "s": Column.SPEED,
             }
@@ -211,6 +210,14 @@ class BigDataBowlDataset(DefaultDataset):
             on=[Column.GAME_ID, Column.PLAY_ID],
             how="left",
         )
+
+        df = df.with_columns(
+            [
+                (pl.col(Column.PLAY_ID) * 100_000 + pl.col("frameId")).alias(
+                    Column.FRAME_ID
+                )
+            ]
+        ).drop(["frameId"])
 
         self.data = df
 
@@ -227,14 +234,12 @@ class BigDataBowlDataset(DefaultDataset):
         return self.data, self.settings
 
     def add_dummy_labels(
-        self, by: List[str] = [Column.GAME_ID, Column.PLAY_ID, Column.FRAME_ID]
+        self, by: List[str] = [Column.GAME_ID, Column.FRAME_ID]
     ) -> pl.DataFrame:
         self.data = add_dummy_label_column(self.data, by, self._label_column)
         return self.data
 
-    def add_graph_ids(
-        self, by: List[str] = [Column.GAME_ID, Column.PLAY_ID]
-    ) -> pl.DataFrame:
+    def add_graph_ids(self, by: List[str] = [Column.GAME_ID]) -> pl.DataFrame:
         self.data = add_graph_id_column(self.data, by, self._graph_id_column)
         return self.data
 

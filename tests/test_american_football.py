@@ -283,7 +283,7 @@ class TestAmericanFootballDataset:
         assert row_10["game_id"][0] == 2021091300
         assert row_10["play_id"][0] == 4845
         assert row_10["id"][0] == 33131
-        assert row_10["frame_id"][0] == 11
+        assert row_10["frame_id"][0] == 484500011
         assert row_10["time"][0] == datetime(2021, 9, 14, 3, 54, 18, 700000)
         assert row_10["jerseyNumber"][0] == 93
         assert row_10["team_id"][0] == "BAL"
@@ -320,7 +320,9 @@ class TestAmericanFootballDataset:
         x, x0, x1 = row_4["x"][0], row_4["x_shape_0"][0], row_4["x_shape_1"][0]
         a, a0, a1 = row_4["a"][0], row_4["a_shape_0"][0], row_4["a_shape_1"][0]
         e, e0, e1 = row_4["e"][0], row_4["e_shape_0"][0], row_4["e_shape_1"][0]
+        frame_id = row_4["frame_id"][0]
 
+        assert frame_id == 484500005
         assert e0 == 287
         assert e1 == len(edge_feature_assert_values.keys())
         assert x0 == 23
@@ -391,7 +393,9 @@ class TestAmericanFootballDataset:
         data = spektral_graphs
         assert len(data) == 263
         assert isinstance(data[0], Graph)
-        # note: these shape tests fail if we add more features
+
+        assert data[0].frame_id == 484500001
+        assert data[-1].frame_id == 5400039
 
         x = data[4].x
         assert x.shape == (23, len(node_feature_assert_values.keys()))

@@ -192,4 +192,7 @@ examples/models/*
 /*.ipynb
 
 .env
-
+*.mp4
+*.png
+*.json
+diffs/
