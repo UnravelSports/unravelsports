@@ -196,6 +196,7 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
 
     def _compute(self, args: List[pl.Series]) -> dict:
         d = {col: args[i].to_numpy() for i, col in enumerate(self._exprs_variables)}
+        frame_id = args[-1][0]
 
         if self.graph_feature_cols is not None:
             failed = [
@@ -275,6 +276,7 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
             "a_shape_1": adjacency_matrix.shape[1],
             self.graph_id_column: d[self.graph_id_column][0],
             self.label_column: d[self.label_column][0],
+            "frame_id": frame_id,
         }
 
     def _convert(self):
@@ -283,7 +285,7 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
             self.dataset.group_by(Group.BY_FRAME, maintain_order=True)
             .agg(
                 pl.map_groups(
-                    exprs=self._exprs_variables,
+                    exprs=self._exprs_variables + [Column.FRAME_ID],
                     function=self._compute,
                     return_dtype=self.return_dtypes,
                 ).alias("result_dict")
@@ -298,6 +300,7 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
                             "x",
                             self.graph_id_column,
                             self.label_column,
+                            "frame_id",
                         ]
                     ],
                     *[

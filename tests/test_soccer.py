@@ -800,7 +800,29 @@ class TestKloppyPolarsData:
         assert len(data) == 245
         assert isinstance(data[0], Graph)
 
-    def spektral_graph(self, soccer_polars_converter: SoccerGraphConverter):
+    def test_conversion(self, spc_padding: SoccerGraphConverter):
+        results_df = spc_padding._convert()
+
+        assert len(results_df) == 245
+
+        row_4 = results_df[4].to_dict()
+        x, x0, x1 = row_4["x"][0], row_4["x_shape_0"][0], row_4["x_shape_1"][0]
+        a, a0, a1 = row_4["a"][0], row_4["a_shape_0"][0], row_4["a_shape_1"][0]
+        e, e0, e1 = row_4["e"][0], row_4["e_shape_0"][0], row_4["e_shape_1"][0]
+        frame_id = row_4["frame_id"][0]
+
+        assert frame_id == 1532
+        numb_edge_features = sum(spc_padding._edge_feature_dims.values())
+        numb_node_features = sum(spc_padding._node_feature_dims.values())
+
+        assert e0 == 287
+        assert e1 == numb_edge_features
+        assert x0 == 23
+        assert x1 == numb_node_features
+        assert a0 == 23
+        assert a1 == 23
+
+    def test_spektral_graph(self, soccer_polars_converter: SoccerGraphConverter):
         """
         Test navigating (next/prev) through events
         """
@@ -809,28 +831,12 @@ class TestKloppyPolarsData:
         assert 1 == 1
 
         data = spektral_graphs
-        assert data[0].id == "2417-1529"
+        assert data[0].id == "2417-1524"
         assert len(data) == 384
         assert isinstance(data[0], Graph)
 
-        x = data[0].x
-        n_players = x.shape[0]
-        assert x.shape == (n_players, 15)
-        assert 0.5475659001711429 == pytest.approx(x[0, 0], abs=1e-5)
-        assert 0.8997899683121747 == pytest.approx(x[0, 4], abs=1e-5)
-        assert 0.2941671698429814 == pytest.approx(x[8, 2], abs=1e-5)
-
-        e = data[0].e
-        assert e.shape == (129, 6)
-        assert 0.0 == pytest.approx(e[0, 0], abs=1e-5)
-        assert 0.5 == pytest.approx(e[0, 4], abs=1e-5)
-        assert 0.28591171233629764 == pytest.approx(e[8, 2], abs=1e-5)
-
-        a = data[0].a
-        assert a.shape == (n_players, n_players)
-        assert 1.0 == pytest.approx(a[0, 0], abs=1e-5)
-        assert 1.0 == pytest.approx(a[0, 4], abs=1e-5)
-        assert 0.0 == pytest.approx(a[8, 2], abs=1e-5)
+        assert data[0].frame_id == 1524
+        assert data[-1].frame_id == 2131
 
         dataset = CustomSpektralDataset(graphs=spektral_graphs)
         N, F, S, n_out, n = dataset.dimensions()

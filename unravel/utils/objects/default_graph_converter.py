@@ -180,6 +180,7 @@ class DefaultGraphConverter:
                 e=d["e"],
                 y=d["y"],
                 id=d["id"],
+                frame_id=d["frame_id"],
             )
             for d in self.graph_frames
         ]
@@ -211,21 +212,6 @@ class DefaultGraphConverter:
 
         with gzip.open(file_path, "wb") as file:
             pickle.dump(self.graph_frames, file)
-
-    def to_spektral_graphs(self) -> List[Graph]:
-        if not self.graph_frames:
-            self.to_graph_frames()
-
-        return [
-            Graph(
-                x=d["x"],
-                a=d["a"],
-                e=d["e"],
-                y=d["y"],
-                id=d["id"],
-            )
-            for d in self.graph_frames
-        ]
 
     def to_custom_dataset(self) -> CustomSpektralDataset:
         """
@@ -270,6 +256,7 @@ class DefaultGraphConverter:
                 "a_shape_1": pl.Int64,
                 self.graph_id_column: pl.String,
                 self.label_column: pl.Int64,
+                # "frame_id": pl.String
             }
         )
 
@@ -290,6 +277,7 @@ class DefaultGraphConverter:
                     ),
                     "y": np.asarray([chunk[self.label_column][i]]),
                     "id": chunk[self.graph_id_column][i],
+                    "frame_id": chunk["frame_id"][i],
                 }
                 for i in range(len(chunk))
             ]

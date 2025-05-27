@@ -84,7 +84,14 @@ class CustomSpektralDataset(Dataset, Sequence):
             return [g for i, g in enumerate(data) if i % self.sample == 0]
         elif isinstance(data[0], dict):
             return [
-                Graph(x=g["x"], a=g["a"], e=g["e"], y=g["y"], id=g["id"])
+                Graph(
+                    x=g["x"],
+                    a=g["a"],
+                    e=g["e"],
+                    y=g["y"],
+                    id=g["id"],
+                    frame_id=g["frame_id"],
+                )
                 for i, g in enumerate(data)
                 if i % self.sample == 0
             ]

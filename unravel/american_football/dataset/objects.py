@@ -29,5 +29,5 @@ class Column:
 
 
 class Group:
-    BY_FRAME = [Column.GAME_ID, Column.PLAY_ID, Column.FRAME_ID]
+    BY_FRAME = [Column.GAME_ID, Column.FRAME_ID]
     BY_PLAY_BALL_OWNING = [Column.GAME_ID, Column.PLAY_ID, Column.BALL_OWNING_TEAM_ID]
