@@ -70,7 +70,9 @@ bdb = BigDataBowlDataset(
 `unravelsports` allows you to **randomize** and **split** data into train, test and validation sets along matches, sequences or possessions to avoid leakage and improve model quality. And finally, **train**, **validate** and **test** your (custom) Graph model(s) and easily **predict** on new data.
 
 ```python
-converter = SoccerGraphConverterPolars(
+from unravel.soccer import SoccerGraphConverter
+
+converter = SoccerGraphConverter(
     dataset=kloppy_polars_dataset,
     self_loop_ball=True,
     adjacency_matrix_connect_type="ball",
