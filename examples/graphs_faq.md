@@ -56,7 +56,7 @@ In section 6.1 we can see what this looks like in Python.
 #### C. What features does each Graph have?
 
 <details>
-    <summary> <b><i> 🌀 ⚽  Expand for a full list of Soccer features (note: `SoccerGraphConverter`, `SoccerGraphConverterPolars` has slightly different features) </b></i></summary>
+    <summary> <b><i> 🌀 ⚽  Expand for a full list of Soccer features (note: `SoccerGraphConverter`, `SoccerGraphConverter` has slightly different features) </b></i></summary>
     
 | Variable | Datatype                          | Index | Features                                                                                                                        |
 |----------|-----------------------------------|-------|---------------------------------------------------------------------------------------------------------------------------------|
