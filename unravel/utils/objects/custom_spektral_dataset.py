@@ -90,7 +90,7 @@ class CustomSpektralDataset(Dataset, Sequence):
                     e=g["e"],
                     y=g["y"],
                     id=g["id"],
-                    frame_id=g["frame_id"],
+                    frame_id=g.get("frame_id", None),
                 )
                 for i, g in enumerate(data)
                 if i % self.sample == 0
