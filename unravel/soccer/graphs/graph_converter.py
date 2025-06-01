@@ -982,8 +982,18 @@ class SoccerGraphConverter(DefaultGraphConverter):
                     ]
                 )
                 ax.set_xlabel(f"Label: {frame_data['label'][0]}", fontsize=22)
+                ax.set_title(self._gameclock, fontsize=22)
 
         def frame_plot(self, frame_data):
+            def timestamp_to_gameclock(timestamp, period_id):
+                total_seconds = timestamp.total_seconds()
+
+                minutes = int(total_seconds // 60)
+                seconds = int(total_seconds % 60)
+                milliseconds = int((total_seconds % 1) * 1000)
+
+                return f"[{period_id}] - {minutes}:{seconds:02d}:{milliseconds:03d}"
+
             self._gs = GridSpec(
                 2,
                 3,
@@ -1023,6 +1033,10 @@ class SoccerGraphConverter(DefaultGraphConverter):
                 frame_data[Column.IS_BALL_CARRIER] == True
             )[0][0]
             self._ball_owning_team_id = list(frame_data[Column.BALL_OWNING_TEAM_ID])[0]
+            self._gameclock = timestamp_to_gameclock(
+                timestamp=list(frame_data["timestamp"])[0],
+                period_id=list(frame_data["period_id"])[0],
+            )
 
             plot_vertical_pitch(frame_data)
             plot_graph()
@@ -1036,7 +1050,7 @@ class SoccerGraphConverter(DefaultGraphConverter):
             df = self._sort(df)
 
         if generate_video:
-            writer = animation.FFMpegWriter(fps=fps, bitrate=1800)
+            writer = animation.FFMpegWriter(fps=fps, bitrate=1500)
 
             with writer.saving(self._fig, file_path, dpi=300):
                 for group_id, frame_data in df.group_by(
