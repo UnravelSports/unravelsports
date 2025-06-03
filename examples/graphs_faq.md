@@ -128,9 +128,9 @@ In section 6.1 we can see what this looks like in Python.
 #### D. What is a CustomGraphDataset?
 
 <details>
-    <summary><b><i> 🌀 Expand for a short explanation on CustomSpektralDataset<i></b></summary><br>
+    <summary><b><i> 🌀 Expand for a short explanation on GraphDataset<i></b></summary><br>
 
-Let's have a look at the internals of our `CustomSpektralDataset`. This dataset class contains a list of graphs, available through `dataset.graphs`.
+Let's have a look at the internals of our `GraphDataset`. This dataset class contains a list of graphs, available through `dataset.graphs`.
 
 The first item in our dataset has 23 nodes, 12 features per node and 7 features per edge.
 
@@ -142,7 +142,7 @@ dataset.graphs[0]
 >>> Graph(n_nodes=23, n_node_features=12, n_edge_features=7, n_labels=1)
 ```
 
-The `CustomSpektralDataset` also allows us to split our data into train and test sets (and validation set if required) by using either:
+The `GraphDataset` also allows us to split our data into train and test sets (and validation set if required) by using either:
 - `dataset.split_test_train_validation()`
 - `dataset.split_test_train()`
 

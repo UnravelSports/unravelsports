@@ -14,7 +14,7 @@ from unravel.soccer.graphs.features import (
     compute_adjacency_matrix,
 )
 from unravel.utils import (
-    CustomSpektralDataset,
+    GraphDataset,
     reshape_array,
     distances_between_players_normed,
     speed_difference_normed,
@@ -838,7 +838,7 @@ class TestKloppyPolarsData:
         assert data[0].frame_id == 1524
         assert data[-1].frame_id == 2131
 
-        dataset = CustomSpektralDataset(graphs=spektral_graphs)
+        dataset = GraphDataset(graphs=spektral_graphs)
         N, F, S, n_out, n = dataset.dimensions()
         assert N == 20
         assert F == 15
