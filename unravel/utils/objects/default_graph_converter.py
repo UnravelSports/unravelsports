@@ -22,7 +22,7 @@ from ..features import (
 )
 
 from .default_graph_settings import DefaultGraphSettings
-from .custom_spektral_dataset import GraphDataset
+from .graph_dataset import GraphDataset
 
 from ..features.utils import make_sparse, reshape_from_size
 
