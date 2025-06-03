@@ -1,7 +1,7 @@
 from pathlib import Path
 from unravel.soccer import KloppyPolarsDataset, SoccerGraphConverter
 from unravel.american_football import BigDataBowlDataset, AmericanFootballGraphConverter
-from unravel.utils import dummy_labels, dummy_graph_ids, CustomSpektralDataset
+from unravel.utils import dummy_labels, dummy_graph_ids, GraphDataset
 from unravel.classifiers import CrystalGraphClassifier
 
 from tensorflow.keras.models import load_model
@@ -200,10 +200,10 @@ class TestSpektral:
         )
 
     def test_soccer_training(self, soccer_converter: SoccerGraphConverter):
-        train = CustomSpektralDataset(graphs=soccer_converter.to_spektral_graphs())
+        train = GraphDataset(graphs=soccer_converter.to_spektral_graphs())
 
         cd = soccer_converter.to_custom_dataset()
-        assert isinstance(cd, CustomSpektralDataset)
+        assert isinstance(cd, GraphDataset)
 
         pickle_folder = join("tests", "files", "kloppy")
 
@@ -248,9 +248,7 @@ class TestSpektral:
         assert np.allclose(pred, loaded_pred, atol=1e-8)
 
     def test_soccer_prediction(self, soccer_converter_preds: SoccerGraphConverter):
-        pred_dataset = CustomSpektralDataset(
-            graphs=soccer_converter_preds.to_spektral_graphs()
-        )
+        pred_dataset = GraphDataset(graphs=soccer_converter_preds.to_spektral_graphs())
         loader_pred = DisjointLoader(
             pred_dataset, batch_size=32, epochs=1, shuffle=False
         )
@@ -269,10 +267,10 @@ class TestSpektral:
         assert df["frame_id"].iloc[-1] == "2417-1622"
 
     def test_bdb_training(self, bdb_converter: AmericanFootballGraphConverter):
-        train = CustomSpektralDataset(graphs=bdb_converter.to_spektral_graphs())
+        train = GraphDataset(graphs=bdb_converter.to_spektral_graphs())
 
         cd = bdb_converter.to_custom_dataset()
-        assert isinstance(cd, CustomSpektralDataset)
+        assert isinstance(cd, GraphDataset)
 
         pickle_folder = join("tests", "files", "bdb")
 
@@ -318,9 +316,7 @@ class TestSpektral:
         assert np.allclose(pred, loaded_pred, atol=1e-8)
 
     def test_dbd_prediction(self, bdb_converter_preds: AmericanFootballGraphConverter):
-        pred_dataset = CustomSpektralDataset(
-            graphs=bdb_converter_preds.to_spektral_graphs()
-        )
+        pred_dataset = GraphDataset(graphs=bdb_converter_preds.to_spektral_graphs())
         loader_pred = DisjointLoader(
             pred_dataset, batch_size=32, epochs=1, shuffle=False
         )

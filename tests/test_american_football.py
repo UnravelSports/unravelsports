@@ -24,7 +24,7 @@ from unravel.american_football.dataset import Constant
 from unravel.utils import (
     flatten_to_reshaped_array,
     make_sparse,
-    CustomSpektralDataset,
+    GraphDataset,
 )
 
 from kloppy.domain import Unit
@@ -422,7 +422,7 @@ class TestAmericanFootballDataset:
         a = data[4].a
         assert __are_csr_matrices_equal(a, make_sparse(adj_matrix_values))
 
-        dataset = CustomSpektralDataset(graphs=spektral_graphs)
+        dataset = GraphDataset(graphs=spektral_graphs)
         N, F, S, n_out, n = dataset.dimensions()
         assert N == 23
         assert F == len(node_feature_assert_values.keys())
@@ -438,6 +438,6 @@ class TestAmericanFootballDataset:
 
         gnnc.to_pickle(file_path=join(pickle_folder, "test_bdb.pickle.gz"))
 
-        data = CustomSpektralDataset(pickle_folder=pickle_folder)
+        data = GraphDataset(pickle_folder=pickle_folder)
 
         assert data.n_graphs == 263

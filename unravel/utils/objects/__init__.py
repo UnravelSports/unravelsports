@@ -1,4 +1,4 @@
-from .custom_spektral_dataset import CustomSpektralDataset
+from .custom_spektral_dataset import GraphDataset
 from .default_graph_settings import DefaultGraphSettings
 from .default_graph_converter import DefaultGraphConverter
 from .default_dataset import DefaultDataset

@@ -22,7 +22,7 @@ from ..features import (
 )
 
 from .default_graph_settings import DefaultGraphSettings
-from .custom_spektral_dataset import CustomSpektralDataset
+from .custom_spektral_dataset import GraphDataset
 
 from ..features.utils import make_sparse, reshape_from_size
 
@@ -45,7 +45,7 @@ class DefaultGraphConverter:
         graph_id (str, int): Set a single id for the whole Kloppy dataset.
         graph_ids (dict): Frame level control over graph ids.
 
-        The graph_ids will be used to assign each graph an identifier. This identifier allows us to split the CustomSpektralDataset such that
+        The graph_ids will be used to assign each graph an identifier. This identifier allows us to split the GraphDataset such that
             all graphs with the same id are either all in the test, train or validation set to avoid leakage. It is recommended to either set graph_id (int, str) as
             a match_id, or pass a dictionary into 'graph_ids' with exactly the same keys as 'labels' for more granualar control over the graph ids.
         The latter can be useful when splitting graphs by possession or sequence id. In this case the dict would be {frame_id: sequence_id/possession_id}.
@@ -213,12 +213,12 @@ class DefaultGraphConverter:
         with gzip.open(file_path, "wb") as file:
             pickle.dump(self.graph_frames, file)
 
-    def to_custom_dataset(self) -> CustomSpektralDataset:
+    def to_custom_dataset(self) -> GraphDataset:
         """
         Spektral requires a spektral Dataset to load the data
         for docs see https://graphneural.network/creating-dataset/
         """
-        return CustomSpektralDataset(graphs=self.to_spektral_graphs())
+        return GraphDataset(graphs=self.to_spektral_graphs())
 
     def _verify_feature_funcs(self, funcs, feature_type: Literal["edge", "node"]):
         for i, func in enumerate(funcs):

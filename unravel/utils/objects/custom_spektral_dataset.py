@@ -29,9 +29,9 @@ def load_pickle_gz(file_path):
     return data
 
 
-class CustomSpektralDataset(Dataset, Sequence):
+class GraphDataset(Dataset, Sequence):
     """
-    A CustomSpektralDataset is required to use all Spektral funcitonality, see 'spektral.data -> Dataset'
+    A GraphDataset is required to use all Spektral funcitonality, see 'spektral.data -> Dataset'
     """
 
     def __init__(self, **kwargs):
@@ -71,7 +71,7 @@ class CustomSpektralDataset(Dataset, Sequence):
             self.graphs = kwargs["graphs"]
         else:
             raise NotImplementedError(
-                "Please provide either 'pickle_folder', 'pickle_file' or 'graphs' as parameter to CustomSpektralDataset"
+                "Please provide either 'pickle_folder', 'pickle_file' or 'graphs' as parameter to GraphDataset"
             )
 
         super().__init__(**kwargs)
@@ -104,7 +104,7 @@ class CustomSpektralDataset(Dataset, Sequence):
         """
         graphs = self.__convert(self.graphs)
 
-        logging.info(f"Loading {len(graphs)} graphs into CustomSpektralDataset...")
+        logging.info(f"Loading {len(graphs)} graphs into GraphDataset...")
 
         return graphs
 
@@ -112,7 +112,7 @@ class CustomSpektralDataset(Dataset, Sequence):
         other = self.__convert(other)
 
         if verbose:
-            logging.info(f"Adding {len(other)} graphs to CustomSpektralDataset...")
+            logging.info(f"Adding {len(other)} graphs to GraphDataset...")
 
         self.graphs = self.graphs + other
 
@@ -346,7 +346,7 @@ class CustomSpektralDataset(Dataset, Sequence):
         Balance a dataset to achieve a target ratio of labels.
 
         Args:
-            dataset: A CustomSpektralDataset containing Graph objects
+            dataset: A GraphDataset containing Graph objects
             target_ratio: Float between 0 and 1, representing the desired ratio of positive labels
                         (e.g., 0.5 for a 50/50 split)
 
