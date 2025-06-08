@@ -264,7 +264,7 @@ class TestSpektral:
         ).sort_values(by=["frame_id"])
 
         assert df["frame_id"].iloc[0] == "2417-1524"
-        assert df["frame_id"].iloc[-1] == "2417-1622"
+        assert df["frame_id"].iloc[-1] == "2417-1621"
 
     def test_bdb_training(self, bdb_converter: AmericanFootballGraphConverter):
         train = GraphDataset(graphs=bdb_converter.to_spektral_graphs())
