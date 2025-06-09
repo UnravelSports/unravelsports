@@ -147,7 +147,7 @@ pip install unravelsports
 spektral==1.20.0 
 tensorflow==2.14.0 
 keras==2.14.0
-kloppy==3.16.0
+kloppy==3.17.0
 polars==1.2.1
 ```
 These dependencies come pre-installed with the package. It is advised to create a [virtual environment](https://virtualenv.pypa.io/en/latest/).
