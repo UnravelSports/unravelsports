@@ -134,6 +134,8 @@ Additional reading:
 
 📖 [A Graph Neural Network Deep-dive into Successful Counterattacks {A. Sahasrabudhe & J. Bekkers, 2023}](https://github.com/USSoccerFederation/ussf_ssac_23_soccer_gnn/tree/main)
 
+🎤 [**Cutting Edge Football Analytics:** _using `polars`, `keras` and `spektral`_ (PyData London, 2025)](https://rawcdn.githack.com/UnravelSports/keynotes/main/html/20250607-PyData-London.html) 
+
 🌀 Installation
 ----
 The easiest way to get started is:
