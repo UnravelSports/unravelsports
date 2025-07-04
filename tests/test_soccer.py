@@ -3,6 +3,7 @@ from unravel.soccer import (
     SoccerGraphConverter,
     KloppyPolarsDataset,
     PressingIntensity,
+    EFPI,
     Constant,
     Column,
     Group,
@@ -1110,4 +1111,273 @@ class TestKloppyPolarsData:
                 timestamp=pl.duration(seconds=11, milliseconds=800),
                 end_timestamp=pl.duration(seconds=11, milliseconds=900),
                 period_id=1,
+            )
+
+    def test_efpi_frame_drop_0_true(
+        self, kloppy_polars_sportec_dataset: KloppyPolarsDataset
+    ):
+        model = EFPI(
+            dataset=kloppy_polars_sportec_dataset,
+        )
+
+        model = model.fit(
+            formations=None,
+            every="frame",
+            substitutions="drop",
+            change_threshold=0.0,
+            change_after_possession=True,
+        )
+
+        single_frame = model.output.filter(pl.col(Column.FRAME_ID) == 10018)
+
+        assert model.segments == None
+        assert model.output.columns == [
+            Column.GAME_ID,
+            Column.PERIOD_ID,
+            Column.FRAME_ID,
+            Column.OBJECT_ID,
+            Column.TEAM_ID,
+            "position",
+            "formation",
+            Column.BALL_OWNING_TEAM_ID,
+            "is_attacking",
+        ]
+        assert len(model.output) == 483
+        assert (
+            single_frame.filter(pl.col(Column.OBJECT_ID) == "DFL-OBJ-00008F")[
+                "position"
+            ][0]
+            == "CB"
+        )
+        assert (
+            single_frame.filter(pl.col(Column.OBJECT_ID) == "DFL-OBJ-00008F")[
+                "formation"
+            ][0]
+            == "3232"
+        )
+        assert (
+            single_frame.filter(pl.col(Column.OBJECT_ID) == "DFL-OBJ-00008F")[
+                "is_attacking"
+            ][0]
+            == False
+        )
+        assert (
+            single_frame.filter(pl.col(Column.OBJECT_ID) == "DFL-OBJ-002FXT")[
+                "position"
+            ][0]
+            == "LW"
+        )
+        assert (
+            single_frame.filter(pl.col(Column.OBJECT_ID) == "DFL-OBJ-002FXT")[
+                "formation"
+            ][0]
+            == "31222"
+        )
+        assert (
+            single_frame.filter(pl.col(Column.OBJECT_ID) == "DFL-OBJ-002FXT")[
+                "is_attacking"
+            ][0]
+            == True
+        )
+
+        assert (
+            single_frame.filter(pl.col(Column.OBJECT_ID) == "DFL-OBJ-0001HW")[
+                "position"
+            ][0]
+            == "GK"
+        )
+        assert (
+            single_frame.filter(pl.col(Column.OBJECT_ID) == "DFL-OBJ-0028FW")[
+                "position"
+            ][0]
+            == "GK"
+        )
+
+    def test_efpi_possession_drop_sg(
+        self, kloppy_polars_sportec_dataset: KloppyPolarsDataset
+    ):
+        model = EFPI(
+            dataset=kloppy_polars_sportec_dataset,
+        )
+
+        model = model.fit(
+            formations="shaw-glickman",
+            every="possession",
+            substitutions="drop",
+            change_threshold=0.1,
+            change_after_possession=True,
+        )
+
+        assert isinstance(model.segments, pl.DataFrame)
+        assert len(model.segments) == 1
+        assert model.segments.columns == [
+            "possession_id",
+            "n_frames",
+            "start_timestamp",
+            "end_timestamp",
+            "start_frame_id",
+            "end_frame_id",
+        ]
+        assert model.output.columns == [
+            Column.GAME_ID,
+            Column.PERIOD_ID,
+            Column.BALL_OWNING_TEAM_ID,
+            "possession_id",
+            Column.OBJECT_ID,
+            Column.TEAM_ID,
+            "position",
+            "formation",
+            "is_attacking",
+        ]
+        assert len(model.output) == 23
+
+        single_possession = model.output.filter(pl.col("possession_id") == 1)
+        assert (
+            single_possession.filter(pl.col(Column.OBJECT_ID) == "DFL-OBJ-00008F")[
+                "position"
+            ][0]
+            == "CB"
+        )
+        assert (
+            single_possession.filter(pl.col(Column.OBJECT_ID) == "DFL-OBJ-00008F")[
+                "formation"
+            ][0]
+            == "3232"
+        )
+        assert (
+            single_possession.filter(pl.col(Column.OBJECT_ID) == "DFL-OBJ-00008F")[
+                "is_attacking"
+            ][0]
+            == False
+        )
+        assert (
+            single_possession.filter(pl.col(Column.OBJECT_ID) == "DFL-OBJ-002FXT")[
+                "position"
+            ][0]
+            == "LW"
+        )
+        assert (
+            single_possession.filter(pl.col(Column.OBJECT_ID) == "DFL-OBJ-002FXT")[
+                "formation"
+            ][0]
+            == "3241"
+        )
+        assert (
+            single_possession.filter(pl.col(Column.OBJECT_ID) == "DFL-OBJ-002FXT")[
+                "is_attacking"
+            ][0]
+            == True
+        )
+
+        assert (
+            single_possession.filter(pl.col(Column.OBJECT_ID) == "DFL-OBJ-0001HW")[
+                "position"
+            ][0]
+            == "GK"
+        )
+        assert (
+            single_possession.filter(pl.col(Column.OBJECT_ID) == "DFL-OBJ-0028FW")[
+                "position"
+            ][0]
+            == "GK"
+        )
+
+    def test_efpi_period_442(self, kloppy_polars_sportec_dataset: KloppyPolarsDataset):
+        model = EFPI(
+            dataset=kloppy_polars_sportec_dataset,
+        )
+
+        model = model.fit(
+            formations=["442"],
+            every="period",
+            substitutions="drop",
+            change_threshold=0.1,
+            change_after_possession=True,
+        )
+
+        assert isinstance(model.segments, pl.DataFrame)
+        assert len(model.segments) == 1
+        assert model.segments.columns == [
+            "period_id",
+            "n_frames",
+            "start_timestamp",
+            "end_timestamp",
+            "start_frame_id",
+            "end_frame_id",
+        ]
+        assert model.output.columns == [
+            Column.GAME_ID,
+            Column.PERIOD_ID,
+            Column.BALL_OWNING_TEAM_ID,
+            Column.OBJECT_ID,
+            Column.TEAM_ID,
+            "position",
+            "formation",
+            "is_attacking",
+        ]
+        assert len(model.output) == 23
+
+        single_period = model.output.filter(pl.col("period_id") == 1)
+        assert (
+            single_period.filter(pl.col(Column.OBJECT_ID) == "DFL-OBJ-00008F")[
+                "position"
+            ][0]
+            == "RCB"
+        )
+        assert (
+            single_period.filter(pl.col(Column.OBJECT_ID) == "DFL-OBJ-00008F")[
+                "formation"
+            ][0]
+            == "442"
+        )
+        assert (
+            single_period.filter(pl.col(Column.OBJECT_ID) == "DFL-OBJ-00008F")[
+                "is_attacking"
+            ][0]
+            == False
+        )
+        assert (
+            single_period.filter(pl.col(Column.OBJECT_ID) == "DFL-OBJ-002FXT")[
+                "position"
+            ][0]
+            == "LM"
+        )
+        assert (
+            single_period.filter(pl.col(Column.OBJECT_ID) == "DFL-OBJ-002FXT")[
+                "formation"
+            ][0]
+            == "442"
+        )
+        assert (
+            single_period.filter(pl.col(Column.OBJECT_ID) == "DFL-OBJ-002FXT")[
+                "is_attacking"
+            ][0]
+            == True
+        )
+
+        assert (
+            single_period.filter(pl.col(Column.OBJECT_ID) == "DFL-OBJ-0001HW")[
+                "position"
+            ][0]
+            == "GK"
+        )
+        assert (
+            single_period.filter(pl.col(Column.OBJECT_ID) == "DFL-OBJ-0028FW")[
+                "position"
+            ][0]
+            == "GK"
+        )
+
+    def test_efpi_wrong(self, kloppy_polars_sportec_dataset):
+        import pytest
+        from polars.exceptions import PanicException
+
+        with pytest.raises(PanicException):
+            model = EFPI(dataset=kloppy_polars_sportec_dataset)
+            model.fit(
+                formations=["442"],
+                every="5mm",
+                substitutions="drop",
+                change_threshold=0.1,
+                change_after_possession=True,
             )

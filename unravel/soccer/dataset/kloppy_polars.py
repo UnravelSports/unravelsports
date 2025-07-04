@@ -655,6 +655,7 @@ class KloppyPolarsDataset(DefaultDataset):
             max_player_acceleration=self._max_player_acceleration,
             max_ball_acceleration=self._max_ball_acceleration,
             ball_carrier_threshold=self._ball_carrier_threshold,
+            frame_rate=self.kloppy_dataset.metadata.frame_rate,
         )
 
     def load(
