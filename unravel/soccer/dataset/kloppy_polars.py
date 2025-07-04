@@ -716,7 +716,9 @@ class KloppyPolarsDataset(DefaultDataset):
         if self._infer_goalkeepers:
             df = self.__infer_goalkeepers(df)
 
-        self.data = df
+        self.data = df.unique(
+            [Column.OBJECT_ID, Column.FRAME_ID, Column.PERIOD_ID]
+        ).sort([Column.FRAME_ID, Column.PERIOD_ID, Column.OBJECT_ID])
         return self
 
     def add_dummy_labels(
