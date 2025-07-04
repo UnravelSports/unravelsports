@@ -18,9 +18,9 @@ This package currently supports:
 - ⚽ 🏈 [**Polars DataFrame Conversion**](#polars-dataframes) 
 - ⚽ 🏈 [**Graph Neural Network**](#graph-neural-networks) Training, Graph Conversion and Prediction <small>
   [[🔗 Bekkers & Sahasrabudhe (2023)](https://arxiv.org/pdf/2411.17450)]</small>
-- ⚽ [**Pressing Intensity**](#pressing-intensity) 
+- ⚽ [**Pressing Intensity**](#⚽-pressing-intensity) 
   <small>[[🔗 Bekkers (2024)](https://arxiv.org/pdf/2501.04712)]</small>
-- ⚽ [**Formation and Position Identification (EFPI)**](#pressing-intensity) 
+- ⚽ [**Formation and Position Identification (EFPI)**](#⚽-formation-and-position-identification) 
   <small>[[🔗 Bekkers (2025)](https://arxiv.org/pdf/2506.23843)]</small>
 
 🌀 Features
@@ -87,7 +87,7 @@ converter = SoccerGraphConverter(
 
 ---
 
-### **Pressing Intensity**
+### ⚽ **Pressing Intensity**
 
 Compute [**Pressing Intensity**](https://arxiv.org/abs/2501.04712) for a whole game (or segment) of Soccer tracking data.
 
@@ -116,7 +116,7 @@ model.fit(
 
 ---
 
-### **Formation and Position Identification**
+### ⚽ **Formation and Position Identification**
 
 Compute [Elastic Formation and Position Identification, **EFPI**](https://arxiv.org/pdf/2506.23843) for individual frames, possessions, periods or specific time intervals for Soccer.
 
@@ -136,6 +136,8 @@ model.fit(
     change_after_possession=True,
 )
 ```
+
+![Elastic Formation and Position Identification Example](assets/efpi.png)
 
 ⌛ ***More to come soon...!***
 
@@ -229,6 +231,20 @@ If you use this repository for any educational purposes, research, project etc.,
   author={Bekkers, Joris},
   journal={arXiv preprint arXiv:2501.04712},
   year={2024}
+}
+</pre>
+</details>
+<br>
+
+📎 [Bekkers, J. (2025). EFPI: Elastic Formation and Position Identification in Football (Soccer) using Template Matching and Linear Assignment. arXiv preprint arXiv:2506.23843.](https://arxiv.org/pdf/2506.23843)
+<details>
+<summary>BibTex</summary>
+<pre>
+@article{bekkers2025efpi,
+  title={EFPI: Elastic Formation and Position Identification in Football (Soccer) using Template Matching and Linear Assignment},
+  author={Bekkers, Joris},
+  journal={arXiv preprint arXiv:2506.23843},
+  year={2025}
 }
 </pre>
 </details>
