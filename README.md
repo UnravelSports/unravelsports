@@ -18,9 +18,9 @@ This package currently supports:
 - ⚽ 🏈 [**Polars DataFrame Conversion**](#polars-dataframes) 
 - ⚽ 🏈 [**Graph Neural Network**](#graph-neural-networks) Training, Graph Conversion and Prediction <small>
   [[🔗 Bekkers & Sahasrabudhe (2023)](https://arxiv.org/pdf/2411.17450)]</small>
-- ⚽ [**Pressing Intensity**](#⚽-pressing-intensity) 
+- ⚽ [**Pressing Intensity**](#pressing-intensity) 
   <small>[[🔗 Bekkers (2024)](https://arxiv.org/pdf/2501.04712)]</small>
-- ⚽ [**Formation and Position Identification (EFPI)**](#⚽-formation-and-position-identification) 
+- ⚽ [**Formation and Position Identification (EFPI)**](#formation-and-position-identification) 
   <small>[[🔗 Bekkers (2025)](https://arxiv.org/pdf/2506.23843)]</small>
 
 🌀 Features
@@ -87,7 +87,7 @@ converter = SoccerGraphConverter(
 
 ---
 
-### ⚽ **Pressing Intensity**
+### **Pressing Intensity**
 
 Compute [**Pressing Intensity**](https://arxiv.org/abs/2501.04712) for a whole game (or segment) of Soccer tracking data.
 
@@ -116,7 +116,7 @@ model.fit(
 
 ---
 
-### ⚽ **Formation and Position Identification**
+### **Formation and Position Identification**
 
 Compute [Elastic Formation and Position Identification, **EFPI**](https://arxiv.org/pdf/2506.23843) for individual frames, possessions, periods or specific time intervals for Soccer.
 
