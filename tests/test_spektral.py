@@ -90,26 +90,6 @@ class TestSpektral:
     def soccer_converter(
         self, kloppy_polars_dataset: KloppyPolarsDataset
     ) -> SoccerGraphConverter:
-        # return SoccerGraphConverterDeprecated(
-        #     dataset=kloppy_dataset,
-        #     labels=dummy_labels(kloppy_dataset),
-        #     graph_ids=dummy_graph_ids(kloppy_dataset),
-        #     ball_carrier_treshold=25.0,
-        #     max_player_speed=12.0,
-        #     max_ball_speed=28.0,
-        #     boundary_correction=None,
-        #     self_loop_ball=True,
-        #     adjacency_matrix_connect_type="ball",
-        #     adjacency_matrix_type="split_by_team",
-        #     label_type="binary",
-        #     defending_team_node_value=0.0,
-        #     non_potential_receiver_node_value=0.1,
-        #     infer_ball_ownership=True,
-        #     infer_goalkeepers=True,
-        #     random_seed=42,
-        #     pad=False,
-        #     verbose=False,
-        # )
         return SoccerGraphConverter(
             dataset=kloppy_polars_dataset,
             chunk_size=2_0000,
@@ -128,29 +108,6 @@ class TestSpektral:
     def soccer_converter_preds(
         self, kloppy_polars_dataset: KloppyPolarsDataset
     ) -> SoccerGraphConverter:
-        # @pytest.fixture()
-        # def soccer_converter_preds(
-        #     self, kloppy_dataset: TrackingDataset
-        # ) -> SoccerGraphConverterDeprecated:
-        #     return SoccerGraphConverterDeprecated(
-        #         dataset=kloppy_dataset,
-        #         prediction=True,
-        #         ball_carrier_treshold=25.0,
-        #         max_player_speed=12.0,
-        #         max_ball_speed=28.0,
-        #         boundary_correction=None,
-        #         self_loop_ball=True,
-        #         adjacency_matrix_connect_type="ball",
-        #         adjacency_matrix_type="split_by_team",
-        #         label_type="binary",
-        #         defending_team_node_value=0.0,
-        #         non_potential_receiver_node_value=0.1,
-        #         infer_ball_ownership=True,
-        #         infer_goalkeepers=True,
-        #         random_seed=42,
-        #         pad=False,
-        #         verbose=False,
-        #     )
         return SoccerGraphConverter(
             dataset=kloppy_polars_dataset,
             prediction=True,
@@ -332,5 +289,5 @@ class TestSpektral:
             {"frame_id": [x.id for x in pred_dataset], "y": preds.flatten()}
         )
 
-        assert df["frame_id"].iloc[0] == "2021091300-4845"
-        assert df["frame_id"].iloc[-1] == "2021103108-54"
+        assert df["frame_id"].iloc[0] == "2021092612-54"
+        assert df["frame_id"].iloc[-1] == "2021092609-54"

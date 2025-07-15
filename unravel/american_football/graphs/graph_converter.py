@@ -76,6 +76,16 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
         self._sample()
         self._shuffle()
 
+    @staticmethod
+    def _sort(df):
+        sort_expr = (pl.col(Column.TEAM_ID) == Constant.BALL).cast(int) * 2 - (
+            (pl.col(Column.BALL_OWNING_TEAM_ID) == pl.col(Column.TEAM_ID))
+            & (pl.col(Column.TEAM_ID) != Constant.BALL)
+        ).cast(int)
+
+        df = df.sort([*Group.BY_FRAME, sort_expr, pl.col(Column.OBJECT_ID)])
+        return df
+
     def _sample(self):
         if self.sample_rate is None:
             return

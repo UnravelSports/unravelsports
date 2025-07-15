@@ -147,14 +147,14 @@ class DefaultGraphConverter:
             raise Exception("'verbose' should be of type boolean (bool)")
 
     def _shuffle(self):
-        if self.settings.random_seed is None or self.settings.random_seed == False:
+        if self.settings.random_seed is None or self.settings.random_seed is False:
             self.dataset = self._sort(self.dataset)
-        if isinstance(self.settings.random_seed, int):
+        elif self.settings.random_seed is True:
+            self.dataset = self.dataset.sample(fraction=1.0, shuffle=True)
+        elif isinstance(self.settings.random_seed, int):
             self.dataset = self.dataset.sample(
-                fraction=1.0, seed=self.settings.random_seed
+                fraction=1.0, seed=self.settings.random_seed, shuffle=True
             )
-        elif self.settings.random_seed == True:
-            self.dataset = self.dataset.sample(fraction=1.0)
         else:
             self.dataset = self._sort(self.dataset)
 
@@ -169,9 +169,9 @@ class DefaultGraphConverter:
     def _convert(self):
         raise NotImplementedError()
 
-    def to_spektral_graphs(self) -> List[Graph]:
+    def to_spektral_graphs(self, include_object_ids: bool = False) -> List[Graph]:
         if not self.graph_frames:
-            self.to_graph_frames()
+            self.to_graph_frames(include_object_ids)
 
         return [
             Graph(
@@ -181,11 +181,14 @@ class DefaultGraphConverter:
                 y=d["y"],
                 id=d["id"],
                 frame_id=d["frame_id"],
+                **({"object_ids": d["object_ids"]} if include_object_ids else {}),
             )
             for d in self.graph_frames
         ]
 
-    def to_pickle(self, file_path: str, verbose: bool = False) -> None:
+    def to_pickle(
+        self, file_path: str, verbose: bool = False, include_object_ids: bool = False
+    ) -> None:
         """
         We store the 'dict' version of the Graphs to pickle each graph is now a dict with keys x, a, e, and y
         To use for training with Spektral feed the loaded pickle data to CustomDataset(data=pickled_data)
@@ -196,7 +199,7 @@ class DefaultGraphConverter:
             )
 
         if not self.graph_frames:
-            self.to_graph_frames()
+            self.to_graph_frames(include_object_ids)
 
         if verbose:
             print(f"Storing {len(self.graph_frames)} Graphs in {file_path}...")
@@ -256,28 +259,38 @@ class DefaultGraphConverter:
                 "a_shape_1": pl.Int64,
                 self.graph_id_column: pl.String,
                 self.label_column: pl.Int64,
+                "object_ids": pl.List(pl.List(pl.String)),
                 # "frame_id": pl.String
             }
         )
 
-    def to_graph_frames(self) -> List[dict]:
+    def to_graph_frames(self, include_object_ids: bool = False) -> List[dict]:
         def process_chunk(chunk: pl.DataFrame) -> List[dict]:
             return [
                 {
-                    "a": make_sparse(
-                        reshape_from_size(
-                            chunk["a"][i], chunk["a_shape_0"][i], chunk["a_shape_1"][i]
-                        )
+                    **{
+                        "a": make_sparse(
+                            reshape_from_size(
+                                chunk["a"][i],
+                                chunk["a_shape_0"][i],
+                                chunk["a_shape_1"][i],
+                            )
+                        ),
+                        "x": reshape_from_size(
+                            chunk["x"][i], chunk["x_shape_0"][i], chunk["x_shape_1"][i]
+                        ),
+                        "e": reshape_from_size(
+                            chunk["e"][i], chunk["e_shape_0"][i], chunk["e_shape_1"][i]
+                        ),
+                        "y": np.asarray([chunk[self.label_column][i]]),
+                        "id": chunk[self.graph_id_column][i],
+                        "frame_id": chunk["frame_id"][i],
+                    },
+                    **(
+                        {"object_ids": list(chunk["object_ids"][i][0])}
+                        if include_object_ids
+                        else {}
                     ),
-                    "x": reshape_from_size(
-                        chunk["x"][i], chunk["x_shape_0"][i], chunk["x_shape_1"][i]
-                    ),
-                    "e": reshape_from_size(
-                        chunk["e"][i], chunk["e_shape_0"][i], chunk["e_shape_1"][i]
-                    ),
-                    "y": np.asarray([chunk[self.label_column][i]]),
-                    "id": chunk[self.graph_id_column][i],
-                    "frame_id": chunk["frame_id"][i],
                 }
                 for i in range(len(chunk))
             ]

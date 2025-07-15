@@ -441,6 +441,7 @@ class SoccerGraphConverter(DefaultGraphConverter):
             Column.POSITION_NAME,
             Column.BALL_OWNING_TEAM_ID,
             Column.IS_BALL_CARRIER,
+            Column.OBJECT_ID,
             self.graph_id_column,
             self.label_column,
         ]
@@ -578,6 +579,7 @@ class SoccerGraphConverter(DefaultGraphConverter):
                 global_feature_type=self.global_feature_type,
                 **frame_data,
             )
+
         return {
             "e": pl.Series(
                 [edge_features.tolist()], dtype=pl.List(pl.List(pl.Float64))
@@ -597,6 +599,9 @@ class SoccerGraphConverter(DefaultGraphConverter):
             self.graph_id_column: frame_data[self.graph_id_column][0],
             self.label_column: frame_data[self.label_column][0],
             "frame_id": frame_id,
+            "object_ids": pl.Series(
+                [frame_data[Column.OBJECT_ID].tolist()], dtype=pl.List(pl.String)
+            ),
         }
 
     def _convert(self):
@@ -621,6 +626,7 @@ class SoccerGraphConverter(DefaultGraphConverter):
                             self.graph_id_column,
                             self.label_column,
                             "frame_id",
+                            "object_ids",
                         ]
                     ],
                     *[

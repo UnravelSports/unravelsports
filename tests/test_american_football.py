@@ -80,7 +80,7 @@ class TestAmericanFootballDataset:
 
     @pytest.fixture
     def edge_feature_values(self):
-        item_idx = 260
+        item_idx = 56
 
         assert_values = {
             "dist": 0.031333127237586675,
@@ -99,35 +99,35 @@ class TestAmericanFootballDataset:
     def adj_matrix_values(self):
         return np.asarray(
             [
-                [1, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1],
-                [1, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1],
-                [1, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1],
-                [0, 0, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1],
-                [0, 0, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1],
-                [0, 0, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1],
-                [1, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1],
-                [0, 0, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1],
-                [0, 0, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1],
-                [1, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1],
-                [0, 0, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1],
-                [1, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1],
-                [1, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1],
-                [0, 0, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1],
-                [0, 0, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1],
-                [0, 0, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1],
-                [1, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1],
-                [1, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1],
-                [1, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1],
-                [0, 0, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1],
-                [0, 0, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1],
-                [1, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1],
+                [1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1],
+                [0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0],
                 [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                [0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0],
+                [1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1],
+                [0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0],
+                [1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1],
+                [1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1],
+                [0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0],
+                [1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1],
+                [0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0],
+                [0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0],
+                [1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1],
+                [0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0],
+                [0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0],
+                [1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1],
+                [1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1],
+                [1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1],
+                [0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0],
+                [1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1],
+                [0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0],
+                [0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0],
+                [1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1],
             ]
         )
 
     @pytest.fixture
     def node_feature_values(self):
-        item_idx = 6
+        item_idx = 14
 
         assert_values = {
             "x_normed": 0.6679999999999999,
@@ -315,7 +315,7 @@ class TestAmericanFootballDataset:
 
         assert len(results_df) == 263
 
-        row_4 = results_df[4].to_dict()
+        row_4 = results_df.filter(pl.col("frame_id") == 484500005).to_dict()
 
         x, x0, x1 = row_4["x"][0], row_4["x_shape_0"][0], row_4["x_shape_1"][0]
         a, a0, a1 = row_4["a"][0], row_4["a_shape_0"][0], row_4["a_shape_1"][0]
@@ -350,22 +350,21 @@ class TestAmericanFootballDataset:
             assert e[item_idx_e][idx] == pytest.approx(
                 edge_feature_assert_values.get(edge_feature), abs=1e-5
             )
-
         np.testing.assert_array_equal(a, adj_matrix_values)
 
-    def test_to_graph_frames(
+    def test_to_graph_frames_1(
         self, gnnc: AmericanFootballGraphConverter, node_feature_values
     ):
         graph_frames = gnnc.to_graph_frames()
 
         data = graph_frames
         assert len(data) == 263
-        assert isinstance(data[0], dict)
+        assert isinstance(data[44], dict)
         # note: these shape tests fail if we add more features (ie. metabolicpower)
 
         item_idx_x, node_feature_assert_values = node_feature_values
 
-        x = data[4]["x"]
+        x = data[44]["x"]
         assert x.shape == (23, len(node_feature_assert_values.keys()))
 
         for idx, node_feature in enumerate(node_feature_assert_values.keys()):
@@ -392,12 +391,12 @@ class TestAmericanFootballDataset:
 
         data = spektral_graphs
         assert len(data) == 263
-        assert isinstance(data[0], Graph)
+        assert isinstance(data[44], Graph)
 
-        assert data[0].frame_id == 484500001
-        assert data[-1].frame_id == 5400039
+        assert data[0].frame_id == 5400045
+        assert data[-1].frame_id == 5400023
 
-        x = data[4].x
+        x = data[44].x
         assert x.shape == (23, len(node_feature_assert_values.keys()))
 
         for idx, node_feature in enumerate(node_feature_assert_values.keys()):
@@ -405,7 +404,7 @@ class TestAmericanFootballDataset:
                 node_feature_assert_values.get(node_feature), abs=1e-5
             )
 
-        e = data[4].e
+        e = data[44].e
         for idx, edge_feature in enumerate(edge_feature_assert_values.keys()):
             assert e[item_idx_e][idx] == pytest.approx(
                 edge_feature_assert_values.get(edge_feature), abs=1e-5
@@ -419,7 +418,7 @@ class TestAmericanFootballDataset:
                 and np.array_equal(mat1.indptr, mat2.indptr)
             )
 
-        a = data[4].a
+        a = data[44].a
         assert __are_csr_matrices_equal(a, make_sparse(adj_matrix_values))
 
         dataset = GraphDataset(graphs=spektral_graphs)
