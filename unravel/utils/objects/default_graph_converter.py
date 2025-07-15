@@ -223,6 +223,13 @@ class DefaultGraphConverter:
         """
         return GraphDataset(graphs=self.to_spektral_graphs())
 
+    def to_graph_dataset(self) -> GraphDataset:
+        """
+        Spektral requires a spektral Dataset to load the data
+        for docs see https://graphneural.network/creating-dataset/
+        """
+        return GraphDataset(graphs=self.to_spektral_graphs())
+
     def _verify_feature_funcs(self, funcs, feature_type: Literal["edge", "node"]):
         for i, func in enumerate(funcs):
             # Check if it has the attributes added by the decorator
