@@ -216,19 +216,19 @@ class DefaultGraphConverter:
         with gzip.open(file_path, "wb") as file:
             pickle.dump(self.graph_frames, file)
 
-    def to_custom_dataset(self) -> GraphDataset:
+    def to_custom_dataset(self, include_object_ids: bool = False) -> GraphDataset:
         """
         Spektral requires a spektral Dataset to load the data
         for docs see https://graphneural.network/creating-dataset/
         """
-        return GraphDataset(graphs=self.to_spektral_graphs())
+        return GraphDataset(graphs=self.to_spektral_graphs(include_object_ids))
 
-    def to_graph_dataset(self) -> GraphDataset:
+    def to_graph_dataset(self, include_object_ids: bool = False) -> GraphDataset:
         """
         Spektral requires a spektral Dataset to load the data
         for docs see https://graphneural.network/creating-dataset/
         """
-        return GraphDataset(graphs=self.to_spektral_graphs())
+        return GraphDataset(graphs=self.to_spektral_graphs(include_object_ids))
 
     def _verify_feature_funcs(self, funcs, feature_type: Literal["edge", "node"]):
         for i, func in enumerate(funcs):
