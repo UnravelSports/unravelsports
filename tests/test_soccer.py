@@ -800,6 +800,35 @@ class TestKloppyPolarsData:
         assert len(data) == 245
         assert isinstance(data[0], Graph)
 
+    def test_object_ids(self, spc_padding: SoccerGraphConverter):
+        spektral_graphs = spc_padding.to_spektral_graphs(include_object_ids=True)
+
+        assert spektral_graphs[10].object_ids == [
+            None,  # padded players
+            None,
+            None,
+            "10326",
+            "1138",
+            "11495",
+            "12788",
+            "5568",
+            "5585",
+            "6890",
+            "7207",
+            None,
+            None,
+            None,
+            "10308",
+            "1298",
+            "17902",
+            "2395",
+            "4812",
+            "5472",
+            "6158",
+            "9724",
+            "ball",
+        ]
+
     def test_conversion(self, spc_padding: SoccerGraphConverter):
         results_df = spc_padding._convert()
 

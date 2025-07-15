@@ -266,6 +266,10 @@ class DefaultGraphConverter:
 
     def to_graph_frames(self, include_object_ids: bool = False) -> List[dict]:
         def process_chunk(chunk: pl.DataFrame) -> List[dict]:
+            def __convert_object_ids(objects):
+                # convert padded players to None
+                return [x if x != "" else None for x in objects]
+
             return [
                 {
                     **{
@@ -287,7 +291,11 @@ class DefaultGraphConverter:
                         "frame_id": chunk["frame_id"][i],
                     },
                     **(
-                        {"object_ids": list(chunk["object_ids"][i][0])}
+                        {
+                            "object_ids": __convert_object_ids(
+                                list(chunk["object_ids"][i][0])
+                            )
+                        }
                         if include_object_ids
                         else {}
                     ),
