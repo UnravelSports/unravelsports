@@ -665,6 +665,7 @@ class KloppyPolarsDataset(DefaultDataset):
             max_player_acceleration=self._max_player_acceleration,
             max_ball_acceleration=self._max_ball_acceleration,
             ball_carrier_threshold=self._ball_carrier_threshold,
+            frame_rate=self.kloppy_dataset.metadata.frame_rate,
         )
 
     def load(
@@ -725,7 +726,9 @@ class KloppyPolarsDataset(DefaultDataset):
         if self._infer_goalkeepers:
             df = self.__infer_goalkeepers(df)
 
-        self.data = df
+        self.data = df.unique(
+            [Column.OBJECT_ID, Column.FRAME_ID, Column.PERIOD_ID]
+        ).sort([Column.FRAME_ID, Column.PERIOD_ID, Column.OBJECT_ID])
         return self
 
     def add_dummy_labels(
