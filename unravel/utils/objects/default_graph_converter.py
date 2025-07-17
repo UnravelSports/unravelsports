@@ -181,6 +181,7 @@ class DefaultGraphConverter:
                 y=d["y"],
                 id=d["id"],
                 frame_id=d["frame_id"],
+                ball_owning_team_id=d.get("ball_owning_team_id", None),
                 **({"object_ids": d["object_ids"]} if include_object_ids else {}),
             )
             for d in self.graph_frames
@@ -216,12 +217,19 @@ class DefaultGraphConverter:
         with gzip.open(file_path, "wb") as file:
             pickle.dump(self.graph_frames, file)
 
-    def to_custom_dataset(self) -> GraphDataset:
+    def to_custom_dataset(self, include_object_ids: bool = False) -> GraphDataset:
         """
         Spektral requires a spektral Dataset to load the data
         for docs see https://graphneural.network/creating-dataset/
         """
-        return GraphDataset(graphs=self.to_spektral_graphs())
+        return GraphDataset(graphs=self.to_spektral_graphs(include_object_ids))
+
+    def to_graph_dataset(self, include_object_ids: bool = False) -> GraphDataset:
+        """
+        Spektral requires a spektral Dataset to load the data
+        for docs see https://graphneural.network/creating-dataset/
+        """
+        return GraphDataset(graphs=self.to_spektral_graphs(include_object_ids))
 
     def _verify_feature_funcs(self, funcs, feature_type: Literal["edge", "node"]):
         for i, func in enumerate(funcs):
@@ -266,6 +274,10 @@ class DefaultGraphConverter:
 
     def to_graph_frames(self, include_object_ids: bool = False) -> List[dict]:
         def process_chunk(chunk: pl.DataFrame) -> List[dict]:
+            def __convert_object_ids(objects):
+                # convert padded players to None
+                return [x if x != "" else None for x in objects]
+
             return [
                 {
                     **{
@@ -285,9 +297,18 @@ class DefaultGraphConverter:
                         "y": np.asarray([chunk[self.label_column][i]]),
                         "id": chunk[self.graph_id_column][i],
                         "frame_id": chunk["frame_id"][i],
+                        "ball_owning_team_id": (
+                            chunk["ball_owning_team_id"][i]
+                            if "ball_owning_team_id" in chunk.columns
+                            else None
+                        ),
                     },
                     **(
-                        {"object_ids": list(chunk["object_ids"][i][0])}
+                        {
+                            "object_ids": __convert_object_ids(
+                                list(chunk["object_ids"][i][0])
+                            )
+                        }
                         if include_object_ids
                         else {}
                     ),

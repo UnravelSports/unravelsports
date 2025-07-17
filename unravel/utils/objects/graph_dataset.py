@@ -92,6 +92,7 @@ class GraphDataset(Dataset, Sequence):
                     id=g["id"],
                     frame_id=g.get("frame_id", None),
                     object_ids=g.get("object_ids", None),
+                    ball_owning_team_id=g.get("ball_owning_team_id", None),
                 )
                 for i, g in enumerate(data)
                 if i % self.sample == 0
