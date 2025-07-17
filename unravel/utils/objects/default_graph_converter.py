@@ -181,6 +181,7 @@ class DefaultGraphConverter:
                 y=d["y"],
                 id=d["id"],
                 frame_id=d["frame_id"],
+                ball_owning_team_id=d.get("ball_owning_team_id", None),
                 **({"object_ids": d["object_ids"]} if include_object_ids else {}),
             )
             for d in self.graph_frames
@@ -296,6 +297,11 @@ class DefaultGraphConverter:
                         "y": np.asarray([chunk[self.label_column][i]]),
                         "id": chunk[self.graph_id_column][i],
                         "frame_id": chunk["frame_id"][i],
+                        "ball_owning_team_id": (
+                            chunk["ball_owning_team_id"][i]
+                            if "ball_owning_team_id" in chunk.columns
+                            else None
+                        ),
                     },
                     **(
                         {

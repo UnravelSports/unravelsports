@@ -374,6 +374,12 @@ class SoccerGraphConverter(DefaultGraphConverter):
         return GraphSettingsPolars(
             home_team_id=str(self._kloppy_settings.home_team_id),
             away_team_id=str(self._kloppy_settings.away_team_id),
+            players=self._kloppy_settings.players,
+            features={
+                "edge": [x.__name__ for x in self.edge_feature_funcs],
+                "node": [x.__name__ for x in self.node_feature_funcs],
+                "global": self.global_feature_cols,
+            },
             orientation=self._kloppy_settings.orientation,
             pitch_dimensions=self.pitch_dimensions,
             max_player_speed=self.settings.max_player_speed,
@@ -520,6 +526,7 @@ class SoccerGraphConverter(DefaultGraphConverter):
         }
         frame_data = self.__add_additional_kwargs(frame_data)
         frame_id = args[-1][0]
+        ball_owning_team_id = frame_data[Column.BALL_OWNING_TEAM_ID][0]
 
         if not np.all(
             frame_data[self.graph_id_column] == frame_data[self.graph_id_column][0]
@@ -602,6 +609,7 @@ class SoccerGraphConverter(DefaultGraphConverter):
             "object_ids": pl.Series(
                 [frame_data[Column.OBJECT_ID].tolist()], dtype=pl.List(pl.String)
             ),
+            "ball_owning_team_id": ball_owning_team_id,
         }
 
     def _convert(self):
@@ -627,6 +635,7 @@ class SoccerGraphConverter(DefaultGraphConverter):
                             self.label_column,
                             "frame_id",
                             "object_ids",
+                            "ball_owning_team_id",
                         ]
                     ],
                     *[

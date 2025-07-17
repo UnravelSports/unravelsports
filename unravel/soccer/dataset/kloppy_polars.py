@@ -649,6 +649,16 @@ class KloppyPolarsDataset(DefaultDataset):
             orientation=self.kloppy_dataset.metadata.orientation,
             home_team_id=home_team.team_id,
             away_team_id=away_team.team_id,
+            players=[
+                {
+                    "player_id": p.player_id,
+                    "team_id": p.team.team_id,
+                    "player": p.full_name,
+                    "team": p.team.name,
+                    "jersey_no": p.jersey_no,
+                }
+                for p in home_team.players + away_team.players
+            ],
             pitch_dimensions=pitch_dimensions,
             max_player_speed=self._max_player_speed,
             max_ball_speed=self._max_ball_speed,

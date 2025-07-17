@@ -42,6 +42,7 @@ class DefaultSettings:
     max_player_acceleration: float = 6.0
     max_ball_acceleration: float = 13.5
     ball_carrier_threshold: float = 25.0
+    players: list = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert the dataclass instance to a dictionary.

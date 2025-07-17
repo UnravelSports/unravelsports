@@ -23,6 +23,15 @@ class GraphSettingsPolars(DefaultGraphSettings):
     pitch_dimensions: MetricPitchDimensions = field(
         init=False, repr=False, default_factory=MetricPitchDimensions
     )
+    features: dict = field(
+        default_factory=lambda: {
+            "edge": [],
+            "node": [],
+            "global": [],
+        },
+        repr=False,
+    )
+    players: list = field(default_factory=list, repr=False)
 
     def __post_init__(self):
         self._sport_specific_checks()
