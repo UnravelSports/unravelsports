@@ -17,9 +17,11 @@ The **unravelsports** package aims to aid researchers, analysts and enthusiasts 
 This package currently supports:
 - ⚽ 🏈 [**Polars DataFrame Conversion**](#polars-dataframes) 
 - ⚽ 🏈 [**Graph Neural Network**](#graph-neural-networks) Training, Graph Conversion and Prediction <small>
-  [[Bekkers & Sahasrabudhe (2023)](https://arxiv.org/pdf/2411.17450)]</small>
+  [[🔗 Bekkers & Sahasrabudhe (2023)](https://arxiv.org/pdf/2411.17450)]</small>
 - ⚽ [**Pressing Intensity**](#pressing-intensity) 
-  <small>[[Bekkers (2024)](https://arxiv.org/pdf/2501.04712)]</small>
+  <small>[[🔗 Bekkers (2024)](https://arxiv.org/pdf/2501.04712)]</small>
+- ⚽ [**Formation and Position Identification (EFPI)**](#formation-and-position-identification) 
+  <small>[[🔗 Bekkers (2025)](https://arxiv.org/pdf/2506.23843)]</small>
 
 🌀 Features
 -----
@@ -28,7 +30,7 @@ This package currently supports:
 
 ⚽🏈 **Convert Tracking Data** into [Polars DataFrames](https://pola.rs/) for rapid data conversion and data processing. 
 
-⚽ For soccer we rely on [Kloppy](https://kloppy.pysport.org/) and as such we support _Sportec_$^1$, _SkillCorner_$^1$, _PFF_$^{1, 2}$, _Metrica_$^1$, _StatsPerform_, _Tracab (CyronHego)_ and _SecondSpectrum_ tracking data.
+⚽ For soccer we rely on [Kloppy](https://kloppy.pysport.org/) and as such we support Sportec, SkillCorner, PFF / GradientSports, Metrica, StatsPerform, Tracab (CyronHego), SecondSpectrum, HawkEye and Signality tracking data.
 ```python
 from unravel.soccer import KloppyPolarsDataset
 
@@ -48,9 +50,6 @@ kloppy_polars_dataset = KloppyPolarsDataset(
 |  4 |           1 | 0 days 00:00:00 |      10000 | alive        | DFL-OBJ-0001HW | -46.26 |  0.08 |   0 | DFL-CLU-000005 | GK              | DFL-MAT-J03WPY |  0.357 |  0.071 |    0 | 0.364 |    0 |    0 |    0 |   0 | DFL-CLU-00000P        | False             |
 
 
-$^1$ <small>Open data available through kloppy.</small>
-
-$^2$ <small>Currently unreleased in kloppy, only available through kloppy master branch. [Click here for World Cup 2022 Dataset](https://www.blog.fc.pff.com/blog/enhanced-2022-world-cup-dataset)</small> 
 
 🏈 For American Football we use [BigDataBowl Data](https://www.kaggle.com/competitions/nfl-big-data-bowl-2025/data) directly.
 
@@ -86,6 +85,8 @@ converter = SoccerGraphConverter(
 )
 ```
 
+---
+
 ### **Pressing Intensity**
 
 Compute [**Pressing Intensity**](https://arxiv.org/abs/2501.04712) for a whole game (or segment) of Soccer tracking data.
@@ -112,6 +113,31 @@ model.fit(
 ```
 
 ![1. FC Köln vs. FC Bayern München (May 27th 2023)](assets/gif/preview.gif)
+
+---
+
+### **Formation and Position Identification**
+
+Compute [Elastic Formation and Position Identification, **EFPI**](https://arxiv.org/pdf/2506.23843) for individual frames, possessions, periods or specific time intervals for Soccer.
+
+For more information on all possibilities for "every" check out [Polars Documentation](https://docs.pola.rs/api/python/stable/reference/dataframe/api/polars.DataFrame.group_by_dynamic.html).
+
+```python
+from unravel.soccer import EFPI
+
+model = EFPI(dataset=kloppy_polars_dataset)
+model.fit(
+    # Default 65 formations , or specify a subset (e.g. ["442" , "433"])
+    formations=None,
+    # specific time intervals (e.g. 1m, 1m14s, 2m30s etc.), or specify "possession", "period" or "frame".
+    every="5m",
+    substitutions="drop",
+    change_threshold=0.1,
+    change_after_possession=True,
+)
+```
+
+![Elastic Formation and Position Identification Example](assets/efpi.png)
 
 ⌛ ***More to come soon...!***
 
@@ -205,6 +231,20 @@ If you use this repository for any educational purposes, research, project etc.,
   author={Bekkers, Joris},
   journal={arXiv preprint arXiv:2501.04712},
   year={2024}
+}
+</pre>
+</details>
+<br>
+
+📎 [Bekkers, J. (2025). EFPI: Elastic Formation and Position Identification in Football (Soccer) using Template Matching and Linear Assignment. arXiv preprint arXiv:2506.23843.](https://arxiv.org/pdf/2506.23843)
+<details>
+<summary>BibTex</summary>
+<pre>
+@article{bekkers2025efpi,
+  title={EFPI: Elastic Formation and Position Identification in Football (Soccer) using Template Matching and Linear Assignment},
+  author={Bekkers, Joris},
+  journal={arXiv preprint arXiv:2506.23843},
+  year={2025}
 }
 </pre>
 </details>
