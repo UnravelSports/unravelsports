@@ -677,6 +677,7 @@ class SoccerGraphConverter(DefaultGraphConverter):
         plot_type: Literal["pitch_only", "graph_only", "full"] = "full",
         show_label: bool = True,
         show_timestamp: bool = True,
+        next_closest_timestamp: bool = False,
     ):
         """
         Plot tracking data as a static image or video file.
@@ -718,6 +719,8 @@ class SoccerGraphConverter(DefaultGraphConverter):
             Whether to show the label on the pitch visualization
         show_pitch_timestamp : bool, default True
             Whether to show the timestamp on the pitch visualization
+        next_closest_timestamp : bool, default False
+            When plotting a .png and the timestamp isn't 100% correct we find the next correct timestamp and use that to plot.
 
         Returns
         -------
@@ -789,6 +792,7 @@ class SoccerGraphConverter(DefaultGraphConverter):
         self._plot_type = plot_type
         self._show_pitch_label = show_label
         self._show_pitch_timestamp = show_timestamp
+        self._next_closest_timestamp = next_closest_timestamp
 
         self._ball_carrier_color = "black"
 
@@ -828,7 +832,35 @@ class SoccerGraphConverter(DefaultGraphConverter):
             )
 
         if df.is_empty():
-            raise ValueError("Selection is empty, please try different timestamp(s)")
+            if not generate_video and self._next_closest_timestamp:
+                idx = self.dataset.sort(Column.FRAME_ID)[
+                    Column.TIMESTAMP
+                ].search_sorted(timestamp)
+                result = self.dataset[idx]
+
+                df = self.dataset.filter(
+                    (pl.col(Column.TIMESTAMP) == result[Column.TIMESTAMP][0])
+                    & (pl.col(Column.PERIOD_ID) == result[Column.PERIOD_ID][0])
+                )
+                # Handle the case where a single timestamp has multiple frame_ids
+                df = (
+                    df.with_columns(
+                        pl.col(Column.FRAME_ID)
+                        .rank(method="min")
+                        .over(Column.TIMESTAMP)
+                        .alias("frame_rank")
+                    )
+                    # Keep only rows where the frame has rank = 1 (first frame for each timestamp)
+                    .filter(pl.col("frame_rank") == 1).drop("frame_rank")
+                )
+            else:
+                if not generate_video:
+                    raise ValueError(
+                        "Selection is empty, please try different timestamp(s) or set next_closest_timestamp=True..."
+                    )
+                raise ValueError(
+                    "Selection is empty, please try different timestamp(s)..."
+                )
 
         def setup_gridspec():
             """Setup GridSpec based on plot_type"""
