@@ -676,6 +676,7 @@ class SoccerGraphConverter(DefaultGraphConverter):
         anonymous: bool = False,
         plot_type: Literal["pitch_only", "graph_only", "full"] = "full",
         show_label: bool = True,
+        show_ball_label: bool = False,
         show_timestamp: bool = True,
         next_closest_timestamp: bool = False,
     ):
@@ -790,7 +791,8 @@ class SoccerGraphConverter(DefaultGraphConverter):
         self._ball_color = ball_color
         self._color_by = color_by
         self._plot_type = plot_type
-        self._show_pitch_label = show_label
+        self._show_label = show_label
+        self._show_ball_label = show_ball_label
         self._show_pitch_timestamp = show_timestamp
         self._next_closest_timestamp = next_closest_timestamp
 
@@ -1110,10 +1112,14 @@ class SoccerGraphConverter(DefaultGraphConverter):
                         (
                             self.get_player_by_id(r[Column.OBJECT_ID])["jersey_no"]
                             if r[Column.OBJECT_ID] != Constant.BALL
-                            else Constant.BALL
+                            else Constant.BALL if self._show_ball_label else ""
                         )
                         if not anonymous
-                        else str(i)
+                        else (
+                            str(i)
+                            if r[Column.OBJECT_ID] != Constant.BALL
+                            else Constant.BALL if self._show_ball_label else ""
+                        )
                     ),
                     color=self._ball_color if is_ball else color,
                     fontsize=12,
@@ -1132,7 +1138,7 @@ class SoccerGraphConverter(DefaultGraphConverter):
                 )
 
             # Add label and timestamp to pitch if enabled
-            if self._show_pitch_label:
+            if self._show_label:
                 ax.set_xlabel(f"Label: {frame_data['label'][0]}", fontsize=22)
             if self._show_pitch_timestamp:
                 ax.set_title(self._gameclock, fontsize=22)
