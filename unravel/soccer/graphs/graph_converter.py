@@ -1057,7 +1057,7 @@ class SoccerGraphConverter(DefaultGraphConverter):
                 ec="#c2c2c2",
                 width=0.5,
                 length_includes_head=True,
-                zorder=1,
+                zorder=-1,
             )
 
         def player_and_ball(frame_data, ax):
