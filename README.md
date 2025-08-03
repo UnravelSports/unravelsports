@@ -1,8 +1,7 @@
 ![unravelsports logo](https://github.com/UnravelSports/unravelsports.github.io/blob/main/imgs/unravelsports-5500x800.png?raw=true)
 <div align="right">
 
-[![Powered by PySport](https://img.shields.io/badge/powered%20by-PySport-orange.svg?style=flat&colorA=C3C3C3&colorB=4B99CC)](https://pysport.org) 
-[![Powered by PySport](https://img.shields.io/badge/powered%20by-UnravelSports-orange.svg?style=flat&colorB=E6B611&colorA=C3C3C3)](https://unravelsports.github.io/)
+[![UnravelSports](https://img.shields.io/badge/powered%20by-UnravelSports-orange.svg?style=flat&colorB=E6B611&colorA=C3C3C3)](https://unravelsports.github.io/)
 [![tl;dr legal](https://img.shields.io/badge/license-Mozilla%20Public%20License%20v2.0-orange.svg?style=flat&colorA=C3C3C3&colorB=E20E6A)](https://www.tldrlegal.com/license/mozilla-public-license-2-0-mpl-2) 
 </div>
 
