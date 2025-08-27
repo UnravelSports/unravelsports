@@ -665,6 +665,7 @@ class SoccerGraphConverter(DefaultGraphConverter):
         self,
         file_path: str,
         fps: int = None,
+        df: pl.DataFrame = None,
         timestamp: pl.duration = None,
         end_timestamp: pl.duration = None,
         period_id: int = None,
@@ -750,16 +751,8 @@ class SoccerGraphConverter(DefaultGraphConverter):
                 " install it using: pip install matplotlib"
             )
 
-        if (fps is None and end_timestamp is not None) or (
-            fps is not None and end_timestamp is None
-        ):
-            raise ValueError(
-                "Both 'fps' and 'end_timestamp' must be provided together to generate a video. "
-            )
-
         # Determine the output type based on parameters
-        generate_video = fps is not None and end_timestamp is not None
-
+        generate_video = fps is not None and file_path.endswith(".mp4")
         # Get file extension if it exists
         path = pathlib.Path(file_path)
         file_extension = path.suffix.lower() if path.suffix else ""
@@ -769,8 +762,27 @@ class SoccerGraphConverter(DefaultGraphConverter):
             suffix = ".mp4" if generate_video else ".png"
             file_path = str(path.with_suffix(suffix))
 
-        # Otherwise, validate that the extension matches the parameters
-        else:
+        self._team_color_a = team_color_a
+        self._team_color_b = team_color_b
+        self._ball_color = ball_color
+        self._color_by = color_by
+        self._plot_type = plot_type
+        self._show_label = show_label
+        self._show_ball_label = show_ball_label
+        self._show_pitch_timestamp = show_timestamp
+        self._next_closest_timestamp = next_closest_timestamp
+
+        self._ball_carrier_color = "black"
+
+        if df.is_empty() or df is None:
+            if (fps is None and end_timestamp is not None) or (
+                fps is not None and end_timestamp is None
+            ):
+                raise ValueError(
+                    "Both 'fps' and 'end_timestamp' must be provided together to generate a video. "
+                )
+
+            # Otherwise, validate that the extension matches the parameters
             if generate_video and file_extension != ".mp4":
                 raise ValueError(
                     f"Parameters fps and end_timestamp indicate video output, "
@@ -786,83 +798,75 @@ class SoccerGraphConverter(DefaultGraphConverter):
                     f"For static image output, use '.png' extension instead of '{file_extension}'."
                 )
 
-        self._team_color_a = team_color_a
-        self._team_color_b = team_color_b
-        self._ball_color = ball_color
-        self._color_by = color_by
-        self._plot_type = plot_type
-        self._show_label = show_label
-        self._show_ball_label = show_ball_label
-        self._show_pitch_timestamp = show_timestamp
-        self._next_closest_timestamp = next_closest_timestamp
+            if period_id is not None and not isinstance(period_id, int):
+                raise TypeError("period_id should be of type integer")
 
-        self._ball_carrier_color = "black"
-
-        if period_id is not None and not isinstance(period_id, int):
-            raise TypeError("period_id should be of type integer")
-
-        if all(x is None for x in [timestamp, end_timestamp, period_id]):
-            # No filters specified, use the entire dataset
-            df = self.dataset
-        elif timestamp is not None and period_id is not None:
-            if end_timestamp is not None:
-                # Both timestamp and end_timestamp provided - filter for a range
-                df = self.dataset.filter(
-                    (pl.col(Column.TIMESTAMP).is_between(timestamp, end_timestamp))
-                    & (pl.col(Column.PERIOD_ID) == period_id)
-                )
+            if all(x is None for x in [timestamp, end_timestamp, period_id]):
+                # No filters specified, use the entire dataset
+                df = self.dataset
+            elif timestamp is not None and period_id is not None:
+                if end_timestamp is not None:
+                    # Both timestamp and end_timestamp provided - filter for a range
+                    df = self.dataset.filter(
+                        (pl.col(Column.TIMESTAMP).is_between(timestamp, end_timestamp))
+                        & (pl.col(Column.PERIOD_ID) == period_id)
+                    )
+                else:
+                    # Only timestamp provided (no end_timestamp) - filter for specific timestamp
+                    df = self.dataset.filter(
+                        (pl.col(Column.TIMESTAMP) == timestamp)
+                        & (pl.col(Column.PERIOD_ID) == period_id)
+                    )
+                    # Handle the case where a single timestamp has multiple frame_ids
+                    df = (
+                        df.with_columns(
+                            pl.col(Column.FRAME_ID)
+                            .rank(method="min")
+                            .over(Column.TIMESTAMP)
+                            .alias("frame_rank")
+                        )
+                        # Keep only rows where the frame has rank = 1 (first frame for each timestamp)
+                        .filter(pl.col("frame_rank") == 1).drop("frame_rank")
+                    )
             else:
-                # Only timestamp provided (no end_timestamp) - filter for specific timestamp
-                df = self.dataset.filter(
-                    (pl.col(Column.TIMESTAMP) == timestamp)
-                    & (pl.col(Column.PERIOD_ID) == period_id)
-                )
-                # Handle the case where a single timestamp has multiple frame_ids
-                df = (
-                    df.with_columns(
-                        pl.col(Column.FRAME_ID)
-                        .rank(method="min")
-                        .over(Column.TIMESTAMP)
-                        .alias("frame_rank")
-                    )
-                    # Keep only rows where the frame has rank = 1 (first frame for each timestamp)
-                    .filter(pl.col("frame_rank") == 1).drop("frame_rank")
-                )
-        else:
-            raise ValueError(
-                "Please specify both timestamp and period_id, or specify all of timestamp, end_timestamp, and period_id, or none of them."
-            )
-
-        if df.is_empty():
-            if not generate_video and self._next_closest_timestamp:
-                idx = self.dataset.sort(Column.FRAME_ID)[
-                    Column.TIMESTAMP
-                ].search_sorted(timestamp)
-                result = self.dataset[idx]
-
-                df = self.dataset.filter(
-                    (pl.col(Column.TIMESTAMP) == result[Column.TIMESTAMP][0])
-                    & (pl.col(Column.PERIOD_ID) == result[Column.PERIOD_ID][0])
-                )
-                # Handle the case where a single timestamp has multiple frame_ids
-                df = (
-                    df.with_columns(
-                        pl.col(Column.FRAME_ID)
-                        .rank(method="min")
-                        .over(Column.TIMESTAMP)
-                        .alias("frame_rank")
-                    )
-                    # Keep only rows where the frame has rank = 1 (first frame for each timestamp)
-                    .filter(pl.col("frame_rank") == 1).drop("frame_rank")
-                )
-            else:
-                if not generate_video:
-                    raise ValueError(
-                        "Selection is empty, please try different timestamp(s) or set next_closest_timestamp=True..."
-                    )
                 raise ValueError(
-                    "Selection is empty, please try different timestamp(s)..."
+                    "Please specify both timestamp and period_id, or specify all of timestamp, end_timestamp, and period_id, or none of them."
                 )
+
+            if df.is_empty():
+                if not generate_video and self._next_closest_timestamp:
+                    idx = (
+                        self.dataset.sort(Column.FRAME_ID)
+                        .filter(pl.col(Column.PERIOD_ID) == period_id)[Column.TIMESTAMP]
+                        .search_sorted(timestamp)
+                    )
+                    result = self.dataset.sort(Column.FRAME_ID).filter(
+                        pl.col(Column.PERIOD_ID) == period_id
+                    )[idx]
+
+                    df = self.dataset.filter(
+                        (pl.col(Column.TIMESTAMP) == result[Column.TIMESTAMP][0])
+                        & (pl.col(Column.PERIOD_ID) == result[Column.PERIOD_ID][0])
+                    )
+                    # Handle the case where a single timestamp has multiple frame_ids
+                    df = (
+                        df.with_columns(
+                            pl.col(Column.FRAME_ID)
+                            .rank(method="min")
+                            .over(Column.TIMESTAMP)
+                            .alias("frame_rank")
+                        )
+                        # Keep only rows where the frame has rank = 1 (first frame for each timestamp)
+                        .filter(pl.col("frame_rank") == 1).drop("frame_rank")
+                    )
+                else:
+                    if not generate_video:
+                        raise ValueError(
+                            "Selection is empty, please try different timestamp(s) or set next_closest_timestamp=True..."
+                        )
+                    raise ValueError(
+                        "Selection is empty, please try different timestamp(s)..."
+                    )
 
         def setup_gridspec():
             """Setup GridSpec based on plot_type"""
@@ -1112,13 +1116,18 @@ class SoccerGraphConverter(DefaultGraphConverter):
                         (
                             self.get_player_by_id(r[Column.OBJECT_ID])["jersey_no"]
                             if r[Column.OBJECT_ID] != Constant.BALL
-                            else Constant.BALL if self._show_ball_label else ""
+                            and r[Column.OBJECT_ID] != ""
+                            else Constant.BALL
+                            if self._show_ball_label
+                            else ""
                         )
                         if not anonymous
                         else (
                             str(i)
                             if r[Column.OBJECT_ID] != Constant.BALL
-                            else Constant.BALL if self._show_ball_label else ""
+                            else Constant.BALL
+                            if self._show_ball_label
+                            else ""
                         )
                     ),
                     color=self._ball_color if is_ball else color,

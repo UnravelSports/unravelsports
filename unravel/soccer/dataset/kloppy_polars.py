@@ -682,9 +682,12 @@ class KloppyPolarsDataset(DefaultDataset):
             pitch_dimensions=self.kloppy_dataset.metadata.pitch_dimensions
         )
 
-        (self.home_players, self.away_players, self._ball_object, self._game_id) = (
-            self.__get_objects()
-        )
+        (
+            self.home_players,
+            self.away_players,
+            self._ball_object,
+            self._game_id,
+        ) = self.__get_objects()
 
         df = self.kloppy_dataset.to_df(engine="polars")
         df = self.__melt(
