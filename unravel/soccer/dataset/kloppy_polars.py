@@ -705,7 +705,7 @@ class KloppyPolarsDataset(DefaultDataset):
         df = df.filter(~(pl.col(Column.X).is_null() & pl.col(Column.Y).is_null()))
 
         if df[Column.BALL_OWNING_TEAM_ID].is_null().all():
-            if self.ball_carrier_threshold is None:
+            if self._ball_carrier_threshold is None:
                 raise ValueError(
                     f"This dataset requires us to infer the {Column.BALL_OWNING_TEAM_ID}, please specifiy a ball_carrier_threshold (float) to do so."
                 )
