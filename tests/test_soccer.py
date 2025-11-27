@@ -805,6 +805,8 @@ class TestKloppyPolarsData:
     def test_object_ids(self, spc_padding: SoccerGraphConverter):
         spektral_graphs = spc_padding.to_spektral_graphs(include_object_ids=True)
 
+        print(spektral_graphs[10].object_ids)
+
         assert spektral_graphs[10].object_ids == [
             None,  # padded players
             None,

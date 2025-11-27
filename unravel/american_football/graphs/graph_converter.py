@@ -95,7 +95,7 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
     def _sport_specific_checks(self):
         def __remove_with_missing_values(min_object_count: int = 10):
             cs = (
-                self.dataset.group_by(Group.BY_FRAME)
+                self.dataset.group_by(Group.BY_FRAME, maintain_order=True)
                 .agg(pl.len().alias("size"))
                 .filter(
                     pl.col("size") < min_object_count
@@ -111,7 +111,7 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
 
         def __remove_with_missing_football():
             cs = (
-                self.dataset.group_by(Group.BY_FRAME)
+                self.dataset.group_by(Group.BY_FRAME, maintain_order=True)
                 .agg(
                     [
                         pl.len().alias("size"),  # Count total rows in each group
@@ -267,15 +267,9 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
             settings=self.settings,
         )
         return {
-            "e": pl.Series(
-                [edge_features.tolist()], dtype=pl.List(pl.List(pl.Float64))
-            ),
-            "x": pl.Series(
-                [node_features.tolist()], dtype=pl.List(pl.List(pl.Float64))
-            ),
-            "a": pl.Series(
-                [adjacency_matrix.tolist()], dtype=pl.List(pl.List(pl.Int32))
-            ),
+            "e": edge_features.tolist(),  # Remove pl.Series wrapper
+            "x": node_features.tolist(),  # Remove pl.Series wrapper
+            "a": adjacency_matrix.tolist(),  # Remove pl.Series wrapper
             "e_shape_0": edge_features.shape[0],
             "e_shape_1": edge_features.shape[1],
             "x_shape_0": node_features.shape[0],
@@ -287,6 +281,25 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
             "frame_id": frame_id,
         }
 
+    @property
+    def return_dtypes(self):
+        return pl.Struct(
+            {
+                "e": pl.List(pl.List(pl.Float64)),
+                "x": pl.List(pl.List(pl.Float64)),
+                "a": pl.List(pl.List(pl.Int32)),
+                "e_shape_0": pl.Int64,
+                "e_shape_1": pl.Int64,
+                "x_shape_0": pl.Int64,
+                "x_shape_1": pl.Int64,
+                "a_shape_0": pl.Int64,
+                "a_shape_1": pl.Int64,
+                self.graph_id_column: pl.String,
+                self.label_column: pl.Int64,
+                "frame_id": pl.String,
+            }
+        )
+
     def _convert(self):
         # Group and aggregate in one step
         return (
@@ -296,6 +309,7 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
                     exprs=self._exprs_variables + [Column.FRAME_ID],
                     function=self._compute,
                     return_dtype=self.return_dtypes,
+                    returns_scalar=True,
                 ).alias("result_dict")
             )
             .with_columns(

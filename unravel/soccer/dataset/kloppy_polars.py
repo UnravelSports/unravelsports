@@ -228,39 +228,31 @@ class KloppyPolarsDataset(DefaultDataset):
         vx_smooth = f"{Column.VX}_smoothed"
         vy_smooth = f"{Column.VY}_smoothed"
         vz_smooth = f"{Column.VZ}_smoothed"
+        
+        # DEBUG: Check group sizes
+        group_sizes = df.group_by(Group.BY_OBJECT_PERIOD).agg(
+            pl.col(Column.VX).count().alias("count")
+        )
+        
+        window_length = smoothing_params["window_length"]
+        polyorder = smoothing_params["polyorder"]
+        
+        def apply_savgol(series):
+            """Apply savgol filter to a series (array of values)."""
+            values = series.to_numpy()
+            if len(values) < window_length:
+                return values.tolist()
+            return savgol_filter(
+                values,
+                window_length=window_length,
+                polyorder=polyorder,
+            ).tolist()
 
         smoothed = df.group_by(Group.BY_OBJECT_PERIOD, maintain_order=True).agg(
             [
-                pl.col(Column.VX)
-                .map_elements(
-                    lambda vx: savgol_filter(
-                        vx,
-                        window_length=smoothing_params["window_length"],
-                        polyorder=smoothing_params["polyorder"],
-                    ).tolist(),
-                    return_dtype=pl.List(pl.Float64),
-                )
-                .alias(vx_smooth),
-                pl.col(Column.VY)
-                .map_elements(
-                    lambda vy: savgol_filter(
-                        vy,
-                        window_length=smoothing_params["window_length"],
-                        polyorder=smoothing_params["polyorder"],
-                    ).tolist(),
-                    return_dtype=pl.List(pl.Float64),
-                )
-                .alias(vy_smooth),
-                pl.col(Column.VZ)
-                .map_elements(
-                    lambda vy: savgol_filter(
-                        vy,
-                        window_length=smoothing_params["window_length"],
-                        polyorder=smoothing_params["polyorder"],
-                    ).tolist(),
-                    return_dtype=pl.List(pl.Float64),
-                )
-                .alias(vz_smooth),
+                pl.col(Column.VX).map_batches(apply_savgol, return_dtype=pl.List(pl.Float64), returns_scalar=True).alias(vx_smooth),
+                pl.col(Column.VY).map_batches(apply_savgol, return_dtype=pl.List(pl.Float64), returns_scalar=True).alias(vy_smooth),
+                pl.col(Column.VZ).map_batches(apply_savgol, return_dtype=pl.List(pl.Float64), returns_scalar=True).alias(vz_smooth),
             ]
         )
         # Explode the smoothed columns back to original shape
@@ -472,7 +464,7 @@ class KloppyPolarsDataset(DefaultDataset):
         )
         # Update ball_owning_team if necessary
         ball_owning_team = (players_ball.drop(Column.BALL_OWNING_TEAM_ID)).join(
-            players_ball.group_by(Group.BY_FRAME)
+            players_ball.group_by(Group.BY_FRAME, maintain_order=True)
             .agg(
                 [
                     pl.when((pl.col(Column.BALL_OWNING_TEAM_ID).is_null()))
@@ -508,7 +500,7 @@ class KloppyPolarsDataset(DefaultDataset):
                 ball_owning_team.filter(
                     (pl.col(Column.BALL_OWNING_TEAM_ID) == pl.col(Column.TEAM_ID))
                 )
-                .group_by(Group.BY_FRAME)
+                .group_by(Group.BY_FRAME, maintain_order=True)
                 .agg(
                     [
                         pl.when((pl.col(Column.BALL_OWNING_PLAYER_ID).is_null()))

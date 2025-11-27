@@ -235,6 +235,17 @@ class PressingIntensity:
             "rows": row_objects.tolist(),
         }
 
+    @property
+    def __get_return_dtype(self):
+        return pl.Struct(
+            {
+                "time_to_intercept": pl.List(pl.List(pl.Float64)),
+                "probability_to_intercept": pl.List(pl.List(pl.Float64)),
+                "columns": pl.List(pl.String),
+                "rows": pl.List(pl.String),
+            }
+        )
+
     def fit(
         self,
         start_time: pl.duration = None,
@@ -354,6 +365,8 @@ class PressingIntensity:
                 pl.map_groups(
                     exprs=self.__exprs_variables,
                     function=self.__compute,
+                    return_dtype=self.__get_return_dtype,
+                    returns_scalar=True,
                 ).alias("results")
             )
             .unnest("results")

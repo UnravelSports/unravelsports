@@ -148,7 +148,7 @@ class SoccerGraphConverter(DefaultGraphConverter):
         total_frames = len(df.unique(Group.BY_FRAME))
 
         valid_frames = (
-            df.group_by(Group.BY_FRAME)
+            df.group_by(Group.BY_FRAME, maintain_order=True)
             .agg(pl.col(Column.TEAM_ID).n_unique().alias("unique_teams"))
             .filter(pl.col("unique_teams") == 3)
             .select(Group.BY_FRAME)
@@ -202,7 +202,7 @@ class SoccerGraphConverter(DefaultGraphConverter):
             + self.global_feature_cols
         ]
 
-        counts = df.group_by(group_by_columns).agg(
+        counts = df.group_by(group_by_columns, maintain_order=True).agg(
             pl.len().alias("count"),
             *[
                 pl.first(col).alias(col)
@@ -323,7 +323,7 @@ class SoccerGraphConverter(DefaultGraphConverter):
         total_frames = result.select(Group.BY_FRAME).unique().height
 
         frame_completeness = (
-            result.group_by(Group.BY_FRAME)
+            result.group_by(Group.BY_FRAME, maintain_order=True)
             .agg(
                 [
                     (pl.col(Column.TEAM_ID).eq(Constant.BALL).sum() == 1).alias(
@@ -587,17 +587,11 @@ class SoccerGraphConverter(DefaultGraphConverter):
                 global_feature_type=self.global_feature_type,
                 **frame_data,
             )
-
+        
         return {
-            "e": pl.Series(
-                [edge_features.tolist()], dtype=pl.List(pl.List(pl.Float64))
-            ),
-            "x": pl.Series(
-                [node_features.tolist()], dtype=pl.List(pl.List(pl.Float64))
-            ),
-            "a": pl.Series(
-                [adjacency_matrix.tolist()], dtype=pl.List(pl.List(pl.Int32))
-            ),
+            "e": edge_features.tolist(),  # Remove pl.Series wrapper
+            "x": node_features.tolist(),  # Remove pl.Series wrapper
+            "a": adjacency_matrix.tolist(),  # Remove pl.Series wrapper
             "e_shape_0": edge_features.shape[0],
             "e_shape_1": edge_features.shape[1],
             "x_shape_0": node_features.shape[0],
@@ -607,9 +601,7 @@ class SoccerGraphConverter(DefaultGraphConverter):
             self.graph_id_column: frame_data[self.graph_id_column][0],
             self.label_column: frame_data[self.label_column][0],
             "frame_id": frame_id,
-            "object_ids": pl.Series(
-                [frame_data[Column.OBJECT_ID].tolist()], dtype=pl.List(pl.String)
-            ),
+            "object_ids": frame_data[Column.OBJECT_ID].tolist(),  # Remove pl.Series wrapper
             "ball_owning_team_id": ball_owning_team_id,
         }
 
@@ -622,6 +614,7 @@ class SoccerGraphConverter(DefaultGraphConverter):
                     exprs=self._exprs_variables + [Column.FRAME_ID],
                     function=self._compute,
                     return_dtype=self.return_dtypes,
+                    returns_scalar=True
                 ).alias("result_dict")
             )
             .with_columns(

@@ -211,6 +211,12 @@ def flatten_to_reshaped_array(arr, s0, s1, as_list=False):
     return result_array if not as_list else result_array.tolist()
 
 
+def flatten_to_reshaped_array(arr, s0, s1, as_list=False):
+    # Convert to numpy array directly
+    result_array = np.array(arr).reshape(s0, s1)
+    return result_array if not as_list else result_array.tolist()
+
+
 def reshape_array(arr):
     return np.array([a for a in arr.to_numpy()])
 

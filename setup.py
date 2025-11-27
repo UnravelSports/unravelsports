@@ -32,10 +32,7 @@ setup(
     python_requires="~=3.11",
     install_requires=[
         "kloppy>=3.17.0",
-        "tensorflow>=2.14.0;platform_machine != 'arm64' or platform_system != 'Darwin'",
-        "tensorflow-macos>=2.14.0;platform_machine == 'arm64' and platform_system == 'Darwin'",
-        "keras==2.14.0",
-        "polars==1.2.1",
+        "polars>=1.35.0",
     ],
     extras_require={
         "test": [
@@ -45,6 +42,9 @@ setup(
             "mplsoccer>=1.4",
             "ffmpeg-python==0.2.0",
             "spektral==1.2.0",
+            "keras==2.14.0",
+            "tensorflow>=2.14.0;platform_machine != 'arm64' or platform_system != 'Darwin'",
+            "tensorflow-macos>=2.14.0;platform_machine == 'arm64' and platform_system == 'Darwin'",
         ]
     },
 )

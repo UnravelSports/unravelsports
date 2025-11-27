@@ -12,7 +12,7 @@ import warnings
 
 from collections.abc import Sequence
 
-from unravel.utils.exceptions import NoGraphIdsWarning
+from unravel.utils.exceptions import NoGraphIdsWarning, SpektralDependencyError
 
 
 def load_pickle_gz(file_path):
@@ -408,10 +408,7 @@ class SpektralGraphDataset(_GraphDatasetMixin, _SpektralBase, Sequence):
     def _SpektralGraphDataset__convert(self, data) -> List:
         """Convert incoming data to Spektral Graph format"""
         if not _HAS_SPEKTRAL:
-            raise ImportError(
-                "Spektral is required for SpektralGraphDataset. "
-                "Install it using: pip install spektral==1.20.0"
-            )
+            raise SpektralDependencyError()
 
         from spektral.data import Graph
 
@@ -443,9 +440,7 @@ class SpektralGraphDataset(_GraphDatasetMixin, _SpektralBase, Sequence):
     def read(self) -> List:
         """Return a list of Spektral Graph objects"""
         if not _HAS_SPEKTRAL:
-            raise ImportError(
-                "Spektral is required. Install it using: pip install spektral==1.20.0"
-            )
+            raise SpektralDependencyError()
 
         graphs = self._SpektralGraphDataset__convert(self.graphs)
         logging.info(f"Loading {len(graphs)} graphs into SpektralGraphDataset...")
@@ -464,9 +459,7 @@ class SpektralGraphDataset(_GraphDatasetMixin, _SpektralBase, Sequence):
     def signature(self):
         """Compute TensorFlow signature for the dataset"""
         if not _HAS_SPEKTRAL:
-            raise ImportError(
-                "Spektral is required. Install it using: pip install spektral==1.20.0"
-            )
+            raise SpektralDependencyError()
 
         from spektral.data.utils import get_spec
         import tensorflow as tf

@@ -289,7 +289,7 @@ class TestSpektral:
 
         df = pd.DataFrame(
             {"frame_id": [x.id for x in pred_dataset], "y": preds.flatten()}
-        )
+        ).sort_values("frame_id")
 
-        assert df["frame_id"].iloc[0] == "2021092612-54"
-        assert df["frame_id"].iloc[-1] == "2021092609-54"
+        assert df["frame_id"].iloc[0] == "2021091300-4845"
+        assert df["frame_id"].iloc[-1] == "2021103108-54"
