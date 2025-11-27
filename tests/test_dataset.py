@@ -13,7 +13,6 @@ class TestGraphDatasetAutoDetection:
     @pytest.fixture
     def spektral_graphs(self):
         """Create dummy Spektral graphs"""
-        pytest.importorskip("spektral")
         from spektral.data import Graph
 
         graphs = []
@@ -32,8 +31,6 @@ class TestGraphDatasetAutoDetection:
     @pytest.fixture
     def pyg_graphs(self):
         """Create dummy PyG Data objects"""
-        pytest.importorskip("torch")
-        pytest.importorskip("torch_geometric")
         import torch
         from torch_geometric.data import Data
 
@@ -47,7 +44,7 @@ class TestGraphDatasetAutoDetection:
                     y=torch.tensor([i % 2]),
                 )
             )
-            graphs[-1].graph_id = f"graph_{i}"
+            graphs[-1].id = f"graph_{i}"
         return graphs
 
     @pytest.fixture
@@ -69,7 +66,6 @@ class TestGraphDatasetAutoDetection:
 
     def test_auto_detect_spektral_graphs(self, spektral_graphs):
         """Test that Spektral graphs are auto-detected"""
-        pytest.importorskip("spektral")
 
         dataset = GraphDataset(graphs=spektral_graphs)
 
@@ -78,8 +74,6 @@ class TestGraphDatasetAutoDetection:
 
     def test_auto_detect_pyg_graphs(self, pyg_graphs):
         """Test that PyG Data objects are auto-detected"""
-        pytest.importorskip("torch")
-        pytest.importorskip("torch_geometric")
 
         dataset = GraphDataset(graphs=pyg_graphs)
 
@@ -109,8 +103,6 @@ class TestGraphDatasetExplicitFormat:
 
     def test_dict_graphs_with_spektral_format(self, dict_graphs):
         """Test creating SpektralGraphDataset from dicts with explicit format"""
-        pytest.importorskip("spektral")
-
         dataset = GraphDataset(graphs=dict_graphs, format="spektral")
 
         assert isinstance(dataset, SpektralGraphDataset)
@@ -119,8 +111,6 @@ class TestGraphDatasetExplicitFormat:
 
     def test_dict_graphs_with_pyg_format(self, dict_graphs):
         """Test creating PyGGraphDataset from dicts with explicit format"""
-        pytest.importorskip("torch")
-        pytest.importorskip("torch_geometric")
 
         dataset = GraphDataset(graphs=dict_graphs, format="pyg")
 
@@ -139,7 +129,6 @@ class TestGraphDatasetExplicitFormat:
 
     def test_pickle_file_with_spektral_format(self, tmp_path, dict_graphs):
         """Test loading pickle file with spektral format"""
-        pytest.importorskip("spektral")
         import gzip
         import pickle
 
@@ -155,8 +144,6 @@ class TestGraphDatasetExplicitFormat:
 
     def test_pickle_file_with_pyg_format(self, tmp_path, dict_graphs):
         """Test loading pickle file with pyg format"""
-        pytest.importorskip("torch")
-        pytest.importorskip("torch_geometric")
         import gzip
         import pickle
 
@@ -193,8 +180,6 @@ class TestGraphDatasetSplitting:
     @pytest.fixture
     def pyg_dataset(self):
         """Create a PyG dataset for testing"""
-        pytest.importorskip("torch")
-        pytest.importorskip("torch_geometric")
         import torch
         from torch_geometric.data import Data
 
@@ -208,14 +193,13 @@ class TestGraphDatasetSplitting:
                     y=torch.tensor([i % 2]),
                 )
             )
-            graphs[-1].graph_id = f"graph_{i}"
+            graphs[-1].id = f"graph_{i}"
 
         return GraphDataset(graphs=graphs)
 
     @pytest.fixture
     def spektral_dataset(self):
         """Create a Spektral dataset for testing"""
-        pytest.importorskip("spektral")
         from spektral.data import Graph
 
         graphs = []
@@ -316,7 +300,6 @@ class TestGraphDatasetRepr:
 
     def test_spektral_repr(self):
         """Test SpektralGraphDataset repr"""
-        pytest.importorskip("spektral")
         from spektral.data import Graph
 
         graphs = [
@@ -334,8 +317,6 @@ class TestGraphDatasetRepr:
 
     def test_pyg_repr(self):
         """Test PyGGraphDataset repr"""
-        pytest.importorskip("torch")
-        pytest.importorskip("torch_geometric")
         import torch
         from torch_geometric.data import Data
 

@@ -31,7 +31,7 @@ setup(
     ],
     python_requires="~=3.11",
     install_requires=[
-        "kloppy>=3.17.0",
+        "kloppy>=3.18.0",
         "polars>=1.35.0",
     ],
     extras_require={

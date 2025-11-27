@@ -208,7 +208,7 @@ class DefaultGraphConverter:
 
             data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y)
 
-            data.graph_id = d["id"]
+            data.id = d["id"]
             data.frame_id = d["frame_id"]
             data.ball_owning_team_id = d.get("ball_owning_team_id", None)
 

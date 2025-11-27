@@ -561,7 +561,7 @@ class PyGGraphDataset(_GraphDatasetMixin, Sequence):
                 )
 
                 # Add custom attributes
-                graph_data.graph_id = d.get("id", None)
+                graph_data.id = d.get("id", None)
                 graph_data.frame_id = d.get("frame_id", None)
                 graph_data.ball_owning_team_id = d.get("ball_owning_team_id", None)
                 graph_data.object_ids = d.get("object_ids", None)

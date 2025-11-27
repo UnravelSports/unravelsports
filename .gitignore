@@ -196,3 +196,5 @@ examples/models/*
 *.png
 *.json
 diffs/
+
+lightning_logs/
