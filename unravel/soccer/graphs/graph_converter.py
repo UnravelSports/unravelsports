@@ -3,7 +3,7 @@ import sys
 
 from dataclasses import dataclass
 
-from typing import List, Union, Dict, Literal, Any, Optional, Callable
+from typing import List, Union, Dict, Literal, Any, Optional, Callable, TYPE_CHECKING
 
 import inspect
 
@@ -11,7 +11,8 @@ import pathlib
 
 from kloppy.domain import MetricPitchDimensions, Orientation
 
-from spektral.data import Graph
+if TYPE_CHECKING:
+    from spektral.data import Graph
 
 from .graph_settings import GraphSettingsPolars
 from ..dataset.kloppy_polars import KloppyPolarsDataset, Column, Group, Constant
@@ -1144,6 +1145,14 @@ class SoccerGraphConverter(DefaultGraphConverter):
                 ax.set_title(self._gameclock, fontsize=22)
 
         def frame_plot(self, frame_data):
+            try:
+                from spektral.data import Graph
+            except ImportError:
+                raise ImportError(
+                    "Seems like you don't have spektral installed. Please"
+                    " install it using: pip install spektral==1.20.0"
+                )
+
             def timestamp_to_gameclock(timestamp, period_id):
                 total_seconds = timestamp.total_seconds()
 

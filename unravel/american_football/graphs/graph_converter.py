@@ -7,8 +7,6 @@ import numpy as np
 
 from typing import List, Optional
 
-from spektral.data import Graph
-
 from ..dataset import BigDataBowlDataset, Group, Column, Constant
 
 from .graph_settings import (

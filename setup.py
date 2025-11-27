@@ -31,8 +31,7 @@ setup(
     ],
     python_requires="~=3.11",
     install_requires=[
-        "spektral==1.2.0",
-        "kloppy==3.17.0",
+        "kloppy>=3.17.0",
         "tensorflow>=2.14.0;platform_machine != 'arm64' or platform_system != 'Darwin'",
         "tensorflow-macos>=2.14.0;platform_machine == 'arm64' and platform_system == 'Darwin'",
         "keras==2.14.0",
@@ -45,6 +44,7 @@ setup(
             "matplotlib>=3.9",
             "mplsoccer>=1.4",
             "ffmpeg-python==0.2.0",
+            "spektral==1.2.0",
         ]
     },
 )

@@ -1,10 +1,8 @@
 import logging
 import sys
-from typing import List, Tuple, Union, Optional
+from typing import List, Tuple, Union, Optional, Literal
 
 import numpy as np
-
-import random
 
 import gzip
 import pickle
@@ -12,33 +10,36 @@ from pathlib import Path
 
 import warnings
 
-import tensorflow as tf
-
 from collections.abc import Sequence
 
-from spektral.data import Dataset, Graph
-from spektral.data.utils import get_spec
-
-from ..exceptions import NoGraphIdsWarning
+from unravel.utils.exceptions import NoGraphIdsWarning
 
 
-# Function to load data from a .pickle.gz file
 def load_pickle_gz(file_path):
     with gzip.open(file_path, "rb") as f:
         data = pickle.load(f)
     return data
 
 
-class GraphDataset(Dataset, Sequence):
+class _GraphDatasetMixin:
     """
-    A GraphDataset is required to use all Spektral funcitonality, see 'spektral.data -> Dataset'
+    Base mixin for graph dataset functionality.
+    Framework-agnostic implementation that works with both Spektral and PyTorch Geometric.
     """
 
     def __init__(self, **kwargs):
         """
         Constructor to load parameters.
+
+        Args:
+            pickle_folder: Path to folder containing .pickle.gz files
+            pickle_file: Path to single .pickle.gz file
+            graphs: List of graph objects (Spektral Graph, PyG Data, or dicts)
+            format: Optional explicit format specification ('spektral' or 'pyg')
+            sample_rate: Sampling rate (1.0 = use all data)
         """
         self._kwargs = kwargs
+        self._explicit_format = kwargs.get("format", None)
 
         sample_rate = kwargs.get("sample_rate", 1.0)
         self.sample = 1.0 / sample_rate
@@ -68,49 +69,37 @@ class GraphDataset(Dataset, Sequence):
             if not isinstance(kwargs["graphs"], list):
                 raise NotImplementedError("""data should be of type list""")
 
-            self.graphs = kwargs["graphs"]
+            self.graphs = self.__convert(kwargs["graphs"])
         else:
             raise NotImplementedError(
                 "Please provide either 'pickle_folder', 'pickle_file' or 'graphs' as parameter to GraphDataset"
             )
 
-        super().__init__(**kwargs)
+        # Only call super().__init__ if there's a parent class that needs it
+        # For PyGGraphDataset, Sequence doesn't take kwargs
+        # For SpektralGraphDataset, Dataset does take kwargs
+        try:
+            super().__init__(**kwargs)
+        except TypeError:
+            # If super().__init__() doesn't accept kwargs (like Sequence), call it without args
+            super().__init__()
 
-    def __convert(self, data) -> List[Graph]:
+    def __convert(self, data):
         """
-        Convert incoming data to correct List[Graph] format
+        Convert incoming data to correct format.
+        Must be implemented by subclasses.
         """
-        if isinstance(data[0], Graph):
-            return [g for i, g in enumerate(data) if i % self.sample == 0]
-        elif isinstance(data[0], dict):
-            return [
-                Graph(
-                    x=g["x"],
-                    a=g["a"],
-                    e=g["e"],
-                    y=g["y"],
-                    id=g["id"],
-                    frame_id=g.get("frame_id", None),
-                    object_ids=g.get("object_ids", None),
-                    ball_owning_team_id=g.get("ball_owning_team_id", None),
-                )
-                for i, g in enumerate(data)
-                if i % self.sample == 0
-            ]
-        else:
-            raise NotImplementedError()
+        raise NotImplementedError("Subclasses must implement __convert()")
 
-    def read(self) -> List[Graph]:
+    def read(self):
         """
-        Overriding the read function - to return a list of Graph objects
+        Overriding the read function - to return a list of Graph objects.
+        Must be implemented by subclasses.
         """
-        graphs = self.__convert(self.graphs)
-
-        logging.info(f"Loading {len(graphs)} graphs into GraphDataset...")
-
-        return graphs
+        raise NotImplementedError("Subclasses must implement read()")
 
     def add(self, other, verbose: bool = False):
+        """Add more graphs to the dataset"""
         other = self.__convert(other)
 
         if verbose:
@@ -123,15 +112,10 @@ class GraphDataset(Dataset, Sequence):
         N = Max number of nodes
         F = Dimensions of Node Features
         S = Dimensions of Edge Features
-        n_out = Dimesion of the target
+        n_out = Dimension of the target
         n = Number of samples in dataset
         """
-        N = max(g.n_nodes for g in self)
-        F = self.n_node_features
-        S = self.n_edge_features
-        n_out = self.n_labels
-        n = len(self)
-        return (N, F, S, n_out, n)
+        raise NotImplementedError("Subclasses must implement dimensions()")
 
     def split_test_train(
         self,
@@ -165,25 +149,7 @@ class GraphDataset(Dataset, Sequence):
     ):
         """
         Split dataset into train, test, and validation sets with optional label balancing.
-
-        split_train (float): amount of total samples that will go into train set
-        split_test (float): amount of total samples that will go into test set.
-        split_validation (float): amount of total samples that will go into validation set. Defaults to 0.0.
-        by_graph_id (bool): when we want to split the samples by graph_id, such that all graphs with the same id end up in the same train/test/validation set
-            set to True. Defaults to False. When set to True the split ratio's will be approximated,
-            because we can't be sure to split the graphs exactly according to the ratios.
-        random_seed (int, optional): Random seed for reproducibility
-        train_label_ratio (float, optional): If provided, balances the training set to have this ratio of labels (0/1).
-            Must be between 0 and 1. Defaults to None (keep original distribution).
-        test_label_ratio (float, optional): If provided, balances the test set to have this ratio of labels (0/1).
-            Must be between 0 and 1. Defaults to None (keep original distribution).
-        val_label_ratio (float, optional): If provided, balances the validation set to have this ratio of labels (0/1).
-            Must be between 0 and 1. Defaults to None (keep original distribution).
-
-        for an explanation on splitting behaviour when by_graph_id = True
-        see: https://github.com/USSoccerFederation/ussf_ssac_23_soccer_gnn/blob/main/split_sequences.py
         """
-
         total = split_train + split_test + split_validation
 
         train_pct = split_train / total
@@ -210,7 +176,10 @@ class GraphDataset(Dataset, Sequence):
             num_validation = 0
 
         unique_graph_ids = set(
-            [g.get("id") if hasattr(g, "id") else None for g in self]
+            [
+                g.get("id") if hasattr(g, "id") else getattr(g, "graph_id", None)
+                for g in self
+            ]
         )
         if unique_graph_ids == {None}:
             by_graph_id = False
@@ -221,7 +190,6 @@ class GraphDataset(Dataset, Sequence):
             )
 
         if not by_graph_id:
-            # if we don't use the graph_ids we simply shuffle all indices and return 2 or 3 randomly shuffled datasets
             if random_seed:
                 idxs = np.random.RandomState(seed=random_seed).permutation(
                     dataset_length
@@ -240,7 +208,6 @@ class GraphDataset(Dataset, Sequence):
                 test_set = self[test_idxs]
                 validation_set = self[validation_idxs]
 
-                # Apply label balancing if requested
                 if train_label_ratio is not None:
                     train_set = self._balance_labels(
                         train_set, train_label_ratio, random_seed
@@ -262,7 +229,6 @@ class GraphDataset(Dataset, Sequence):
                 train_set = self[train_idxs]
                 test_set = self[test_idxs]
 
-                # Apply label balancing if requested
                 if train_label_ratio is not None:
                     train_set = self._balance_labels(
                         train_set, train_label_ratio, random_seed
@@ -274,9 +240,17 @@ class GraphDataset(Dataset, Sequence):
 
                 return train_set, test_set
         else:
-            # if we do use the graph_ids we randomly assign all items of a certain graph_id to either
-            # val, test or train. We start with validation, because it's assumed to be the smallest dataset.
-            graph_ids = np.asarray([g.get("id")[0] for g in self])
+            # Get graph IDs in a framework-agnostic way
+            graph_ids = np.asarray(
+                [
+                    (
+                        g.get("id")[0]
+                        if hasattr(g, "get") and g.get("id") is not None
+                        else getattr(g, "graph_id", None)
+                    )
+                    for g in self
+                ]
+            )
 
             if random_seed:
                 np.random.seed(random_seed)
@@ -312,7 +286,6 @@ class GraphDataset(Dataset, Sequence):
                 test_set = self[test_idxs]
                 validation_set = self[validation_idxs]
 
-                # Apply label balancing if requested
                 if train_label_ratio is not None:
                     train_set = self._balance_labels(
                         train_set, train_label_ratio, random_seed
@@ -331,7 +304,6 @@ class GraphDataset(Dataset, Sequence):
                 train_set = self[train_idxs]
                 test_set = self[test_idxs]
 
-                # Apply label balancing if requested
                 if train_label_ratio is not None:
                     train_set = self._balance_labels(
                         train_set, train_label_ratio, random_seed
@@ -344,80 +316,53 @@ class GraphDataset(Dataset, Sequence):
                 return train_set, test_set
 
     def _balance_labels(self, dataset, target_ratio, random_seed):
-        """
-        Balance a dataset to achieve a target ratio of labels.
-
-        Args:
-            dataset: A GraphDataset containing Graph objects
-            target_ratio: Float between 0 and 1, representing the desired ratio of positive labels
-                        (e.g., 0.5 for a 50/50 split)
-
-        Returns:
-            A balanced subset of the dataset with the desired label ratio
-        """
+        """Balance a dataset to achieve a target ratio of labels."""
         if random_seed:
             np.random.seed(random_seed)
 
         if not 0 <= target_ratio <= 1:
             raise ValueError("target_ratio must be between 0 and 1")
 
-        # Identify indices by label
         indices_by_label = {0: [], 1: []}
 
         for i, g in enumerate(dataset):
             # Handle different types of label storage
             if hasattr(g, "y"):
-                if isinstance(g.y, (np.ndarray, list)):
-                    # Check that y is not longer than 1 item
-                    if len(g.y) != 1:
-                        raise ValueError(
-                            f"Expected y to be a single value, but got array of length {len(g.y)}"
-                        )
-                    label = 1 if g.y[0] > 0.5 else 0
-                else:
-                    label = 1 if g.y > 0.5 else 0
-            elif g.get("y", None) is not None:
-                # If using dictionary access
+                y_value = g.y
+            elif hasattr(g, "get") and g.get("y", None) is not None:
                 y_value = g["y"]
-                if isinstance(y_value, (np.ndarray, list)):
-                    # Check that y is not longer than 1 item
-                    if len(y_value) != 1:
-                        raise ValueError(
-                            f"Expected y to be a single value, but got array of length {len(y_value)}"
-                        )
-                    label = 1 if y_value[0] > 0.5 else 0
-                else:
-                    label = 1 if y_value > 0.5 else 0
             else:
                 raise ValueError("Graph has no attribute 'y'...")
 
+            if isinstance(y_value, (np.ndarray, list)):
+                if len(y_value) != 1:
+                    raise ValueError(
+                        f"Expected y to be a single value, but got array of length {len(y_value)}"
+                    )
+                label = 1 if y_value[0] > 0.5 else 0
+            else:
+                label = 1 if y_value > 0.5 else 0
+
             indices_by_label[label].append(i)
 
-        # Count samples for each class
         n_zeros = len(indices_by_label[0])
         n_ones = len(indices_by_label[1])
         total = n_zeros + n_ones
 
-        # Calculate current ratio
         current_ratio = n_ones / total if total > 0 else 0
 
-        # If already matching target ratio (within 1%), return as is
         if abs(current_ratio - target_ratio) < 0.01:
             return dataset
 
-        # Calculate how many samples we need for each class
         if current_ratio > target_ratio:
-            # Too many positives, keep all negatives
             target_ones = int(n_zeros * target_ratio / (1 - target_ratio))
             target_zeros = n_zeros
         else:
-            # Too many negatives, keep all positives
             target_zeros = int(n_ones * (1 - target_ratio) / target_ratio)
             target_ones = n_ones
 
         indices_to_keep = []
 
-        # Keep samples from class 0 (negative)
         if n_zeros > target_zeros:
             sampled_zeros = np.random.choice(
                 indices_by_label[0], target_zeros, replace=False
@@ -426,7 +371,6 @@ class GraphDataset(Dataset, Sequence):
         else:
             indices_to_keep.extend(indices_by_label[0])
 
-        # Keep samples from class 1 (positive)
         if n_ones > target_ones:
             sampled_ones = np.random.choice(
                 indices_by_label[1], target_ones, replace=False
@@ -435,26 +379,102 @@ class GraphDataset(Dataset, Sequence):
         else:
             indices_to_keep.extend(indices_by_label[1])
 
-        # Shuffle indices
         np.random.shuffle(indices_to_keep)
 
-        # Return a subset of the dataset using the balanced indices
         return dataset[indices_to_keep]
+
+
+# =============================================================================
+# SPEKTRAL IMPLEMENTATION
+# =============================================================================
+
+try:
+    from spektral.data import Dataset, Graph
+    from spektral.data.utils import get_spec
+    import tensorflow as tf
+
+    _SpektralBase = Dataset
+    _HAS_SPEKTRAL = True
+except ImportError:
+    _SpektralBase = object
+    _HAS_SPEKTRAL = False
+
+
+class SpektralGraphDataset(_GraphDatasetMixin, _SpektralBase, Sequence):
+    """
+    Spektral-specific GraphDataset implementation.
+    """
+
+    def _SpektralGraphDataset__convert(self, data) -> List:
+        """Convert incoming data to Spektral Graph format"""
+        if not _HAS_SPEKTRAL:
+            raise ImportError(
+                "Spektral is required for SpektralGraphDataset. "
+                "Install it using: pip install spektral==1.20.0"
+            )
+
+        from spektral.data import Graph
+
+        if isinstance(data[0], Graph):
+            return [g for i, g in enumerate(data) if i % self.sample == 0]
+        elif isinstance(data[0], dict):
+            return [
+                Graph(
+                    x=g["x"],
+                    a=g["a"],
+                    e=g["e"],
+                    y=g["y"],
+                    id=g["id"],
+                    frame_id=g.get("frame_id", None),
+                    object_ids=g.get("object_ids", None),
+                    ball_owning_team_id=g.get("ball_owning_team_id", None),
+                )
+                for i, g in enumerate(data)
+                if i % self.sample == 0
+            ]
+        else:
+            raise ValueError(
+                f"Cannot convert type {type(data[0])} to Spektral Graph. "
+                "Expected Spektral Graph or dict."
+            )
+
+    _GraphDatasetMixin__convert = _SpektralGraphDataset__convert
+
+    def read(self) -> List:
+        """Return a list of Spektral Graph objects"""
+        if not _HAS_SPEKTRAL:
+            raise ImportError(
+                "Spektral is required. Install it using: pip install spektral==1.20.0"
+            )
+
+        graphs = self._SpektralGraphDataset__convert(self.graphs)
+        logging.info(f"Loading {len(graphs)} graphs into SpektralGraphDataset...")
+        return graphs
+
+    def dimensions(self) -> Tuple[int, int, int, int, int]:
+        """N, F, S, n_out, n"""
+        N = max(g.n_nodes for g in self)
+        F = self.n_node_features
+        S = self.n_edge_features
+        n_out = self.n_labels
+        n = len(self)
+        return (N, F, S, n_out, n)
 
     @property
     def signature(self):
-        """
-        This property computes the signature of the dataset, which can be
-        passed to `spektral.data.utils.to_tf_signature(signature)` to compute
-        the TensorFlow signature.
+        """Compute TensorFlow signature for the dataset"""
+        if not _HAS_SPEKTRAL:
+            raise ImportError(
+                "Spektral is required. Install it using: pip install spektral==1.20.0"
+            )
 
-        The signature includes TensorFlow TypeSpec, shape, and dtype for all
-        characteristic matrices of the graphs in the Dataset.
-        """
+        from spektral.data.utils import get_spec
+        import tensorflow as tf
+
         if len(self.graphs) == 0:
             return None
         signature = {}
-        graph = self.graphs[0]  # This is always non-empty
+        graph = self.graphs[0]
 
         if graph.x is not None:
             signature["x"] = dict()
@@ -487,3 +507,205 @@ class GraphDataset(Dataset, Sequence):
             signature["g"]["dtype"] = tf.as_dtype(np.array(graph.g).dtype)
 
         return signature
+
+
+# =============================================================================
+# PYTORCH GEOMETRIC IMPLEMENTATION
+# =============================================================================
+
+try:
+    import torch
+    from torch_geometric.data import Data
+
+    _HAS_TORCH_GEOMETRIC = True
+except ImportError:
+    _HAS_TORCH_GEOMETRIC = False
+
+
+class PyGGraphDataset(_GraphDatasetMixin, Sequence):
+    """
+    PyTorch Geometric GraphDataset implementation.
+    """
+
+    def _PyGGraphDataset__convert(self, data) -> List:
+        """Convert incoming data to PyG Data format"""
+        if not _HAS_TORCH_GEOMETRIC:
+            raise ImportError(
+                "PyTorch Geometric is required for PyGGraphDataset. "
+                "Install it using: pip install torch torch-geometric"
+            )
+
+        from torch_geometric.data import Data
+
+        if isinstance(data[0], Data):
+            return [g for i, g in enumerate(data) if i % self.sample == 0]
+        elif isinstance(data[0], dict):
+            pyg_graphs = []
+            for i, d in enumerate(data):
+                if i % self.sample != 0:
+                    continue
+
+                # Node features
+                x = torch.tensor(d["x"], dtype=torch.float)
+
+                # Get adjacency matrix and convert to edge_index
+                a = d["a"].toarray() if hasattr(d["a"], "toarray") else d["a"]
+                edge_indices = np.nonzero(a)
+                edge_index = torch.tensor(np.vstack(edge_indices), dtype=torch.long)
+
+                # Edge features (already aligned with edges)
+                edge_attr = torch.tensor(d["e"], dtype=torch.float)
+
+                # Labels
+                y = torch.tensor(d["y"], dtype=torch.long)
+
+                # Create Data object
+                graph_data = Data(
+                    x=x,
+                    edge_index=edge_index,
+                    edge_attr=edge_attr,
+                    y=y,
+                )
+
+                # Add custom attributes
+                graph_data.graph_id = d.get("id", None)
+                graph_data.frame_id = d.get("frame_id", None)
+                graph_data.ball_owning_team_id = d.get("ball_owning_team_id", None)
+                graph_data.object_ids = d.get("object_ids", None)
+
+                pyg_graphs.append(graph_data)
+
+            return pyg_graphs
+        else:
+            raise ValueError(
+                f"Cannot convert type {type(data[0])} to PyG Data. "
+                "Expected PyG Data or dict."
+            )
+
+    _GraphDatasetMixin__convert = _PyGGraphDataset__convert
+
+    def read(self) -> List:
+        """Return a list of PyG Data objects"""
+        if not _HAS_TORCH_GEOMETRIC:
+            raise ImportError(
+                "PyTorch Geometric is required. "
+                "Install it using: pip install torch torch-geometric"
+            )
+
+        graphs = self._PyGGraphDataset__convert(self.graphs)
+        logging.info(f"Loading {len(graphs)} graphs into PyGGraphDataset...")
+        return graphs
+
+    def dimensions(self) -> Tuple[int, int, int, int, int]:
+        """N, F, S, n_out, n"""
+        N = max(data.num_nodes for data in self)
+        F = self[0].num_node_features if len(self) > 0 else 0
+        S = self[0].num_edge_features if len(self) > 0 else 0
+        n_out = self[0].y.shape[0] if len(self) > 0 else 0
+        n = len(self)
+        return (N, F, S, n_out, n)
+
+    def __len__(self):
+        return len(self.graphs)
+
+    def __getitem__(self, idx):
+        if isinstance(idx, (list, np.ndarray)):
+            selected_graphs = [self.graphs[i] for i in idx]
+            return PyGGraphDataset(graphs=selected_graphs, sample_rate=1.0)
+        else:
+            return self.graphs[idx]
+
+    def __repr__(self):
+        return f"PyGGraphDataset(n_graphs={len(self)})"
+
+
+def GraphDataset(
+    format: Optional[Literal["spektral", "pyg"]] = "spektral", **kwargs
+) -> Union[SpektralGraphDataset, PyGGraphDataset]:
+    """
+    Factory function that automatically detects and creates the appropriate dataset.
+
+    Args:
+        format: Optional format specification ('spektral' or 'pyg').
+                Only required when passing dict format graphs or pickle files.
+                For Spektral Graph or PyG Data objects, format is auto-detected.
+        **kwargs: Arguments passed to the dataset constructor
+
+    Returns:
+        SpektralGraphDataset or PyGGraphDataset depending on format
+
+    Examples:
+        # Auto-detect from Spektral graphs
+        dataset = GraphDataset(graphs=spektral_graph_list)
+
+        # Auto-detect from PyG graphs
+        dataset = GraphDataset(graphs=pyg_data_list)
+
+        # Explicit format required for dicts
+        dataset = GraphDataset(graphs=dict_list, format='pyg')
+
+        # Explicit format required for pickle files
+        dataset = GraphDataset(pickle_file='graphs.pickle.gz', format='spektral')
+    """
+
+    def _create_dataset(fmt: str):
+        """Helper function to create the appropriate dataset"""
+        if fmt.lower() == "spektral":
+            return SpektralGraphDataset(**kwargs)
+        elif fmt.lower() == "pyg":
+            return PyGGraphDataset(**kwargs)
+        else:
+            raise ValueError(f"format must be 'spektral' or 'pyg', got '{fmt}'")
+
+    # Auto-detect from graphs if provided
+    if kwargs.get("graphs", None) is not None:
+        graphs = kwargs["graphs"]
+
+        if not isinstance(graphs, list) or len(graphs) == 0:
+            raise ValueError("graphs must be a non-empty list")
+
+        first_item = graphs[0]
+
+        # Check if it's a dict - require explicit format
+        if isinstance(first_item, dict):
+            if format is None:
+                raise ValueError(
+                    "When passing dict format graphs, you must explicitly specify format='spektral' or format='pyg'"
+                )
+            return _create_dataset(format)
+
+        # Check if it's a Spektral Graph
+        if _HAS_SPEKTRAL:
+            from spektral.data import Graph
+
+            if isinstance(first_item, Graph):
+                return SpektralGraphDataset(**kwargs)
+
+        # Check if it's a PyG Data object
+        if _HAS_TORCH_GEOMETRIC:
+            from torch_geometric.data import Data
+
+            if isinstance(first_item, Data):
+                return PyGGraphDataset(**kwargs)
+
+        # If we can't detect, raise error
+        raise ValueError(
+            f"Cannot auto-detect format for type {type(first_item)}. "
+            "Please specify format='spektral' or format='pyg' explicitly."
+        )
+
+    # For pickle files, require explicit format
+    elif (
+        kwargs.get("pickle_file", None) is not None
+        or kwargs.get("pickle_folder", None) is not None
+    ):
+        if format is None:
+            raise ValueError(
+                "When loading from pickle files, you must explicitly specify format='spektral' or format='pyg'"
+            )
+        return _create_dataset(format)
+
+    else:
+        raise ValueError(
+            "Must provide either 'graphs', 'pickle_file', or 'pickle_folder'"
+        )

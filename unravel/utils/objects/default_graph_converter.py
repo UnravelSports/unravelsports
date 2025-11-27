@@ -6,11 +6,13 @@ from dataclasses import dataclass, field, asdict
 
 import polars as pl
 
-from typing import List, Union, Dict, Literal
+from typing import List, Union, Dict, Literal, TYPE_CHECKING
 
 from kloppy.domain import TrackingDataset
 
-from spektral.data import Graph
+if TYPE_CHECKING:
+    from spektral.data import Graph
+    from torch_geometric.data import Data
 
 from ..exceptions import (
     KeyMismatchException,
@@ -169,7 +171,64 @@ class DefaultGraphConverter:
     def _convert(self):
         raise NotImplementedError()
 
-    def to_spektral_graphs(self, include_object_ids: bool = False) -> List[Graph]:
+    def to_pytorch_graphs(
+        self, include_object_ids: bool = False
+    ) -> List["torch_geometric.data.Data"]:
+        """
+        Convert graph frames to PyTorch Geometric Data objects.
+
+        Returns:
+            List of torch_geometric.data.Data objects
+        """
+        try:
+            import torch
+            from torch_geometric.data import Data
+        except ImportError:
+            raise ImportError(
+                "PyTorch Geometric is required for this functionality. "
+                "Install it with: pip install torch torch-geometric"
+            )
+
+        if not self.graph_frames:
+            self.to_graph_frames(include_object_ids)
+
+        pyg_graphs = []
+        for d in self.graph_frames:
+            x = torch.tensor(d["x"], dtype=torch.float)
+
+            a = d["a"].toarray() if hasattr(d["a"], "toarray") else d["a"]
+
+            edge_indices = np.nonzero(a)
+            edge_index = torch.tensor(np.vstack(edge_indices), dtype=torch.long)
+
+            edge_attr = torch.tensor(d["e"], dtype=torch.float)
+
+            y = torch.tensor(d["y"], dtype=torch.long)
+
+            data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y)
+
+            data.graph_id = d["id"]
+            data.frame_id = d["frame_id"]
+            data.ball_owning_team_id = d.get("ball_owning_team_id", None)
+
+            if include_object_ids:
+                data.object_ids = d["object_ids"]
+
+            pyg_graphs.append(data)
+
+        return pyg_graphs
+
+    def to_spektral_graphs(
+        self, include_object_ids: bool = False
+    ) -> List["spektral.data.Graph"]:
+        try:
+            from spektral.data import Graph
+        except ImportError:
+            raise ImportError(
+                "Seems like you don't have spektral installed. Please"
+                " install it using: pip install spektral==1.20.0"
+            )
+
         if not self.graph_frames:
             self.to_graph_frames(include_object_ids)
 

@@ -2,6 +2,7 @@ from pathlib import Path
 from unravel.soccer import KloppyPolarsDataset, SoccerGraphConverter
 from unravel.american_football import BigDataBowlDataset, AmericanFootballGraphConverter
 from unravel.utils import dummy_labels, dummy_graph_ids, GraphDataset
+from unravel.utils.objects.graph_dataset import SpektralGraphDataset
 from unravel.classifiers import CrystalGraphClassifier
 
 from tensorflow.keras.models import load_model
@@ -68,6 +69,7 @@ class TestSpektral:
             coordinates="tracab",
             include_empty_frames=False,
             limit=100,
+            only_alive=False,
         )
 
     @pytest.fixture()
@@ -160,7 +162,7 @@ class TestSpektral:
         train = GraphDataset(graphs=soccer_converter.to_spektral_graphs())
 
         cd = soccer_converter.to_custom_dataset()
-        assert isinstance(cd, GraphDataset)
+        assert isinstance(cd, SpektralGraphDataset)
 
         pickle_folder = join("tests", "files", "kloppy")
 
@@ -227,7 +229,7 @@ class TestSpektral:
         train = GraphDataset(graphs=bdb_converter.to_spektral_graphs())
 
         cd = bdb_converter.to_custom_dataset()
-        assert isinstance(cd, GraphDataset)
+        assert isinstance(cd, SpektralGraphDataset)
 
         pickle_folder = join("tests", "files", "bdb")
 

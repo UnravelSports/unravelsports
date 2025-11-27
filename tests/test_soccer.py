@@ -126,6 +126,7 @@ class TestKloppyPolarsData:
             coordinates="tracab",
             include_empty_frames=False,
             limit=500,
+            only_alive=False,
         )
 
     @pytest.fixture()
