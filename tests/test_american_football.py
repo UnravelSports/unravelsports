@@ -80,7 +80,7 @@ class TestAmericanFootballDataset:
 
     @pytest.fixture
     def edge_feature_values(self):
-        item_idx = 94
+        item_idx = 56
 
         assert_values = {
             "dist": 0.031333127237586675,
@@ -127,7 +127,7 @@ class TestAmericanFootballDataset:
 
     @pytest.fixture
     def node_feature_values(self):
-        item_idx = 21
+        item_idx = 14
 
         assert_values = {
             "x_normed": 0.6679999999999999,
@@ -310,12 +310,12 @@ class TestAmericanFootballDataset:
     ):
         item_idx_x, node_feature_assert_values = node_feature_values
         item_idx_e, edge_feature_assert_values = edge_feature_values
-
+        item_idx_e = 56
         results_df = gnnc._convert()
 
         assert len(results_df) == 263
 
-        row_4 = results_df.filter(pl.col("frame_id") == "484500005").row(0, named=True)
+        row_4 = results_df.filter(pl.col("frame_id") == 484500005).row(0, named=True)
 
         x = row_4["x"]
         x0, x1 = row_4["x_shape_0"], row_4["x_shape_1"]
@@ -325,7 +325,7 @@ class TestAmericanFootballDataset:
         e0, e1 = row_4["e_shape_0"], row_4["e_shape_1"]
         frame_id = row_4["frame_id"]
 
-        assert frame_id == "484500005"
+        assert frame_id == 484500005
         assert e0 == 287
         assert e1 == len(edge_feature_assert_values.keys())
         assert x0 == 23
@@ -367,7 +367,7 @@ class TestAmericanFootballDataset:
 
         item_idx_x, node_feature_assert_values = node_feature_values
 
-        x = data[132]["x"]
+        x = data[233]["x"]
         assert x.shape == (23, len(node_feature_assert_values.keys()))
 
         for idx, node_feature in enumerate(node_feature_assert_values.keys()):
@@ -385,13 +385,10 @@ class TestAmericanFootballDataset:
         """
         Test navigating (next/prev) through events
         """
-        _, node_feature_assert_values = node_feature_values
-        _, edge_feature_assert_values = edge_feature_values
+        item_idx_x, node_feature_assert_values = node_feature_values
+        item_idx_e, edge_feature_assert_values = edge_feature_values
 
         spektral_graphs = gnnc.to_spektral_graphs()
-
-        item_idx_x = 21
-        item_idx_e = 94
 
         assert 1 == 1
 
@@ -399,10 +396,10 @@ class TestAmericanFootballDataset:
         assert len(data) == 263
         assert isinstance(data[44], Graph)
 
-        assert spektral_graphs[132].frame_id == "484500005"
-        assert data[-1].frame_id == "484500033"
+        assert spektral_graphs[132].frame_id == 5400023
+        assert data[-1].frame_id == 484500034
 
-        x = data[132].x
+        x = data[233].x
         assert x.shape == (23, len(node_feature_assert_values.keys()))
 
         for idx, node_feature in enumerate(node_feature_assert_values.keys()):
@@ -410,21 +407,13 @@ class TestAmericanFootballDataset:
                 node_feature_assert_values.get(node_feature), abs=1e-5
             )
 
-        e = data[132].e
+        e = data[233].e
         for idx, edge_feature in enumerate(edge_feature_assert_values.keys()):
             assert e[item_idx_e][idx] == pytest.approx(
                 edge_feature_assert_values.get(edge_feature), abs=1e-5
             )
 
-        def __are_csr_matrices_equal(mat1, mat2):
-            return (
-                mat1.shape == mat2.shape
-                and np.array_equal(mat1.data, mat2.data)
-                and np.array_equal(mat1.indices, mat2.indices)
-                and np.array_equal(mat1.indptr, mat2.indptr)
-            )
-
-        a = data[132].a
+        a = data[233].a
         assert np.sum(a) == np.sum(adj_matrix_values)
 
         dataset = GraphDataset(graphs=spektral_graphs)

@@ -296,7 +296,7 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
                 "a_shape_1": pl.Int64,
                 self.graph_id_column: pl.String,
                 self.label_column: pl.Int64,
-                "frame_id": pl.String,
+                "frame_id": pl.Int64,
             }
         )
 
@@ -335,4 +335,5 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
                 ]
             )
             .drop("result_dict")
+            .sort(pl.col(Column.FRAME_ID))
         )
