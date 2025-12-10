@@ -6,14 +6,16 @@ from dataclasses import dataclass, field, asdict
 
 import polars as pl
 
-from typing import List, Union, Dict, Literal
+from typing import List, Union, Dict, Literal, TYPE_CHECKING
 
 from kloppy.domain import TrackingDataset
 
-from spektral.data import Graph
+if TYPE_CHECKING:
+    from spektral.data import Graph
+    from torch_geometric.data import Data
 
 from ..exceptions import (
-    KeyMismatchException,
+    SpektralDependencyError,
 )
 from ..features import (
     AdjacencyMatrixType,
@@ -67,6 +69,7 @@ class DefaultGraphConverter:
         verbose (bool): The converter logs warnings / error messages when specific frames have no coordinates, or other missing information. False mutes all these warnings.
     """
 
+    engine: Literal["auto", "gpu"] = "auto"
     prediction: bool = False
 
     self_loop_ball: bool = False
@@ -169,7 +172,64 @@ class DefaultGraphConverter:
     def _convert(self):
         raise NotImplementedError()
 
-    def to_spektral_graphs(self, include_object_ids: bool = False) -> List[Graph]:
+    def to_pytorch_graphs(
+        self, include_object_ids: bool = False
+    ) -> List["torch_geometric.data.Data"]:
+        """
+        Convert graph frames to PyTorch Geometric Data objects.
+
+        Returns:
+            List of torch_geometric.data.Data objects
+        """
+        try:
+            import torch
+            from torch_geometric.data import Data
+        except ImportError:
+            raise ImportError(
+                "PyTorch Geometric is required for this functionality. "
+                "Install it with: pip install torch torch-geometric"
+            )
+
+        if not self.graph_frames:
+            self.to_graph_frames(include_object_ids)
+
+        pyg_graphs = []
+        for d in self.graph_frames:
+            x = torch.tensor(d["x"], dtype=torch.float)
+
+            a = d["a"].toarray() if hasattr(d["a"], "toarray") else d["a"]
+
+            edge_indices = np.nonzero(a)
+            edge_index = torch.tensor(np.vstack(edge_indices), dtype=torch.long)
+
+            edge_attr = torch.tensor(d["e"], dtype=torch.float)
+
+            y = torch.tensor(d["y"], dtype=torch.long)
+
+            data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y)
+
+            data.id = d["id"]
+            data.frame_id = d["frame_id"]
+            data.ball_owning_team_id = d.get("ball_owning_team_id", None)
+
+            if include_object_ids:
+                data.object_ids = d["object_ids"]
+
+            pyg_graphs.append(data)
+
+        return pyg_graphs
+
+    def to_pyg_graphs(self, include_object_ids: bool = False):
+        return self.to_pytorch_graphs(include_object_ids)
+
+    def to_spektral_graphs(
+        self, include_object_ids: bool = False
+    ) -> List["spektral.data.Graph"]:
+        try:
+            from spektral.data import Graph
+        except ImportError:
+            raise SpektralDependencyError()
+
         if not self.graph_frames:
             self.to_graph_frames(include_object_ids)
 
@@ -258,7 +318,7 @@ class DefaultGraphConverter:
             {
                 "e": pl.List(pl.List(pl.Float64)),
                 "x": pl.List(pl.List(pl.Float64)),
-                "a": pl.List(pl.List(pl.Float64)),
+                "a": pl.List(pl.List(pl.Int32)),
                 "e_shape_0": pl.Int64,
                 "e_shape_1": pl.Int64,
                 "x_shape_0": pl.Int64,
@@ -267,8 +327,9 @@ class DefaultGraphConverter:
                 "a_shape_1": pl.Int64,
                 self.graph_id_column: pl.String,
                 self.label_column: pl.Int64,
-                "object_ids": pl.List(pl.List(pl.String)),
-                # "frame_id": pl.String
+                "object_ids": pl.List(pl.String),
+                "frame_id": pl.Int64,
+                "ball_owning_team_id": pl.String,
             }
         )
 
@@ -277,6 +338,12 @@ class DefaultGraphConverter:
             def __convert_object_ids(objects):
                 # convert padded players to None
                 return [x if x != "" else None for x in objects]
+
+            # In process_chunk, before the reshape_from_size call:
+            if chunk["a"][0] is None:
+                print(f"Row {0}: a is None")
+                print(f"Full row: {chunk.row(0, named=True)}")
+                raise ValueError(f"Unexpected None value at row {0}")
 
             return [
                 {
@@ -306,7 +373,7 @@ class DefaultGraphConverter:
                     **(
                         {
                             "object_ids": __convert_object_ids(
-                                list(chunk["object_ids"][i][0])
+                                list(chunk["object_ids"][i])
                             )
                         }
                         if include_object_ids
@@ -320,7 +387,7 @@ class DefaultGraphConverter:
         self.graph_frames = [
             graph
             for chunk in graph_df.lazy()
-            .collect(engine="gpu")
+            .collect(engine=self.engine)
             .iter_slices(self.chunk_size)
             for graph in process_chunk(chunk)
         ]

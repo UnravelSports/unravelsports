@@ -14,6 +14,28 @@ def read_version():
         raise RuntimeError("Unable to find version string.")
 
 
+# Define test dependencies based on Python version
+test_deps_common = [
+    "pytest==8.2.2",
+    "black[jupyter]==24.4.2",
+    "matplotlib>=3.9",
+    "mplsoccer>=1.4",
+]
+
+test_deps_py311_spektral = [
+    "spektral==1.2.0",
+    "keras==2.14.0",
+    "tensorflow>=2.14.0;platform_machine != 'arm64' or platform_system != 'Darwin'",
+    "tensorflow-macos>=2.14.0;platform_machine == 'arm64' and platform_system == 'Darwin'",
+]
+
+test_deps_torch = [
+    "torch>=2.5.0",
+    "torch-geometric>=2.6.0",
+    "torchmetrics>=1.0.0",
+    "pytorch-lightning>=2.0.0",
+]
+
 setup(
     name="unravelsports",
     version=read_version(),
@@ -26,25 +48,19 @@ setup(
     packages=["unravel"] + ["unravel." + pkg for pkg in find_packages("unravel")],
     classifiers=[
         "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
         "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
         "Operating System :: OS Independent",
     ],
-    python_requires="~=3.11",
-    install_requires=[
-        "spektral==1.2.0",
-        "kloppy==3.17.0",
-        "tensorflow>=2.14.0;platform_machine != 'arm64' or platform_system != 'Darwin'",
-        "tensorflow-macos>=2.14.0;platform_machine == 'arm64' and platform_system == 'Darwin'",
-        "keras==2.14.0",
-        "polars==1.2.1",
-    ],
+    python_requires=">=3.11",
+    install_requires=["kloppy>=3.18.0", "polars[numpy]>=1.35.0", "scipy>=1.0.0"],
     extras_require={
-        "test": [
-            "pytest==8.2.2",
-            "black[jupyter]==24.4.2",
-            "matplotlib>=3.9",
-            "mplsoccer>=1.4",
-            "ffmpeg-python==0.2.0",
-        ]
+        # Full test suite with all dependencies (for Python 3.11)
+        "test": test_deps_common + test_deps_py311_spektral + test_deps_torch,
+        # Python 3.11 only - Spektral + common test deps
+        "test-py311": test_deps_common + test_deps_py311_spektral + test_deps_torch,
+        # Python 3.12+ - PyTorch only + common test deps
+        "test-torch": test_deps_common + test_deps_torch,
     },
 )

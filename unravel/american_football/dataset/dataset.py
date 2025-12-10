@@ -219,7 +219,9 @@ class BigDataBowlDataset(DefaultDataset):
             ]
         ).drop(["frameId"])
 
-        self.data = df
+        self.data = df.sort(
+            [Column.GAME_ID, Column.PLAY_ID, Column.FRAME_ID, Column.OBJECT_ID]
+        )
 
         # update pitch dimensions to how it looks after loading
         self.settings.pitch_dimensions = AmericanFootballPitchDimensions(

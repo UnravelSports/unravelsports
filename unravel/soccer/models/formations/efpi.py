@@ -220,6 +220,17 @@ class EFPI(FormationDetection):
             object_ids=d[Column.OBJECT_ID].tolist(), team_ids=d[Column.TEAM_ID].tolist()
         )
 
+    @property
+    def return_dtypes(self):
+        return pl.Struct(
+            {
+                Column.OBJECT_ID: pl.List(pl.String),
+                Column.TEAM_ID: pl.List(pl.String),
+                "position": pl.List(pl.String),
+                "formation": pl.List(pl.String),
+            }
+        )
+
     def fit(
         self,
         start_time: pl.duration = None,
@@ -274,7 +285,8 @@ class EFPI(FormationDetection):
                         pl.map_groups(
                             exprs=self._exprs_variables,
                             function=lambda group: self._compute(group),
-                            return_dtype=pl.Struct,
+                            return_dtype=self.return_dtypes,
+                            returns_scalar=True,
                         ).alias("result")
                     )
                     .unnest("result")
@@ -362,9 +374,12 @@ class EFPI(FormationDetection):
                     & (pl.col(Column.POSITION_NAME) != "GK")
                 )
                 .group_by(
-                    [Column.GAME_ID, Column.PERIOD_ID, Column.TEAM_ID, segment_id]
-                    if self._every != "period"
-                    else [Column.GAME_ID, Column.PERIOD_ID, Column.TEAM_ID]
+                    (
+                        [Column.GAME_ID, Column.PERIOD_ID, Column.TEAM_ID, segment_id]
+                        if self._every != "period"
+                        else [Column.GAME_ID, Column.PERIOD_ID, Column.TEAM_ID]
+                    ),
+                    maintain_order=True,
                 )
                 .agg([pl.col(Column.OBJECT_ID).n_unique().alias("objects")])
                 .sort([segment_id])
@@ -391,7 +406,7 @@ class EFPI(FormationDetection):
                                 segment_id,
                             ],
                         )
-                        .group_by(columns)
+                        .group_by(columns, maintain_order=True)
                         .agg([pl.len().alias("length")])
                         .with_columns(
                             pl.col("length")
@@ -422,9 +437,12 @@ class EFPI(FormationDetection):
 
             segment_coordinates = (
                 df1.group_by(
-                    group_by_columns + [segment_id]
-                    if self._every != "period"
-                    else group_by_columns
+                    (
+                        group_by_columns + [segment_id]
+                        if self._every != "period"
+                        else group_by_columns
+                    ),
+                    maintain_order=True,
                 )
                 .agg(
                     [
@@ -467,7 +485,8 @@ class EFPI(FormationDetection):
                         pl.map_groups(
                             exprs=self._exprs_variables,
                             function=lambda group: self._compute(group),
-                            return_dtype=pl.Struct,
+                            return_dtype=self.return_dtypes,
+                            returns_scalar=True,
                         ).alias("result")
                     )
                     .unnest("result")

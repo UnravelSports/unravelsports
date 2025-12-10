@@ -40,8 +40,6 @@ from kloppy import skillcorner, sportec
 from kloppy.domain import Ground, TrackingDataset, Orientation
 from typing import List, Dict
 
-from spektral.data import Graph
-
 import pytest
 
 import numpy as np
@@ -126,6 +124,7 @@ class TestKloppyPolarsData:
             coordinates="tracab",
             include_empty_frames=False,
             limit=500,
+            only_alive=False,
         )
 
     @pytest.fixture()
@@ -789,7 +788,10 @@ class TestKloppyPolarsData:
         count = np.count_nonzero(np.isclose(arr, 0.0, atol=1e-5))
         assert count == 117
 
+    @pytest.mark.spektral
     def test_padding(self, spc_padding: SoccerGraphConverter):
+        from spektral.data import Graph
+
         spektral_graphs = spc_padding.to_spektral_graphs()
 
         assert 1 == 1
@@ -801,10 +803,54 @@ class TestKloppyPolarsData:
         assert len(data) == 245
         assert isinstance(data[0], Graph)
 
+    def test_padding(self, spc_padding: SoccerGraphConverter):
+        from torch_geometric.data import Data
+
+        pyg_graphs = spc_padding.to_pyg_graphs()
+
+        assert 1 == 1
+
+        data = pyg_graphs
+        for graph in data:
+            assert graph.num_nodes == 23
+
+        assert len(data) == 245
+        assert isinstance(data[0], Data)
+
+    @pytest.mark.spektral
     def test_object_ids(self, spc_padding: SoccerGraphConverter):
         spektral_graphs = spc_padding.to_spektral_graphs(include_object_ids=True)
 
         assert spektral_graphs[10].object_ids == [
+            None,  # padded players
+            None,
+            None,
+            "10326",
+            "1138",
+            "11495",
+            "12788",
+            "5568",
+            "5585",
+            "6890",
+            "7207",
+            None,
+            None,
+            None,
+            "10308",
+            "1298",
+            "17902",
+            "2395",
+            "4812",
+            "5472",
+            "6158",
+            "9724",
+            "ball",
+        ]
+
+    def test_object_ids_pyg(self, spc_padding: SoccerGraphConverter):
+        graphs = spc_padding.to_pyg_graphs(include_object_ids=True)
+
+        assert graphs[10].object_ids == [
             None,  # padded players
             None,
             None,
@@ -852,10 +898,14 @@ class TestKloppyPolarsData:
         assert a0 == 23
         assert a1 == 23
 
+    @pytest.mark.spektral
     def test_spektral_graph(self, soccer_polars_converter: SoccerGraphConverter):
         """
         Test navigating (next/prev) through events
         """
+
+        from spektral.data import Graph
+
         spektral_graphs = soccer_polars_converter.to_spektral_graphs()
 
         assert 1 == 1
@@ -933,6 +983,91 @@ class TestKloppyPolarsData:
                 split_train=4, split_test=5, by_graph_id=True, random_seed=42
             )
 
+    def test_pyg_graph(self, soccer_polars_converter: SoccerGraphConverter):
+        """
+        Test navigating (next/prev) through events
+        """
+
+        from torch_geometric.data import Data
+
+        pyg_graphs = soccer_polars_converter.to_pyg_graphs()
+
+        assert 1 == 1
+
+        data = pyg_graphs
+        assert data[0].id == "2417-1524"
+        assert len(data) == 383
+        assert isinstance(data[0], Data)
+
+        assert data[0].frame_id == 1524
+        assert data[-1].frame_id == 2097
+
+        dataset = GraphDataset(graphs=pyg_graphs)
+        N, F, S, n_out, n = dataset.dimensions()
+        assert N == 20
+        assert F == 15
+        assert S == 6
+        assert n_out == 1
+        assert n == 383
+
+        train, test, val = dataset.split_test_train_validation(
+            split_train=4,
+            split_test=1,
+            split_validation=1,
+            by_graph_id=True,
+            random_seed=42,
+        )
+        assert train.n_graphs == 255
+        assert test.n_graphs == 63
+        assert val.n_graphs == 65
+
+        train, test, val = dataset.split_test_train_validation(
+            split_train=4,
+            split_test=1,
+            split_validation=1,
+            by_graph_id=False,
+            random_seed=42,
+        )
+        assert train.n_graphs == 255
+        assert test.n_graphs == 63
+        assert val.n_graphs == 65
+
+        train, test, val = dataset.split_test_train_validation(
+            split_train=4,
+            split_test=1,
+            split_validation=1,
+            by_graph_id=True,
+            random_seed=42,
+            test_label_ratio=(1 / 3),
+            train_label_ratio=(3 / 4),
+            val_label_ratio=(1 / 2),
+        )
+
+        assert train.n_graphs == 161
+        assert test.n_graphs == 50
+        assert val.n_graphs == 62
+
+        train, test = dataset.split_test_train(
+            split_train=4, split_test=1, by_graph_id=False, random_seed=42
+        )
+        assert train.n_graphs == 306
+        assert test.n_graphs == 77
+
+        train, test = dataset.split_test_train(
+            split_train=4, split_test=5, by_graph_id=False, random_seed=42
+        )
+        assert train.n_graphs == 170
+        assert test.n_graphs == 213
+
+        with pytest.raises(
+            NotImplementedError,
+            match="Make sure split_train > split_test >= split_validation, other behaviour is not supported when by_graph_id is True...",
+        ):
+            dataset.split_test_train(
+                split_train=4, split_test=5, by_graph_id=True, random_seed=42
+            )
+
+    @pytest.mark.spektral
     def test_to_spektral_graph_level_features(
         self,
         soccer_polars_converter_graph_and_additional_features: SoccerGraphConverter,
@@ -941,6 +1076,9 @@ class TestKloppyPolarsData:
         """
         Test navigating (next/prev) through events
         """
+
+        from spektral.data import Graph
+
         soccer_polars_converter_graph_and_additional_features.settings.orientation = (
             Orientation.STATIC_HOME_AWAY
         )
@@ -976,6 +1114,54 @@ class TestKloppyPolarsData:
         assert not np.array_equal(data[0].x, data[5].x)
         assert not np.array_equal(data[0].e, data[5].e)
 
+    def test_to_spektral_graph_level_features(
+        self,
+        soccer_polars_converter_graph_and_additional_features: SoccerGraphConverter,
+        single_frame_node_feature_global_result_file: str,
+    ):
+        """
+        Test navigating (next/prev) through events
+        """
+
+        from torch_geometric.data import Data
+
+        soccer_polars_converter_graph_and_additional_features.settings.orientation = (
+            Orientation.STATIC_HOME_AWAY
+        )
+
+        frame = soccer_polars_converter_graph_and_additional_features.dataset.filter(
+            pl.col("graph_id") == "2417-1529"
+        )
+
+        assert len(frame) == 15
+
+        pyg_graphs = (
+            soccer_polars_converter_graph_and_additional_features.to_pyg_graphs()
+        )
+
+        assert 1 == 1
+
+        data = pyg_graphs
+        assert data[5].id == "2417-1529"
+        assert len(data) == 383
+        assert isinstance(data[0], Data)
+
+        x = data[5].x
+
+        np.testing.assert_allclose(
+            x, np.load(single_frame_node_feature_global_result_file), rtol=1e-3
+        )
+
+        e = data[5].edge_attr
+        assert e.shape == (129, 7)
+        assert e[:, 6][0] == 0.90
+
+        assert data[5].edge_index.shape == (2, 129)
+
+        assert data[0] != data[5]
+        assert not np.array_equal(data[0].x, data[5].x)
+        assert not np.array_equal(data[0].edge_attr, data[5].edge_attr)
+
     def test_line_method(self):
         positions = np.array([[1.0, 1.0], [2.0, 3.0], [0.5, 2.5], [4.0, 1.0]])
 
@@ -1010,6 +1196,7 @@ class TestKloppyPolarsData:
 
         assert np.array_equal(valid_mask, np.array([True, True, False, False]))
 
+    @pytest.mark.local_only
     def test_plot_graph(self, soccer_polars_converter: SoccerGraphConverter):
 
         plot_path = join("tests", "files", "plot", "test-1.mp4")
@@ -1401,7 +1588,7 @@ class TestKloppyPolarsData:
         import pytest
         from polars.exceptions import PanicException
 
-        with pytest.raises(PanicException):
+        with pytest.raises(pl.exceptions.InvalidOperationError):
             model = EFPI(dataset=kloppy_polars_sportec_dataset)
             model.fit(
                 formations=["442"],
