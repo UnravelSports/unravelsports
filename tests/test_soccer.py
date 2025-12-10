@@ -1196,6 +1196,7 @@ class TestKloppyPolarsData:
 
         assert np.array_equal(valid_mask, np.array([True, True, False, False]))
 
+    @pytest.mark.skipif(os.getenv("CI") == None, reason="Skip in CI")
     def test_plot_graph(self, soccer_polars_converter: SoccerGraphConverter):
 
         plot_path = join("tests", "files", "plot", "test-1.mp4")

@@ -20,7 +20,6 @@ test_deps_common = [
     "black[jupyter]==24.4.2",
     "matplotlib>=3.9",
     "mplsoccer>=1.4",
-    "ffmpeg-python==0.2.0",
 ]
 
 test_deps_py311_spektral = [

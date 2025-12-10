@@ -87,28 +87,6 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install -e .[${{ matrix.test-deps }}]
       shell: bash
-    
-    # Install FFmpeg on Ubuntu
-    - name: Install FFmpeg (Ubuntu)
-      if: runner.os == 'Linux'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y ffmpeg
-      shell: bash
-
-    # Install FFmpeg on macOS
-    - name: Install FFmpeg (macOS)
-      if: runner.os == 'macOS'
-      run: |
-        brew install ffmpeg
-      shell: bash
-
-    # Install FFmpeg on Windows
-    - name: Install FFmpeg (Windows)
-      if: runner.os == 'Windows'
-      run: |
-        choco install ffmpeg -y
-      shell: pwsh
 
     # Windows - Install dependencies
     - name: Install dependencies (Windows)
