@@ -335,5 +335,4 @@ class AmericanFootballGraphConverter(DefaultGraphConverter):
                 ]
             )
             .drop("result_dict")
-            .sort(pl.col(Column.FRAME_ID))
         )

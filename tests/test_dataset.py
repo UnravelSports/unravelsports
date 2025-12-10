@@ -64,6 +64,7 @@ class TestGraphDatasetAutoDetection:
             )
         return graphs
 
+    @pytest.mark.spektral
     def test_auto_detect_spektral_graphs(self, spektral_graphs):
         """Test that Spektral graphs are auto-detected"""
 
@@ -101,6 +102,7 @@ class TestGraphDatasetExplicitFormat:
             )
         return graphs
 
+    @pytest.mark.spektral
     def test_dict_graphs_with_spektral_format(self, dict_graphs):
         """Test creating SpektralGraphDataset from dicts with explicit format"""
         dataset = GraphDataset(graphs=dict_graphs, format="spektral")
@@ -118,15 +120,23 @@ class TestGraphDatasetExplicitFormat:
         assert len(dataset) == 10
         assert repr(dataset) == "PyGGraphDataset(n_graphs=10)"
 
+    @pytest.mark.spektral
     def test_dict_graphs_without_format_raises_error(self, dict_graphs):
         """Test that dicts without format raise an error"""
         assert isinstance(GraphDataset(graphs=dict_graphs), SpektralGraphDataset)
+
+    def test_dict_graphs_without_format_raises_error_pyg(self, dict_graphs):
+        """Test that dicts without format raise an error"""
+        assert isinstance(
+            GraphDataset(graphs=dict_graphs, format="pyg"), PyGGraphDataset
+        )
 
     def test_dict_graphs_with_invalid_format_raises_error(self, dict_graphs):
         """Test that invalid format raises an error"""
         with pytest.raises(ValueError):
             GraphDataset(graphs=dict_graphs, format="invalid")
 
+    @pytest.mark.spektral
     def test_pickle_file_with_spektral_format(self, tmp_path, dict_graphs):
         """Test loading pickle file with spektral format"""
         import gzip
@@ -140,6 +150,21 @@ class TestGraphDatasetExplicitFormat:
         dataset = GraphDataset(pickle_file=str(pickle_path), format="spektral")
 
         assert isinstance(dataset, SpektralGraphDataset)
+        assert len(dataset) == 10
+
+    def test_pickle_file_with_pyg_format(self, tmp_path, dict_graphs):
+        """Test loading pickle file with spektral format"""
+        import gzip
+        import pickle
+
+        # Create a pickle file
+        pickle_path = tmp_path / "test_graphs.pickle.gz"
+        with gzip.open(pickle_path, "wb") as f:
+            pickle.dump(dict_graphs, f)
+
+        dataset = GraphDataset(pickle_file=str(pickle_path), format="pyg")
+
+        assert isinstance(dataset, PyGGraphDataset)
         assert len(dataset) == 10
 
     def test_pickle_file_with_pyg_format(self, tmp_path, dict_graphs):
@@ -157,6 +182,7 @@ class TestGraphDatasetExplicitFormat:
         assert isinstance(dataset, PyGGraphDataset)
         assert len(dataset) == 10
 
+    @pytest.mark.spektral
     def test_pickle_file_without_format_raises_error(self, tmp_path, dict_graphs):
         """Test that pickle file without format raises an error"""
         import gzip
@@ -169,6 +195,19 @@ class TestGraphDatasetExplicitFormat:
         assert isinstance(
             GraphDataset(pickle_file=str(pickle_path)), SpektralGraphDataset
         )
+        assert isinstance(
+            GraphDataset(pickle_file=str(pickle_path), format="pyg"), PyGGraphDataset
+        )
+
+    def test_pickle_file_without_format_raises_error_pyg(self, tmp_path, dict_graphs):
+        """Test that pickle file without format raises an error"""
+        import gzip
+        import pickle
+
+        pickle_path = tmp_path / "test_graphs.pickle.gz"
+        with gzip.open(pickle_path, "wb") as f:
+            pickle.dump(dict_graphs, f)
+
         assert isinstance(
             GraphDataset(pickle_file=str(pickle_path), format="pyg"), PyGGraphDataset
         )
@@ -226,6 +265,7 @@ class TestGraphDatasetSplitting:
         assert len(test) == 20
         assert len(train) + len(test) == len(pyg_dataset)
 
+    @pytest.mark.spektral
     def test_spektral_split_test_train(self, spektral_dataset):
         """Test Spektral dataset train/test split"""
         train, test = spektral_dataset.split_test_train(0.8, 0.2, random_seed=42)
@@ -250,6 +290,7 @@ class TestGraphDatasetSplitting:
         assert len(val) == 10
         assert len(train) + len(test) + len(val) == len(pyg_dataset)
 
+    @pytest.mark.spektral
     def test_spektral_split_test_train_validation(self, spektral_dataset):
         """Test Spektral dataset train/test/validation split"""
         train, test, val = spektral_dataset.split_test_train_validation(
@@ -298,6 +339,7 @@ class TestGraphDatasetEdgeCases:
 class TestGraphDatasetRepr:
     """Test string representation of datasets"""
 
+    @pytest.mark.spektral
     def test_spektral_repr(self):
         """Test SpektralGraphDataset repr"""
         from spektral.data import Graph

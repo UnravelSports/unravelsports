@@ -5,19 +5,23 @@ try:
     from torch_geometric.nn import CGConv, global_mean_pool
 
     _HAS_TORCH_GEOMETRIC = True
+    _BASE_CLASS = nn.Module
 except ImportError:
     _HAS_TORCH_GEOMETRIC = False
+    _BASE_CLASS = object
 
 try:
     import pytorch_lightning as pyl
     from torchmetrics import AUROC, Accuracy
 
     _HAS_PYTORCH_LIGHTNING = True
+    _PYL_BASE_CLASS = pyl.LightningModule
 except ImportError:
     _HAS_PYTORCH_LIGHTNING = False
+    _PYL_BASE_CLASS = object
 
 
-class PyGCrystalGraphClassifier(nn.Module):
+class PyGCrystalGraphClassifier(_BASE_CLASS):
     """
     Graph Classifier with CGConv using edge features.
     """
@@ -100,7 +104,7 @@ class PyGCrystalGraphClassifier(nn.Module):
         return x
 
 
-class PyGLightningCrystalGraphClassifier(pyl.LightningModule):
+class PyGLightningCrystalGraphClassifier(_PYL_BASE_CLASS):
     def __init__(
         self,
         n_layers=3,

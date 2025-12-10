@@ -5,17 +5,9 @@ from unravel.utils import dummy_labels, dummy_graph_ids, GraphDataset
 from unravel.utils.objects.graph_dataset import SpektralGraphDataset
 from unravel.classifiers import CrystalGraphClassifier
 
-from tensorflow.keras.models import load_model
-from tensorflow.keras.losses import BinaryCrossentropy
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.metrics import AUC, BinaryAccuracy
-
-
 from kloppy import skillcorner
 from kloppy.domain import TrackingDataset
 from typing import List, Dict
-
-from spektral.data import DisjointLoader
 
 import pytest
 
@@ -158,7 +150,14 @@ class TestSpektral:
             verbose=False,
         )
 
+    @pytest.mark.spektral
     def test_soccer_training(self, soccer_converter: SoccerGraphConverter):
+        from tensorflow.keras.models import load_model
+        from tensorflow.keras.losses import BinaryCrossentropy
+        from tensorflow.keras.optimizers import Adam
+        from tensorflow.keras.metrics import AUC, BinaryAccuracy
+        from spektral.data import DisjointLoader
+
         train = GraphDataset(graphs=soccer_converter.to_spektral_graphs())
 
         cd = soccer_converter.to_custom_dataset()
@@ -206,7 +205,11 @@ class TestSpektral:
 
         assert np.allclose(pred, loaded_pred, atol=1e-8)
 
+    @pytest.mark.spektral
     def test_soccer_prediction(self, soccer_converter_preds: SoccerGraphConverter):
+        from tensorflow.keras.models import load_model
+        from spektral.data import DisjointLoader
+
         pred_dataset = GraphDataset(graphs=soccer_converter_preds.to_spektral_graphs())
         loader_pred = DisjointLoader(
             pred_dataset, batch_size=32, epochs=1, shuffle=False
@@ -225,7 +228,14 @@ class TestSpektral:
         assert df["frame_id"].iloc[0] == "2417-1524"
         assert df["frame_id"].iloc[-1] == "2417-1621"
 
+    @pytest.mark.spektral
     def test_bdb_training(self, bdb_converter: AmericanFootballGraphConverter):
+        from tensorflow.keras.models import load_model
+        from tensorflow.keras.losses import BinaryCrossentropy
+        from tensorflow.keras.optimizers import Adam
+        from tensorflow.keras.metrics import AUC, BinaryAccuracy
+        from spektral.data import DisjointLoader
+
         train = GraphDataset(graphs=bdb_converter.to_spektral_graphs())
 
         cd = bdb_converter.to_custom_dataset()
@@ -274,7 +284,11 @@ class TestSpektral:
 
         assert np.allclose(pred, loaded_pred, atol=1e-8)
 
+    @pytest.mark.spektral
     def test_dbd_prediction(self, bdb_converter_preds: AmericanFootballGraphConverter):
+        from tensorflow.keras.models import load_model
+        from spektral.data import DisjointLoader
+
         pred_dataset = GraphDataset(graphs=bdb_converter_preds.to_spektral_graphs())
         loader_pred = DisjointLoader(
             pred_dataset, batch_size=32, epochs=1, shuffle=False

@@ -219,6 +219,9 @@ class DefaultGraphConverter:
 
         return pyg_graphs
 
+    def to_pyg_graphs(self, include_object_ids: bool = False):
+        return self.to_pytorch_graphs(include_object_ids)
+
     def to_spektral_graphs(
         self, include_object_ids: bool = False
     ) -> List["spektral.data.Graph"]:

@@ -587,7 +587,7 @@ class SoccerGraphConverter(DefaultGraphConverter):
                 global_feature_type=self.global_feature_type,
                 **frame_data,
             )
-        
+
         return {
             "e": edge_features.tolist(),  # Remove pl.Series wrapper
             "x": node_features.tolist(),  # Remove pl.Series wrapper
@@ -601,7 +601,9 @@ class SoccerGraphConverter(DefaultGraphConverter):
             self.graph_id_column: frame_data[self.graph_id_column][0],
             self.label_column: frame_data[self.label_column][0],
             "frame_id": frame_id,
-            "object_ids": frame_data[Column.OBJECT_ID].tolist(),  # Remove pl.Series wrapper
+            "object_ids": frame_data[
+                Column.OBJECT_ID
+            ].tolist(),  # Remove pl.Series wrapper
             "ball_owning_team_id": ball_owning_team_id,
         }
 
@@ -614,7 +616,7 @@ class SoccerGraphConverter(DefaultGraphConverter):
                     exprs=self._exprs_variables + [Column.FRAME_ID],
                     function=self._compute,
                     return_dtype=self.return_dtypes,
-                    returns_scalar=True
+                    returns_scalar=True,
                 ).alias("result_dict")
             )
             .with_columns(
@@ -893,7 +895,7 @@ class SoccerGraphConverter(DefaultGraphConverter):
             """Plot graph features (node features, adjacency matrix, edge features)"""
             import matplotlib.pyplot as plt
 
-            num_rows = self._graph.x.shape[0]
+            num_rows = self._graph["x"].shape[0]
 
             labels = (
                 [
@@ -902,7 +904,7 @@ class SoccerGraphConverter(DefaultGraphConverter):
                         if pid != Constant.BALL
                         else Constant.BALL
                     )
-                    for pid in self._graph.object_ids
+                    for pid in self._graph["object_ids"]
                 ]
                 if not anonymous
                 else [str(i) for i in range(num_rows)]
@@ -920,8 +922,8 @@ class SoccerGraphConverter(DefaultGraphConverter):
 
             # Plot node features
             ax1 = self._fig.add_subplot(self._gs[node_pos])
-            ax1.imshow(self._graph.x, aspect="auto", cmap="YlOrRd")
-            ax1.set_xlabel(f"Node Features {self._graph.x.shape}")
+            ax1.imshow(self._graph["x"], aspect="auto", cmap="YlOrRd")
+            ax1.set_xlabel(f"Node Features {self._graph['x'].shape}")
 
             # Set y labels to integers
             ax1.set_yticks(range(num_rows))
@@ -934,12 +936,12 @@ class SoccerGraphConverter(DefaultGraphConverter):
 
             # Plot adjacency matrix
             ax2 = self._fig.add_subplot(self._gs[adj_pos])
-            ax2.imshow(self._graph.a.toarray(), aspect="auto", cmap="YlOrRd")
-            ax2.set_xlabel(f"Adjacency Matrix {self._graph.a.shape}")
+            ax2.imshow(self._graph["a"].toarray(), aspect="auto", cmap="YlOrRd")
+            ax2.set_xlabel(f"Adjacency Matrix {self._graph['a'].shape}")
 
             # Set both x and y labels to integers
-            num_rows_a = self._graph.a.toarray().shape[0]
-            num_cols_a = self._graph.a.toarray().shape[1]
+            num_rows_a = self._graph["a"].toarray().shape[0]
+            num_cols_a = self._graph["a"].toarray().shape[1]
 
             ax2.set_yticks(range(num_rows_a))
             ax2.set_yticklabels(labels)
@@ -950,15 +952,19 @@ class SoccerGraphConverter(DefaultGraphConverter):
             # Plot Edge Features
             ax3 = self._fig.add_subplot(self._gs[edge_pos])
 
-            _, size_a = non_zeros(self._graph.a.toarray()[0 : self._ball_carrier_idx])
+            _, size_a = non_zeros(
+                self._graph["a"].toarray()[0 : self._ball_carrier_idx]
+            )
             ball_carrier_edge_idx, num_rows_e = non_zeros(
                 np.asarray(
-                    [list(x) for x in self._graph.a.toarray()][self._ball_carrier_idx]
+                    [list(x) for x in self._graph["a"].toarray()][
+                        self._ball_carrier_idx
+                    ]
                 )
             )
 
             im3 = ax3.imshow(
-                self._graph.e[size_a : num_rows_e + size_a, :],
+                self._graph["e"][size_a : num_rows_e + size_a, :],
                 aspect="auto",
                 cmap="YlOrRd",
             )
@@ -966,7 +972,7 @@ class SoccerGraphConverter(DefaultGraphConverter):
             ax3.set_yticks(range(num_rows_e))
             ax3.set_yticklabels(list(ball_carrier_edge_idx[0]), fontsize=18)
             ball_carrier_edge_idxs = list(ball_carrier_edge_idx[0])
-            ax3.set_xlabel(f"Edge Features {self._graph.e.shape}")
+            ax3.set_xlabel(f"Edge Features {self._graph['e'].shape}")
 
             ax3_labels = ax3.get_yticklabels()
             if self._ball_carrier_idx in ball_carrier_edge_idx[0]:
@@ -1138,13 +1144,6 @@ class SoccerGraphConverter(DefaultGraphConverter):
                 ax.set_title(self._gameclock, fontsize=22)
 
         def frame_plot(self, frame_data):
-            try:
-                from spektral.data import Graph
-            except ImportError:
-                raise ImportError(
-                    "Seems like you don't have spektral installed. Please"
-                    " install it using: pip install spektral==1.20.0"
-                )
 
             def timestamp_to_gameclock(timestamp, period_id):
                 total_seconds = timestamp.total_seconds()
@@ -1177,15 +1176,15 @@ class SoccerGraphConverter(DefaultGraphConverter):
                 )
                 y = np.asarray([features[self.label_column]])
 
-                self._graph = Graph(
-                    a=a,
-                    x=x,
-                    e=e,
-                    y=y,
-                    frame_id=features["frame_id"],
-                    object_ids=frame_data[Column.OBJECT_ID],
-                    ball_owning_team_id=frame_data[Column.BALL_OWNING_TEAM_ID][0],
-                )
+                self._graph = {
+                    "a": a,
+                    "x": x,
+                    "e": e,
+                    "y": y,
+                    "frame_id": features["frame_id"],
+                    "object_ids": frame_data[Column.OBJECT_ID],
+                    "ball_owning_team_id": frame_data[Column.BALL_OWNING_TEAM_ID][0],
+                }
 
                 self._ball_carrier_idx = np.where(
                     frame_data[Column.IS_BALL_CARRIER] == True

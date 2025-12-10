@@ -244,7 +244,7 @@ class _GraphDatasetMixin:
             graph_ids = np.asarray(
                 [
                     (
-                        g.get("id")[0]
+                        g.get("id")
                         if hasattr(g, "get") and g.get("id") is not None
                         else getattr(g, "graph_id", None)
                     )
@@ -393,113 +393,107 @@ try:
     from spektral.data.utils import get_spec
     import tensorflow as tf
 
-    _SpektralBase = Dataset
     _HAS_SPEKTRAL = True
+
+    class SpektralGraphDataset(_GraphDatasetMixin, Dataset, Sequence):
+        """
+        Spektral-specific GraphDataset implementation.
+        """
+
+        def _SpektralGraphDataset__convert(self, data) -> List:
+            """Convert incoming data to Spektral Graph format"""
+            from spektral.data import Graph
+
+            if isinstance(data[0], Graph):
+                return [g for i, g in enumerate(data) if i % self.sample == 0]
+            elif isinstance(data[0], dict):
+                return [
+                    Graph(
+                        x=g["x"],
+                        a=g["a"],
+                        e=g["e"],
+                        y=g["y"],
+                        id=g["id"],
+                        frame_id=g.get("frame_id", None),
+                        object_ids=g.get("object_ids", None),
+                        ball_owning_team_id=g.get("ball_owning_team_id", None),
+                    )
+                    for i, g in enumerate(data)
+                    if i % self.sample == 0
+                ]
+            else:
+                raise ValueError(
+                    f"Cannot convert type {type(data[0])} to Spektral Graph. "
+                    "Expected Spektral Graph or dict."
+                )
+
+        _GraphDatasetMixin__convert = _SpektralGraphDataset__convert
+
+        def read(self) -> List:
+            """Return a list of Spektral Graph objects"""
+            graphs = self._SpektralGraphDataset__convert(self.graphs)
+            logging.info(f"Loading {len(graphs)} graphs into SpektralGraphDataset...")
+            return graphs
+
+        def dimensions(self) -> Tuple[int, int, int, int, int]:
+            """N, F, S, n_out, n"""
+            N = max(g.n_nodes for g in self)
+            F = self.n_node_features
+            S = self.n_edge_features
+            n_out = self.n_labels
+            n = len(self)
+            return (N, F, S, n_out, n)
+
+        @property
+        def signature(self):
+            """Compute TensorFlow signature for the dataset"""
+            from spektral.data.utils import get_spec
+            import tensorflow as tf
+
+            if len(self.graphs) == 0:
+                return None
+            signature = {}
+            graph = self.graphs[0]
+
+            if graph.x is not None:
+                signature["x"] = dict()
+                signature["x"]["spec"] = get_spec(graph.x)
+                signature["x"]["shape"] = (None, self.n_node_features)
+                signature["x"]["dtype"] = tf.as_dtype(graph.x.dtype)
+
+            if graph.a is not None:
+                signature["a"] = dict()
+                signature["a"]["spec"] = get_spec(graph.a)
+                signature["a"]["shape"] = (None, None)
+                signature["a"]["dtype"] = tf.as_dtype(graph.a.dtype)
+
+            if graph.e is not None:
+                signature["e"] = dict()
+                signature["e"]["spec"] = get_spec(graph.e)
+                signature["e"]["shape"] = (None, self.n_edge_features)
+                signature["e"]["dtype"] = tf.as_dtype(graph.e.dtype)
+
+            if graph.y is not None:
+                signature["y"] = dict()
+                signature["y"]["spec"] = get_spec(graph.y)
+                signature["y"]["shape"] = (self.n_labels,)
+                signature["y"]["dtype"] = tf.as_dtype(np.array(graph.y).dtype)
+
+            if hasattr(graph, "g") and graph.g is not None:
+                signature["g"] = dict()
+                signature["g"]["spec"] = get_spec(graph.g)
+                signature["g"]["shape"] = graph.g.shape
+                signature["g"]["dtype"] = tf.as_dtype(np.array(graph.g).dtype)
+
+            return signature
+
 except ImportError:
-    _SpektralBase = object
     _HAS_SPEKTRAL = False
 
-
-class SpektralGraphDataset(_GraphDatasetMixin, _SpektralBase, Sequence):
-    """
-    Spektral-specific GraphDataset implementation.
-    """
-
-    def _SpektralGraphDataset__convert(self, data) -> List:
-        """Convert incoming data to Spektral Graph format"""
-        if not _HAS_SPEKTRAL:
+    # Create a dummy class that raises an informative error
+    class SpektralGraphDataset:
+        def __init__(self, *args, **kwargs):
             raise SpektralDependencyError()
-
-        from spektral.data import Graph
-
-        if isinstance(data[0], Graph):
-            return [g for i, g in enumerate(data) if i % self.sample == 0]
-        elif isinstance(data[0], dict):
-            return [
-                Graph(
-                    x=g["x"],
-                    a=g["a"],
-                    e=g["e"],
-                    y=g["y"],
-                    id=g["id"],
-                    frame_id=g.get("frame_id", None),
-                    object_ids=g.get("object_ids", None),
-                    ball_owning_team_id=g.get("ball_owning_team_id", None),
-                )
-                for i, g in enumerate(data)
-                if i % self.sample == 0
-            ]
-        else:
-            raise ValueError(
-                f"Cannot convert type {type(data[0])} to Spektral Graph. "
-                "Expected Spektral Graph or dict."
-            )
-
-    _GraphDatasetMixin__convert = _SpektralGraphDataset__convert
-
-    def read(self) -> List:
-        """Return a list of Spektral Graph objects"""
-        if not _HAS_SPEKTRAL:
-            raise SpektralDependencyError()
-
-        graphs = self._SpektralGraphDataset__convert(self.graphs)
-        logging.info(f"Loading {len(graphs)} graphs into SpektralGraphDataset...")
-        return graphs
-
-    def dimensions(self) -> Tuple[int, int, int, int, int]:
-        """N, F, S, n_out, n"""
-        N = max(g.n_nodes for g in self)
-        F = self.n_node_features
-        S = self.n_edge_features
-        n_out = self.n_labels
-        n = len(self)
-        return (N, F, S, n_out, n)
-
-    @property
-    def signature(self):
-        """Compute TensorFlow signature for the dataset"""
-        if not _HAS_SPEKTRAL:
-            raise SpektralDependencyError()
-
-        from spektral.data.utils import get_spec
-        import tensorflow as tf
-
-        if len(self.graphs) == 0:
-            return None
-        signature = {}
-        graph = self.graphs[0]
-
-        if graph.x is not None:
-            signature["x"] = dict()
-            signature["x"]["spec"] = get_spec(graph.x)
-            signature["x"]["shape"] = (None, self.n_node_features)
-            signature["x"]["dtype"] = tf.as_dtype(graph.x.dtype)
-
-        if graph.a is not None:
-            signature["a"] = dict()
-            signature["a"]["spec"] = get_spec(graph.a)
-            signature["a"]["shape"] = (None, None)
-            signature["a"]["dtype"] = tf.as_dtype(graph.a.dtype)
-
-        if graph.e is not None:
-            signature["e"] = dict()
-            signature["e"]["spec"] = get_spec(graph.e)
-            signature["e"]["shape"] = (None, self.n_edge_features)
-            signature["e"]["dtype"] = tf.as_dtype(graph.e.dtype)
-
-        if graph.y is not None:
-            signature["y"] = dict()
-            signature["y"]["spec"] = get_spec(graph.y)
-            signature["y"]["shape"] = (self.n_labels,)
-            signature["y"]["dtype"] = tf.as_dtype(np.array(graph.y).dtype)
-
-        if hasattr(graph, "g") and graph.g is not None:
-            signature["g"] = dict()
-            signature["g"]["spec"] = get_spec(graph.g)
-            signature["g"]["shape"] = graph.g.shape
-            signature["g"]["dtype"] = tf.as_dtype(np.array(graph.g).dtype)
-
-        return signature
 
 
 # =============================================================================
@@ -611,6 +605,10 @@ class PyGGraphDataset(_GraphDatasetMixin, Sequence):
     def __repr__(self):
         return f"PyGGraphDataset(n_graphs={len(self)})"
 
+    @property
+    def n_graphs(self):
+        return len(self)
+
 
 def GraphDataset(
     format: Optional[Literal["spektral", "pyg"]] = "spektral", **kwargs
@@ -640,12 +638,29 @@ def GraphDataset(
         # Explicit format required for pickle files
         dataset = GraphDataset(pickle_file='graphs.pickle.gz', format='spektral')
     """
+    import warnings
+
+    if format == "spektral":
+        warnings.warn(
+            """
+unravelsports now supports PyTorch Geometric. The default "format" will change from 'spektral' to 'pyg' in a future version. 
+\nNote: format='spektral' only really works on Python 3.11, due to very specific package requirements. PyTorch works on 3.11+.
+""",
+            FutureWarning,
+        )
 
     def _create_dataset(fmt: str):
         """Helper function to create the appropriate dataset"""
         if fmt.lower() == "spektral":
+            if not _HAS_SPEKTRAL:
+                raise SpektralDependencyError()
             return SpektralGraphDataset(**kwargs)
         elif fmt.lower() == "pyg":
+            if not _HAS_TORCH_GEOMETRIC:
+                raise ImportError(
+                    "PyTorch Geometric is required. "
+                    "Install it using: pip install torch torch-geometric"
+                )
             return PyGGraphDataset(**kwargs)
         else:
             raise ValueError(f"format must be 'spektral' or 'pyg', got '{fmt}'")

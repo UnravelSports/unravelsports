@@ -41,8 +41,7 @@ class SpektralDependencyError(ImportError):
             "Installation:\n"
             "  pip install spektral==1.2.0 keras==2.14.0 && "
             "(pip install tensorflow>=2.14.0 || pip install tensorflow-macos>=2.14.0)"
-            "Warning:\n"
-            "  If you want to use Spektral, it is advised to use unravelsports v1.1.0 or below."
-            "  Going forward, it is advised to continue using PyTorch functionality instead."
+            "\nWarning:\n"
+            "  If you want to use Spektral, it is advised to use unravelsports v1.1.0 or below and Python3.11. Or, simply continue using PyTorch functionality instead."
         )
         super().__init__(self.message)

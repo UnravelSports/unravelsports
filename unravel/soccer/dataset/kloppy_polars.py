@@ -228,15 +228,15 @@ class KloppyPolarsDataset(DefaultDataset):
         vx_smooth = f"{Column.VX}_smoothed"
         vy_smooth = f"{Column.VY}_smoothed"
         vz_smooth = f"{Column.VZ}_smoothed"
-        
+
         # DEBUG: Check group sizes
         group_sizes = df.group_by(Group.BY_OBJECT_PERIOD).agg(
             pl.col(Column.VX).count().alias("count")
         )
-        
+
         window_length = smoothing_params["window_length"]
         polyorder = smoothing_params["polyorder"]
-        
+
         def apply_savgol(series):
             """Apply savgol filter to a series (array of values)."""
             values = series.to_numpy()
@@ -250,9 +250,21 @@ class KloppyPolarsDataset(DefaultDataset):
 
         smoothed = df.group_by(Group.BY_OBJECT_PERIOD, maintain_order=True).agg(
             [
-                pl.col(Column.VX).map_batches(apply_savgol, return_dtype=pl.List(pl.Float64), returns_scalar=True).alias(vx_smooth),
-                pl.col(Column.VY).map_batches(apply_savgol, return_dtype=pl.List(pl.Float64), returns_scalar=True).alias(vy_smooth),
-                pl.col(Column.VZ).map_batches(apply_savgol, return_dtype=pl.List(pl.Float64), returns_scalar=True).alias(vz_smooth),
+                pl.col(Column.VX)
+                .map_batches(
+                    apply_savgol, return_dtype=pl.List(pl.Float64), returns_scalar=True
+                )
+                .alias(vx_smooth),
+                pl.col(Column.VY)
+                .map_batches(
+                    apply_savgol, return_dtype=pl.List(pl.Float64), returns_scalar=True
+                )
+                .alias(vy_smooth),
+                pl.col(Column.VZ)
+                .map_batches(
+                    apply_savgol, return_dtype=pl.List(pl.Float64), returns_scalar=True
+                )
+                .alias(vz_smooth),
             ]
         )
         # Explode the smoothed columns back to original shape
