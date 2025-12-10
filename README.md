@@ -64,7 +64,7 @@ bdb = BigDataBowlDataset(
 
 ### **Graph Neural Networks**
 
-⚽🏈 Convert **[Polars Dataframes](#polars-dataframes)** into [Graphs](examples/graphs_faq.md) to train **graph neural networks**. These [Graphs](examples/graphs_faq.md) can be used with [**Spektral**](https://github.com/danielegrattarola/spektral) - a flexible framework for training graph neural networks. 
+⚽🏈 Convert **[Polars Dataframes](#polars-dataframes)** into [Graphs](examples/graphs_faq.md) to train **graph neural networks**. These [Graphs](examples/graphs_faq.md) can be used with [**PyTorch Geometric**](https://pytorch-geometric.readthedocs.io/en/latest/) or [**Spektral**](https://github.com/danielegrattarola/spektral). 
 `unravelsports` allows you to **randomize** and **split** data into train, test and validation sets along matches, sequences or possessions to avoid leakage and improve model quality. And finally, **train**, **validate** and **test** your (custom) Graph model(s) and easily **predict** on new data.
 
 ```python
@@ -142,9 +142,9 @@ model.fit(
 
 🌀 Quick Start
 -----
-📖 ⚽ The [**Quick Start Jupyter Notebook**](examples/0_quick_start_guide.ipynb) explains how to convert any positional tracking data from **Kloppy** to **Spektral GNN** in a few easy steps while walking you through the most important features and documentation.
+📖 ⚽ The [**Quick Start Jupyter Notebook**](examples/0_quick_start_guide_pyg.ipynb) explains how to convert any positional tracking data from **Kloppy** to **Spektral GNN** in a few easy steps while walking you through the most important features and documentation.
 
-📖 ⚽ The [**Graph Converter Tutorial Jupyter Notebook**](examples/1_kloppy_gnn_train.ipynb) gives an in-depth walkthrough.
+📖 ⚽ The [**Graph Converter Tutorial Jupyter Notebook**](examples/1_kloppy_gnn_train_pyg.ipynb) gives an in-depth walkthrough.
 
 📖 🏈 The [**BigDataBowl Converter Tutorial Jupyter Notebook**](examples/2_big_data_bowl_guide.ipynb) gives an guide on how to convert the BigDataBowl data into Graphs.
 
@@ -169,18 +169,6 @@ The easiest way to get started is:
 pip install unravelsports
 ```
 
-⚠️ Due to compatibility issues **unravelsports** currently only works on Python 3.11 with:
-```
-spektral==1.20.0 
-tensorflow==2.14.0 
-keras==2.14.0
-kloppy==3.17.0
-polars==1.2.1
-```
-These dependencies come pre-installed with the package. It is advised to create a [virtual environment](https://virtualenv.pypa.io/en/latest/).
-
-This package is tested on the latest versions of Ubuntu, MacOS and Windows. 
-
 🌀 Licenses
 ----
 This project is licensed under the [Mozilla Public License Version 2.0 (MPL)](LICENSE), which requires that you include a copy of the license and provide attribution to the original authors. Any modifications you make to the MPL-licensed files must be documented, and the source code for those modifications must be made open-source under the same license.
@@ -196,7 +184,7 @@ If you use this repository for any educational purposes, research, project etc.,
 @software{unravelsports2024repository,
   author = {Bekkers, Joris},
   title = {unravelsports},
-  version = {0.3.0},
+  version = {2.0.0},
   year = {2024},
   publisher = {GitHub},
   url = {https://github.com/unravelsports/unravelsports}
