@@ -1,35 +1,43 @@
 ![unravelsports logo](https://github.com/UnravelSports/unravelsports.github.io/blob/main/imgs/unravelsports-5500x800.png?raw=true)
+
 <div align="right">
 
 [![UnravelSports](https://img.shields.io/badge/powered%20by-UnravelSports-orange.svg?style=flat&colorB=E6B611&colorA=C3C3C3)](https://unravelsports.github.io/)
-[![tl;dr legal](https://img.shields.io/badge/license-Mozilla%20Public%20License%20v2.0-orange.svg?style=flat&colorA=C3C3C3&colorB=E20E6A)](https://www.tldrlegal.com/license/mozilla-public-license-2-0-mpl-2) 
+[![tl;dr legal](https://img.shields.io/badge/license-Mozilla%20Public%20License%20v2.0-orange.svg?style=flat&colorA=C3C3C3&colorB=E20E6A)](https://www.tldrlegal.com/license/mozilla-public-license-2-0-mpl-2)
+
 </div>
 
 🌀 `pip install unravelsports`
 
+🌀 Documentation
+----------------
+
+[unravelsports.readthedocs.io](https://unravelsports.readthedocs.io "https://unravelsports.readthedocs.io")
 
 🌀 What is it?
------
+--------------
 
 The **unravelsports** package aims to aid researchers, analysts and enthusiasts by providing intermediary steps in the complex process of converting raw sports data into meaningful information and actionable insights.
 
 This package currently supports:
-- ⚽ 🏈 [**Polars DataFrame Conversion**](#polars-dataframes) 
-- ⚽ 🏈 [**Graph Neural Network**](#graph-neural-networks) Training, Graph Conversion and Prediction <small>
-  [[🔗 Bekkers & Sahasrabudhe (2023)](https://arxiv.org/pdf/2411.17450)]</small>
-- ⚽ [**Pressing Intensity**](#pressing-intensity) 
-  <small>[[🔗 Bekkers (2024)](https://arxiv.org/pdf/2501.04712)]</small>
-- ⚽ [**Formation and Position Identification (EFPI)**](#formation-and-position-identification) 
-  <small>[[🔗 Bekkers (2025)](https://arxiv.org/pdf/2506.23843)]</small>
+
+- ⚽ 🏈 [**Polars DataFrame Conversion**](#polars-dataframes)
+- ⚽ 🏈 [**Graph Neural Network**](#graph-neural-networks) Training, Graph Conversion and Prediction `<small>`
+  [[🔗 Bekkers &amp; Sahasrabudhe (2023)](https://arxiv.org/pdf/2411.17450)]`</small>`
+- ⚽ [**Pressing Intensity**](#pressing-intensity)
+  `<small>`[[🔗 Bekkers (2024)](https://arxiv.org/pdf/2501.04712)]`</small>`
+- ⚽ [**Formation and Position Identification (EFPI)**](#formation-and-position-identification)
+  `<small>`[[🔗 Bekkers (2025)](https://arxiv.org/pdf/2506.23843)]`</small>`
 
 🌀 Features
------
+-----------
 
 ### **Polars DataFrames**
 
-⚽🏈 **Convert Tracking Data** into [Polars DataFrames](https://pola.rs/) for rapid data conversion and data processing. 
+⚽🏈 **Convert Tracking Data** into [Polars DataFrames](https://pola.rs/) for rapid data conversion and data processing.
 
 ⚽ For soccer we rely on [Kloppy](https://kloppy.pysport.org/) and as such we support Sportec, SkillCorner, PFF / GradientSports, Metrica, StatsPerform, Tracab (CyronHego), SecondSpectrum, HawkEye and Signality tracking data.
+
 ```python
 from unravel.soccer import KloppyPolarsDataset
 
@@ -40,15 +48,14 @@ kloppy_polars_dataset = KloppyPolarsDataset(
     kloppy_dataset=kloppy_dataset
 )
 ```
-|    |   period_id | timestamp       |   frame_id | ball_state   | id             |      x |     y |   z | team_id        | position_name   | game_id        |     vx |     vy |   vz |     v |   ax |   ay |   az |   a | ball_owning_team_id   | is_ball_carrier   |
-|---:|------------:|:----------------|-----------:|:-------------|:---------------|-------:|------:|----:|:---------------|:----------------|:---------------|-------:|-------:|-----:|------:|-----:|-----:|-----:|----:|:----------------------|:------------------|
-|  0 |           1 | 0 days 00:00:00 |      10000 | alive        | DFL-OBJ-00008F | -20.67 | -4.56 |   0 | DFL-CLU-000005 | RCB             | DFL-MAT-J03WPY |  0.393 | -0.214 |    0 | 0.447 |    0 |    0 |    0 |   0 | DFL-CLU-00000P        | False             |
-|  1 |           1 | 0 days 00:00:00 |      10000 | alive        | DFL-OBJ-0000EJ |  -8.86 | -0.94 |   0 | DFL-CLU-000005 | UNK             | DFL-MAT-J03WPY | -0.009 |  0.018 |    0 | 0.02  |    0 |    0 |    0 |   0 | DFL-CLU-00000P        | False             |
-|  2 |           1 | 0 days 00:00:00 |      10000 | alive        | DFL-OBJ-0000F8 |  -2.12 |  9.85 |   0 | DFL-CLU-00000P | RM              | DFL-MAT-J03WPY |  0     |  0     |    0 | 0     |    0 |    0 |    0 |   0 | DFL-CLU-00000P        | False             |
-|  3 |           1 | 0 days 00:00:00 |      10000 | alive        | DFL-OBJ-0000NZ |   0.57 | 23.23 |   0 | DFL-CLU-00000P | RB              | DFL-MAT-J03WPY |  0.179 | -0.134 |    0 | 0.223 |    0 |    0 |    0 |   0 | DFL-CLU-00000P        | False             |
-|  4 |           1 | 0 days 00:00:00 |      10000 | alive        | DFL-OBJ-0001HW | -46.26 |  0.08 |   0 | DFL-CLU-000005 | GK              | DFL-MAT-J03WPY |  0.357 |  0.071 |    0 | 0.364 |    0 |    0 |    0 |   0 | DFL-CLU-00000P        | False             |
 
-
+|   | period_id | timestamp       | frame_id | ball_state | id             |      x |     y | z | team_id        | position_name | game_id        |     vx |     vy | vz |     v | ax | ay | az | a | ball_owning_team_id | is_ball_carrier |
+| -: | --------: | :-------------- | -------: | :--------- | :------------- | -----: | ----: | -: | :------------- | :------------ | :------------- | -----: | -----: | -: | ----: | -: | -: | -: | -: | :------------------ | :-------------- |
+| 0 |         1 | 0 days 00:00:00 |    10000 | alive      | DFL-OBJ-00008F | -20.67 | -4.56 | 0 | DFL-CLU-000005 | RCB           | DFL-MAT-J03WPY |  0.393 | -0.214 |  0 | 0.447 |  0 |  0 |  0 | 0 | DFL-CLU-00000P      | False           |
+| 1 |         1 | 0 days 00:00:00 |    10000 | alive      | DFL-OBJ-0000EJ |  -8.86 | -0.94 | 0 | DFL-CLU-000005 | UNK           | DFL-MAT-J03WPY | -0.009 |  0.018 |  0 |  0.02 |  0 |  0 |  0 | 0 | DFL-CLU-00000P      | False           |
+| 2 |         1 | 0 days 00:00:00 |    10000 | alive      | DFL-OBJ-0000F8 |  -2.12 |  9.85 | 0 | DFL-CLU-00000P | RM            | DFL-MAT-J03WPY |      0 |      0 |  0 |     0 |  0 |  0 |  0 | 0 | DFL-CLU-00000P      | False           |
+| 3 |         1 | 0 days 00:00:00 |    10000 | alive      | DFL-OBJ-0000NZ |   0.57 | 23.23 | 0 | DFL-CLU-00000P | RB            | DFL-MAT-J03WPY |  0.179 | -0.134 |  0 | 0.223 |  0 |  0 |  0 | 0 | DFL-CLU-00000P      | False           |
+| 4 |         1 | 0 days 00:00:00 |    10000 | alive      | DFL-OBJ-0001HW | -46.26 |  0.08 | 0 | DFL-CLU-000005 | GK            | DFL-MAT-J03WPY |  0.357 |  0.071 |  0 | 0.364 |  0 |  0 |  0 | 0 | DFL-CLU-00000P      | False           |
 
 🏈 For American Football we use [BigDataBowl Data](https://www.kaggle.com/competitions/nfl-big-data-bowl-2025/data) directly.
 
@@ -64,7 +71,7 @@ bdb = BigDataBowlDataset(
 
 ### **Graph Neural Networks**
 
-⚽🏈 Convert **[Polars Dataframes](#polars-dataframes)** into [Graphs](examples/graphs_faq.md) to train **graph neural networks**. These [Graphs](examples/graphs_faq.md) can be used with [**PyTorch Geometric**](https://pytorch-geometric.readthedocs.io/en/latest/) or [**Spektral**](https://github.com/danielegrattarola/spektral). 
+⚽🏈 Convert **[Polars Dataframes](#polars-dataframes)** into [Graphs](examples/graphs_faq.md) to train **graph neural networks**. These [Graphs](examples/graphs_faq.md) can be used with [**PyTorch Geometric**](https://pytorch-geometric.readthedocs.io/en/latest/) or [**Spektral**](https://github.com/danielegrattarola/spektral).
 `unravelsports` allows you to **randomize** and **split** data into train, test and validation sets along matches, sequences or possessions to avoid leakage and improve model quality. And finally, **train**, **validate** and **test** your (custom) Graph model(s) and easily **predict** on new data.
 
 ```python
@@ -141,7 +148,8 @@ model.fit(
 ⌛ ***More to come soon...!***
 
 🌀 Quick Start
------
+--------------
+
 📖 ⚽ The [**Quick Start Jupyter Notebook**](examples/0_quick_start_guide_pyg.ipynb) explains how to convert any positional tracking data from **Kloppy** to **Spektral GNN** in a few easy steps while walking you through the most important features and documentation.
 
 📖 ⚽ The [**Graph Converter Tutorial Jupyter Notebook**](examples/1_kloppy_gnn_train_pyg.ipynb) gives an in-depth walkthrough.
@@ -150,19 +158,20 @@ model.fit(
 
 📖 ⚽ The [**Pressing Intensity Tutorial Jupyter Notebook**](examples/pressing_intensity.ipynb) gives a description on how to create Pressing Intensity videos.
 
-
 🌀 Documentation
------
+----------------
+
 For now, follow the [**Graph Converter Tutorial**](examples/1_kloppy_gnn_train.ipynb) and check the [**Graph FAQ**](examples/graphs_faq.md), more documentation will follow!
 
 Additional reading:
 
-📖 [A Graph Neural Network Deep-dive into Successful Counterattacks {A. Sahasrabudhe & J. Bekkers, 2023}](https://github.com/USSoccerFederation/ussf_ssac_23_soccer_gnn/tree/main)
+📖 [A Graph Neural Network Deep-dive into Successful Counterattacks {A. Sahasrabudhe &amp; J. Bekkers, 2023}](https://github.com/USSoccerFederation/ussf_ssac_23_soccer_gnn/tree/main)
 
-🎤 [**Cutting Edge Football Analytics:** _using `polars`, `keras` and `spektral`_ (PyData London, 2025)](https://rawcdn.githack.com/UnravelSports/keynotes/main/html/20250607-PyData-London.html) 
+🎤 [**Cutting Edge Football Analytics:** _using `polars`, `keras` and `spektral`_ (PyData London, 2025)](https://rawcdn.githack.com/UnravelSports/keynotes/main/html/20250607-PyData-London.html)
 
 🌀 Installation
-----
+---------------
+
 The easiest way to get started is:
 
 ```bash
@@ -170,14 +179,17 @@ pip install unravelsports
 ```
 
 🌀 Licenses
-----
+-----------
+
 This project is licensed under the [Mozilla Public License Version 2.0 (MPL)](LICENSE), which requires that you include a copy of the license and provide attribution to the original authors. Any modifications you make to the MPL-licensed files must be documented, and the source code for those modifications must be made open-source under the same license.
 
 🌀 Citation
-----
+-----------
+
 If you use this repository for any educational purposes, research, project etc., please reference both:
 
 📎 [The `unravelsports` package](https://github.com/unravelsports/unravelsports).
+
 <details>
 <summary>BibTex</summary>
 <pre>
@@ -194,7 +206,8 @@ If you use this repository for any educational purposes, research, project etc.,
 
 <br>
 
-📎 [Bekkers, J., & Sahasrabudhe, A. (2024). A Graph Neural Network deep-dive into successful counterattacks. arXiv preprint arXiv:2411.17450.](https://arxiv.org/pdf/2411.17450)
+📎 [Bekkers, J., &amp; Sahasrabudhe, A. (2024). A Graph Neural Network deep-dive into successful counterattacks. arXiv preprint arXiv:2411.17450.](https://arxiv.org/pdf/2411.17450)
+
 <details>
 <summary>BibTex</summary>
 <pre>
@@ -210,6 +223,7 @@ If you use this repository for any educational purposes, research, project etc.,
 <br>
 
 📎 [Bekkers, J. (2024). Pressing Intensity: An Intuitive Measure for Pressing in Soccer. arXiv preprint arXiv:2501.04712.](https://arxiv.org/pdf/2501.04712)
+
 <details>
 <summary>BibTex</summary>
 <pre>
@@ -224,6 +238,7 @@ If you use this repository for any educational purposes, research, project etc.,
 <br>
 
 📎 [Bekkers, J. (2025). EFPI: Elastic Formation and Position Identification in Football (Soccer) using Template Matching and Linear Assignment. arXiv preprint arXiv:2506.23843.](https://arxiv.org/pdf/2506.23843)
+
 <details>
 <summary>BibTex</summary>
 <pre>
@@ -238,9 +253,7 @@ If you use this repository for any educational purposes, research, project etc.,
 <br>
 
 🌀 Social Media
-----
-[<img alt="alt_text" width="40px" src="https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png"/>](https://www.linkedin.com/in/joris-bekkers-33138288/)
-[<img alt="alt_text" width="40px" src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Bluesky_Logo.svg/2319px-Bluesky_Logo.svg.png"/>](https://bsky.app/profile/unravelsports.com)
+---------------
 
-
-
+[`<img alt="alt_text" width="40px" src="https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png"/>`](https://www.linkedin.com/in/joris-bekkers-33138288/)
+[`<img alt="alt_text" width="40px" src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Bluesky_Logo.svg/2319px-Bluesky_Logo.svg.png"/>`](https://bsky.app/profile/unravelsports.com)
