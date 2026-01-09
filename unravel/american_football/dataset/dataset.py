@@ -21,6 +21,116 @@ from .objects import Column, Group, Constant
 
 @dataclass
 class BigDataBowlDataset(DefaultDataset):
+    """Load and preprocess NFL Big Data Bowl tracking data into Polars DataFrame format.
+
+    This class handles NFL tracking data from the Big Data Bowl competition, converting
+    CSV files into a standardized Polars DataFrame with computed velocities, standardized
+    coordinate systems, and orientation normalization. It processes three input files:
+    tracking data, player metadata, and play information.
+
+    The loader performs:
+    - Coordinate system standardization (centering at midfield)
+    - Orientation normalization (attacking left-to-right)
+    - Angle conversion (degrees → radians in [-π, π] range)
+    - Player metadata enrichment (height, weight, position)
+    - Play-level information joining (possession team, play details)
+    - Metric conversion (imperial → metric for anthropometrics)
+
+    The resulting dataset is ready for graph construction via
+    :class:`~unravel.american_football.graphs.AmericanFootballGraphConverter`.
+
+    Args:
+        tracking_file_path (str): Path to tracking CSV file. Must contain columns:
+            gameId, playId, nflId, frameId, x, y, s (speed), o (orientation),
+            dir (direction), team (or club).
+        players_file_path (str): Path to players CSV file. Must contain: nflId,
+            position (or officialPosition), height, weight.
+        plays_file_path (str): Path to plays CSV file. Must contain: gameId, playId,
+            possessionTeam.
+        sample_rate (float, optional): Sampling rate for downsampling frames. For example,
+            0.5 keeps every 2nd frame. Defaults to None (no downsampling).
+        max_player_speed (float, optional): Maximum physically plausible player speed (m/s)
+            for filtering outliers. Defaults to 12.0 m/s (~27 mph).
+        max_ball_speed (float, optional): Maximum physically plausible ball speed (m/s).
+            Defaults to 28.0 m/s (~63 mph).
+        max_player_acceleration (float, optional): Maximum player acceleration (m/s²).
+            Defaults to 6.0 m/s².
+        max_ball_acceleration (float, optional): Maximum ball acceleration (m/s²).
+            Defaults to 13.5 m/s².
+        orient_ball_owning (bool, optional): Whether to normalize coordinate system so
+            the offense always attacks left-to-right. Defaults to True (recommended).
+        **kwargs: Additional arguments passed to DefaultDataset.
+
+    Attributes:
+        data (pl.DataFrame): Processed tracking data with columns:
+            - game_id, play_id, frame_id: Identifiers
+            - object_id: Player NFL ID (or "football" for ball)
+            - team_id: Team abbreviation or "football"
+            - x, y: Position in yards (centered at midfield)
+            - s: Speed in yards/second
+            - o: Orientation angle in radians [-π, π]
+            - dir: Direction of movement in radians [-π, π]
+            - position_name: Player position (e.g., "QB", "WR", "CB")
+            - height_cm: Player height in centimeters (rounded to nearest 10cm)
+            - weight_kg: Player weight in kilograms (rounded to nearest 10kg)
+            - ball_owning_team_id: Team with possession
+        settings (DefaultSettings): Configuration object with pitch dimensions,
+            orientation settings, and speed thresholds.
+
+    Raises:
+        NotImplementedError: If orient_ball_owning=False (currently unsupported).
+
+    Example:
+        >>> from unravel.american_football.dataset import BigDataBowlDataset
+        >>>
+        >>> # Load Big Data Bowl 2024 data
+        >>> dataset = BigDataBowlDataset(
+        ...     tracking_file_path="tracking_week_1.csv",
+        ...     players_file_path="players.csv",
+        ...     plays_file_path="plays.csv",
+        ...     sample_rate=1.0,  # Use all frames
+        ...     orient_ball_owning=True
+        ... )
+        >>>
+        >>> # Access processed data
+        >>> print(dataset.data)
+        >>> print(f"Total frames: {dataset.data['frame_id'].n_unique()}")
+        >>> print(f"Total plays: {dataset.data['play_id'].n_unique()}")
+        >>>
+        >>> # Downsample to 5 Hz (every other frame from 10 Hz)
+        >>> dataset_5hz = BigDataBowlDataset(
+        ...     tracking_file_path="tracking_week_1.csv",
+        ...     players_file_path="players.csv",
+        ...     plays_file_path="plays.csv",
+        ...     sample_rate=0.5  # Keep every 2nd frame
+        ... )
+        >>>
+        >>> # Add dummy labels for GNN training
+        >>> dataset.add_dummy_labels()
+        >>> dataset.add_graph_ids()
+
+    Note:
+        - Big Data Bowl data uses yards as the unit. The coordinate system is centered
+          at midfield (x=0) with y=0 at the center of the field.
+        - Player heights and weights are rounded to the nearest 10 cm / 10 kg to protect
+          player privacy while retaining useful anthropometric information.
+        - The orientation normalization (orient_ball_owning=True) ensures offensive
+          players always attack from left to right, simplifying model training.
+        - Frame IDs are computed as: play_id * 100,000 + frameId to ensure global uniqueness.
+        - The "football" object has team_id="football" and is included in every frame.
+
+    Warning:
+        NFL Big Data Bowl data format can vary by year. This loader is tested on
+        2023-2024 formats. Older competitions may require modifications.
+
+    See Also:
+        :class:`~unravel.american_football.graphs.AmericanFootballGraphConverter`:
+            Convert to graph format for GNN training.
+        :meth:`add_dummy_labels`: Add placeholder labels for testing.
+        :meth:`add_graph_ids`: Add graph identifiers for batching.
+        :doc:`../tutorials/american_football`: Tutorial on NFL tracking data analysis.
+    """
+
     def __init__(
         self,
         tracking_file_path: str,

@@ -34,6 +34,23 @@ DEFAULT_BALL_SMOOTHING_PARAMS = {"window_length": 3, "polyorder": 1}
 
 @dataclass
 class SoccerObject:
+    """Represents a player or ball object in soccer tracking data.
+
+    This dataclass stores metadata about players and the ball, including
+    identification, team affiliation, and position information.
+
+    Attributes:
+        id: Unique identifier for the object (player ID or 'ball').
+        team_id: Team identifier the object belongs to.
+        position_name: Position code (e.g., 'GK', 'CB', 'LW') or 'ball'.
+        number: Jersey number for players. Defaults to None.
+        name: Player name. Defaults to None.
+        team_name: Name of the team. Defaults to None.
+        is_gk: Whether the player is a goalkeeper. Defaults to None.
+        is_home: Whether the player is on the home team. Defaults to None.
+        object_type: Type of object, either 'ball' or 'player'. Defaults to 'player'.
+    """
+
     id: Union[str, int]
     team_id: Union[str, int]
     position_name: str
@@ -50,6 +67,92 @@ class SoccerObject:
 
 @dataclass
 class KloppyPolarsDataset(DefaultDataset):
+    """Convert Kloppy soccer tracking data to Polars DataFrame format.
+
+    This class takes tracking data loaded via Kloppy (supporting providers like Sportec,
+    SkillCorner, Tracab, SecondSpectrum, etc.) and converts it into a fast, efficient
+    Polars DataFrame with computed velocities, accelerations, and ball carrier inference.
+
+    The conversion process includes:
+    - Coordinate system standardization
+    - Velocity and acceleration computation with optional smoothing
+    - Ball carrier and ball owning team inference
+    - Goalkeeper position identification
+    - Speed and acceleration filtering to remove outliers
+    - Optional orientation normalization (attacking left-to-right)
+
+    Args:
+        kloppy_dataset: A Kloppy TrackingDataset instance containing the raw tracking data.
+        ball_carrier_threshold: Maximum distance (in meters) between player and ball to
+            be considered the ball carrier. Defaults to 25.0.
+        max_player_speed: Maximum realistic player speed in m/s. Values above this are
+            capped to prevent sensor errors. Defaults to 12.0 m/s.
+        max_ball_speed: Maximum realistic ball speed in m/s. Values above this are
+            capped. Defaults to 28.0 m/s.
+        max_player_acceleration: Maximum realistic player acceleration in m/s². Values
+            above this are capped. Defaults to 6.0 m/s².
+        max_ball_acceleration: Maximum realistic ball acceleration in m/s². Values above
+            this are capped. Defaults to 13.5 m/s².
+        orient_ball_owning: If True, normalize coordinates so the team with possession
+            always attacks from left to right. Defaults to True.
+        add_smoothing: If True, apply Savitzky-Golay smoothing to velocities to reduce
+            noise. Defaults to True.
+        **kwargs: Additional keyword arguments passed to DefaultDataset.
+
+    Attributes:
+        data (pl.DataFrame): The converted Polars DataFrame with all tracking data.
+        settings (DefaultSettings): Configuration and metadata for the dataset.
+        home_players (List[SoccerObject]): List of home team player objects.
+        away_players (List[SoccerObject]): List of away team player objects.
+        kloppy_dataset (TrackingDataset): The original Kloppy dataset.
+
+    Raises:
+        Exception: If kloppy_dataset is not a TrackingDataset instance.
+        Exception: If ball_carrier_threshold is not a float.
+        ValueError: If the dataset orientation is NOT_SET.
+        ValueError: If ball owning team must be inferred but ball_carrier_threshold is None.
+
+    Example:
+        >>> from kloppy import sportec
+        >>> from unravel.soccer import KloppyPolarsDataset
+        >>>
+        >>> # Load tracking data with Kloppy
+        >>> kloppy_dataset = sportec.load_open_tracking_data(only_alive=True)
+        >>>
+        >>> # Convert to Polars format
+        >>> polars_dataset = KloppyPolarsDataset(
+        ...     kloppy_dataset=kloppy_dataset,
+        ...     ball_carrier_threshold=25.0,
+        ...     max_player_speed=12.0,
+        ...     orient_ball_owning=True
+        ... )
+        >>>
+        >>> # Access the DataFrame
+        >>> df = polars_dataset.data
+        >>> print(df.head())
+        >>>
+        >>> # Add dummy labels for training
+        >>> polars_dataset.add_dummy_labels(by=["frame_id"])
+        >>>
+        >>> # Add graph IDs for grouping
+        >>> polars_dataset.add_graph_ids(by=["frame_id"])
+
+    Note:
+        For non-Sportec providers, always use ``only_alive=True`` or
+        ``include_empty_frames=False`` when loading data with Kloppy to avoid
+        frames without ball tracking data.
+
+    Warning:
+        If the dataset doesn't include ball owning team information, it will be
+        inferred using distance to ball. This may cause unexpected results in
+        situations where the ball is contested or in the air.
+
+    See Also:
+        :class:`~unravel.soccer.SoccerGraphConverter`: Convert to graph structures.
+        :func:`~unravel.utils.add_dummy_label_column`: Add labels for training.
+        :func:`~unravel.utils.add_graph_id_column`: Add graph IDs for grouping.
+    """
+
     def __init__(
         self,
         kloppy_dataset: TrackingDataset,
@@ -620,6 +723,41 @@ class KloppyPolarsDataset(DefaultDataset):
         )
 
     def convert_orientation_to_ball_owning(self, df: pl.DataFrame):
+        """Convert field orientation so attacking team always goes left-to-right.
+
+        This method normalizes the coordinate system so that the team with possession
+        always attacks from left to right, regardless of which half they're in. This
+        helps machine learning models by providing consistent attacking directionality.
+
+        When the away team has possession, all spatial coordinates (x, y) and their
+        derivatives (vx, vy, ax, ay) are multiplied by -1.
+
+        Args:
+            df: The DataFrame with STATIC_HOME_AWAY orientation.
+
+        Returns:
+            pl.DataFrame: DataFrame with BALL_OWNING_TEAM orientation.
+
+        Raises:
+            ValueError: If orientation is already BALL_OWNING_TEAM.
+
+        Example:
+            >>> # Typically called automatically if orient_ball_owning=True
+            >>> # But can be called manually:
+            >>> df = dataset.convert_orientation_to_ball_owning(dataset.data)
+
+        Note:
+            This is called automatically during ``load()`` if the ``orient_ball_owning``
+            parameter is set to True in ``__init__``.
+
+            The following columns are flipped when away team has possession:
+            - x, y: Position coordinates
+            - vx, vy: Velocity components
+            - ax, ay: Acceleration components
+
+        See Also:
+            Kloppy Orientation documentation for more details on coordinate systems.
+        """
         # When orient_ball_owning is True, it means the orientation has to flip from "STATIC_HOME_AWAY" to "BALL_OWNING" in the Polars dataframe
         # This means that when away is the attacking team we can flip all coordinates by -1.0
         if self.settings.orientation == Orientation.BALL_OWNING_TEAM:
@@ -675,6 +813,53 @@ class KloppyPolarsDataset(DefaultDataset):
     def load(
         self,
     ):
+        """Load and process the Kloppy tracking dataset into Polars DataFrame.
+
+        This method performs the complete data transformation pipeline:
+
+        1. Transform coordinate system to SecondSpectrum standard
+        2. Extract player and ball metadata
+        3. Convert wide format (columns per player) to long format
+        4. Compute velocities with optional Savitzky-Golay smoothing
+        5. Compute accelerations
+        6. Filter unrealistic speed/acceleration values
+        7. Infer ball carrier and ball owning team (if not provided)
+        8. Optionally normalize orientation to ball-owning team
+        9. Infer goalkeeper positions (if position data unavailable)
+
+        The resulting DataFrame is stored in ``self.data`` and contains columns:
+        - period_id, timestamp, frame_id: Temporal identifiers
+        - id, team_id, position_name: Object identifiers
+        - x, y, z: Positions
+        - vx, vy, vz, speed: Velocities
+        - ax, ay, az, acceleration: Accelerations
+        - ball_state: Ball in/out of play
+        - ball_owning_team_id: Team with possession
+        - is_ball_carrier: Boolean flag for ball carrier
+        - game_id: Match identifier
+
+        Returns:
+            KloppyPolarsDataset: Self, for method chaining.
+
+        Raises:
+            ValueError: If dataset orientation is NOT_SET.
+            ValueError: If ball owning team inference is needed but
+                ball_carrier_threshold is None.
+
+        Example:
+            >>> # Typically called automatically in __init__
+            >>> # But can be called manually to reload:
+            >>> dataset.load()
+
+        Note:
+            This method is called automatically during ``__init__``, so you
+            typically don't need to call it manually unless reloading data.
+
+        Warning:
+            If ball owning team is not provided in the data, it will be inferred
+            using distance thresholds, which may be inaccurate during contested
+            ball situations.
+        """
         if self.kloppy_dataset.metadata.orientation == Orientation.NOT_SET:
             raise ValueError(
                 "Data sources with an undefined orientation can not be used inside the 'unravelsports' package..."
@@ -738,12 +923,86 @@ class KloppyPolarsDataset(DefaultDataset):
     def add_dummy_labels(
         self, by: List[str] = ["game_id", "frame_id"], random_seed: Optional[int] = None
     ) -> pl.DataFrame:
+        """Add a column of random binary labels for testing/demonstration purposes.
+
+        This method adds a 'label' column with random 0/1 values to the dataset.
+        Useful for testing graph neural network pipelines before you have real labels.
+
+        Args:
+            by: Column names to group by before assigning labels. Each unique
+                combination gets the same random label. Defaults to ["game_id", "frame_id"].
+            random_seed: Random seed for reproducibility. If None, labels will be
+                different each time. Defaults to None.
+
+        Returns:
+            pl.DataFrame: The updated DataFrame with 'label' column added.
+
+        Example:
+            >>> # Add random labels, one per frame
+            >>> dataset.add_dummy_labels(by=["frame_id"])
+            >>>
+            >>> # Add labels grouped by possession
+            >>> dataset.add_dummy_labels(by=["ball_owning_team_id", "period_id"])
+            >>>
+            >>> # Reproducible labels
+            >>> dataset.add_dummy_labels(by=["frame_id"], random_seed=42)
+
+        Note:
+            In real applications, replace this with actual labels from your data:
+
+            >>> import polars as pl
+            >>> labels = pl.DataFrame({"frame_id": [...], "label": [...]})
+            >>> dataset.data = dataset.data.join(labels, on="frame_id")
+
+        See Also:
+            :func:`~unravel.utils.add_dummy_label_column`: Underlying utility function.
+        """
         self.data = add_dummy_label_column(
             self.data, by, self._label_column, random_seed
         )
         return self.data
 
     def add_graph_ids(self, by: List[str] = ["game_id", "period_id"]) -> pl.DataFrame:
+        """Add a graph_id column for grouping frames into graph samples.
+
+        This method adds a 'graph_id' column that groups tracking frames into
+        distinct graph samples for GNN training. This is crucial for proper
+        train/test splitting to avoid data leakage.
+
+        Args:
+            by: Column names to group by. Each unique combination gets a unique
+                graph_id. Defaults to ["game_id", "period_id"].
+
+        Returns:
+            pl.DataFrame: The updated DataFrame with 'graph_id' column added.
+
+        Example:
+            >>> # Each frame is a separate graph
+            >>> dataset.add_graph_ids(by=["frame_id"])
+            >>>
+            >>> # Group by possession (all frames in same possession = one graph)
+            >>> dataset.add_graph_ids(by=["ball_owning_team_id", "period_id"])
+            >>>
+            >>> # Group by 10-frame sequences
+            >>> dataset.data = dataset.data.with_columns(
+            ...     (pl.col("frame_id") // 10).alias("sequence_id")
+            ... )
+            >>> dataset.add_graph_ids(by=["sequence_id"])
+
+        Important:
+            When splitting data for training, **always split by graph_id** to avoid
+            data leakage. Never split by row index:
+
+            >>> # CORRECT: Split by graph_id
+            >>> train, test, val = dataset.split_test_train_validation(4, 1, 1)
+            >>>
+            >>> # WRONG: Don't split by index
+            >>> train = dataset[:800]  # May have same game in train and test!
+
+        See Also:
+            :func:`~unravel.utils.add_graph_id_column`: Underlying utility function.
+            :meth:`~unravel.utils.GraphDataset.split_test_train_validation`: Splitting method.
+        """
         self.data = add_graph_id_column(self.data, by, self._graph_id_column)
         return self.data
 
@@ -768,6 +1027,39 @@ class KloppyPolarsDataset(DefaultDataset):
             )
 
     def sample(self, sample_rate: float):
+        """Downsample the dataset by keeping every Nth frame.
+
+        This method reduces the temporal resolution of the data by keeping only
+        a subset of frames. Useful for faster experimentation or when full temporal
+        resolution is not needed.
+
+        Args:
+            sample_rate: Sampling rate. For example:
+                - 2.0 keeps every 2nd frame (halves data size)
+                - 5.0 keeps every 5th frame (reduces to 20% of original)
+                - 10.0 keeps every 10th frame (reduces to 10% of original)
+
+        Returns:
+            KloppyPolarsDataset: Self, for method chaining.
+
+        Example:
+            >>> # Keep every 2nd frame (50% of data)
+            >>> dataset.sample(sample_rate=2.0)
+            >>>
+            >>> # Keep every 5th frame (20% of data)
+            >>> dataset.sample(sample_rate=5.0)
+            >>>
+            >>> # Can chain with other methods
+            >>> dataset.sample(5.0).add_dummy_labels().add_graph_ids()
+
+        Note:
+            This modifies ``self.data`` in-place. The original data is not preserved.
+
+        Warning:
+            Downsampling may affect velocity and acceleration calculations if you
+            recalculate them after sampling. It's recommended to downsample before
+            conversion to graphs.
+        """
         sample = 1.0 / sample_rate
 
         self.data = self.data.filter((pl.col(Column.FRAME_ID) % sample) == 0)

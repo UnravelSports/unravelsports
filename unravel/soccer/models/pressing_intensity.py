@@ -18,6 +18,96 @@ from .utils import time_to_intercept, probability_to_intercept
 
 @dataclass
 class PressingIntensity:
+    """Compute pressing intensity metrics for soccer tracking data.
+
+    Pressing Intensity quantifies the defensive pressure applied to ball carriers
+    by measuring spatial coverage, defender proximity, and velocity components. The
+    metric computes time-to-intercept and probability-to-intercept matrices between
+    players, capturing how effectively defenders can close down passing options.
+
+    The model outputs two matrices per frame:
+    - **Time-to-Intercept (TTI)**: Time in seconds for each defender to reach each
+      attacker, accounting for positions, velocities, and reaction time.
+    - **Probability-to-Intercept (PTI)**: Probability (0-1) that a defender can
+      successfully press each attacker, derived from TTI using a sigmoid function.
+
+    These matrices enable analysis of:
+    - Defensive compactness and coverage
+    - Pressing triggers and coordination
+    - Passing lane availability
+    - Individual pressing effectiveness
+
+    The implementation is based on tracking data research and extends concepts from
+    pitch control and space occupation models.
+
+    Args:
+        dataset (KloppyPolarsDataset): Dataset containing soccer tracking data with
+            positions, velocities, and ball ownership information.
+        chunk_size (int, optional): Number of frames to process in each batch for
+            memory efficiency. Defaults to 20000.
+
+    Attributes:
+        output (pl.DataFrame): Computed pressing intensity matrices with columns:
+            - frame_id, period_id, timestamp: Frame identifiers
+            - time_to_intercept: List[List[float]] - TTI matrix (rows × columns)
+            - probability_to_intercept: List[List[float]] - PTI matrix (rows × columns)
+            - columns: List[str] - Object IDs for column players (typically attackers)
+            - rows: List[str] - Object IDs for row players (typically defenders)
+
+    Raises:
+        ValueError: If dataset is not of type KloppyPolarsDataset.
+
+    Example:
+        >>> from unravel.soccer.dataset import KloppyPolarsDataset
+        >>> from unravel.soccer.models import PressingIntensity
+        >>> from kloppy import datasets
+        >>>
+        >>> # Load tracking data
+        >>> dataset = datasets.load(
+        ...     provider="skillcorner",
+        ...     match_id="123",
+        ...     competition="EPL"
+        ... )
+        >>> soccer_data = KloppyPolarsDataset(kloppy_dataset=dataset)
+        >>>
+        >>> # Initialize pressing intensity model
+        >>> pi = PressingIntensity(dataset=soccer_data)
+        >>>
+        >>> # Compute pressing intensity for all frames
+        >>> pi.fit(
+        ...     method="teams",           # 11x11 matrix (attackers × defenders)
+        ...     ball_method="max",        # Merge ball and ball carrier
+        ...     reaction_time=0.7,        # 0.7 second defender reaction time
+        ...     time_threshold=1.5,       # 1.5 second pressing window
+        ...     sigma=0.45                # Sigmoid steepness parameter
+        ... )
+        >>>
+        >>> # Access results
+        >>> print(pi.output)
+        >>> # Shows time_to_intercept and probability_to_intercept matrices per frame
+        >>>
+        >>> # Compute pressing intensity for specific period
+        >>> pi.fit(
+        ...     start_time=pl.duration(minutes=0),
+        ...     end_time=pl.duration(minutes=5),
+        ...     period_id=1,
+        ...     method="teams"
+        ... )
+
+    Note:
+        - The model requires velocity data. Ensure your dataset has computed velocities
+          via :meth:`KloppyPolarsDataset.load` with appropriate smoothing parameters.
+        - Time-to-intercept assumes defenders accelerate optimally toward attackers
+          from their current positions, bounded by max_player_speed.
+        - Probability values near 1.0 indicate high pressing pressure; values near 0.0
+          indicate low pressure or distant defenders.
+
+    See Also:
+        :class:`~unravel.soccer.dataset.KloppyPolarsDataset`: Data loading and preprocessing.
+        :meth:`fit`: Configure and compute pressing intensity metrics.
+        :doc:`../tutorials/pressing_intensity`: Tutorial on pressing intensity analysis.
+    """
+
     dataset: KloppyPolarsDataset
     chunk_size: int = field(init=True, repr=False, default=2_0000)
 
@@ -262,20 +352,120 @@ class PressingIntensity:
         ] = "ball_owning",
         line_method: Union[None, Literal["touchline", "byline", "all"]] = None,
     ):
-        """
-        method: str ["teams", "full"]
-            "teams" creates a 11x11 matrix, "full" creates a 22x22 matrix
-        ball_method: str ["include", "exclude", "max"]
-            "include" creates a 11x12 matrix
-            "exclude" ignores ball
-            "max" keeps 11x11 but ball carrier pressing intensity is now max(ball, ball_carrier)
-        speed_threshold: float.
-            Masks pressing intensity to only include players travelling above a certain speed
-            threshold in meters per second.
-        orient: str ["ball_owning", "pressing", "home_away", "away_home"]
-            Pressing Intensity output as seen from the 'row' perspective.
-            method and orient are in sync, meaning "full" and "away_home" sorts row and columns
-            such that the away team players are displayed first
+        """Compute pressing intensity metrics for tracking data.
+
+        Calculates time-to-intercept (TTI) and probability-to-intercept (PTI) matrices
+        quantifying defensive pressure. For each frame, computes how quickly defenders
+        can reach attackers and the likelihood of successful pressing actions.
+
+        The computation considers:
+        - Player positions and velocities
+        - Reaction time delays
+        - Maximum acceleration capabilities
+        - Ball position and ball carrier proximity
+
+        Args:
+            start_time (pl.duration, optional): Start time for analysis window.
+                Must be specified together with end_time and period_id. Defaults to None
+                (processes all frames).
+            end_time (pl.duration, optional): End time for analysis window.
+                Defaults to None.
+            period_id (int, optional): Period ID to analyze (e.g., 1 for first half).
+                Defaults to None.
+            speed_threshold (float, optional): Minimum player speed (m/s) to include in
+                pressing calculations. Players below this threshold are masked out
+                (PTI set to 0.0). Useful for analyzing active pressing vs passive coverage.
+                Defaults to None (no filtering).
+            reaction_time (float, optional): Defender reaction time in seconds before
+                accelerating toward target. Models decision-making and perception delay.
+                Defaults to 0.7 seconds.
+            time_threshold (float, optional): Time window (seconds) for pressing opportunities.
+                TTI values beyond this are considered low-pressure situations. Affects
+                sigmoid conversion to probabilities. Defaults to 1.5 seconds.
+            sigma (float, optional): Sigmoid steepness parameter for TTI → PTI conversion.
+                Higher values create sharper transitions between high/low pressure.
+                Defaults to 0.45.
+            method (Literal["teams", "full"], optional): Matrix structure:
+                - "teams": 11×11 matrix (ball-owning team × non-owning team)
+                - "full": 22×22 matrix (all players × all players)
+                Defaults to "teams".
+            ball_method (Literal["include", "exclude", "max"], optional): Ball handling:
+                - "include": Add ball as separate node (creates 11×12 or 22×23 matrix)
+                - "exclude": Ignore ball entirely
+                - "max": Merge ball with ball carrier using max(ball_tti, carrier_tti),
+                  preserving matrix dimensions
+                Defaults to "max" (recommended).
+            orient (Literal["ball_owning", "pressing", "home_away", "away_home"], optional):
+                Matrix orientation perspective:
+                - "ball_owning": Rows = ball-owning team, Cols = non-owning team
+                - "pressing": Rows = non-owning team, Cols = ball-owning team (transpose)
+                - "home_away": Rows = home team, Cols = away team
+                - "away_home": Rows = away team, Cols = home team
+                Defaults to "ball_owning".
+            line_method (Union[None, Literal["touchline", "byline", "all"]], optional):
+                Reserved for future development (include pitch boundaries in calculations).
+                Currently has no effect. Defaults to None.
+
+        Returns:
+            PressingIntensity: Self, with computed results stored in :attr:`output`.
+
+        Raises:
+            TypeError: If period_id is not an integer.
+            ValueError: If method, ball_method, orient, or line_method have invalid values.
+            TypeError: If reaction_time, speed_threshold, time_threshold, or sigma have
+                invalid types.
+            ValueError: If start_time, end_time, and period_id are partially specified
+                (must be all or none).
+
+        Example:
+            >>> # Basic usage: compute pressing intensity for all frames
+            >>> pi = PressingIntensity(dataset=soccer_data)
+            >>> pi.fit(method="teams", ball_method="max")
+            >>> print(pi.output.columns)
+            ['frame_id', 'period_id', 'timestamp', 'time_to_intercept',
+             'probability_to_intercept', 'columns', 'rows']
+            >>>
+            >>> # Analyze specific time window
+            >>> pi.fit(
+            ...     start_time=pl.duration(minutes=10),
+            ...     end_time=pl.duration(minutes=15),
+            ...     period_id=1,
+            ...     method="teams"
+            ... )
+            >>>
+            >>> # Filter for active pressing (players moving > 2 m/s)
+            >>> pi.fit(
+            ...     method="teams",
+            ...     speed_threshold=2.0,
+            ...     reaction_time=0.5,
+            ...     time_threshold=1.0
+            ... )
+            >>>
+            >>> # Full 22x22 matrix with ball as separate node
+            >>> pi.fit(method="full", ball_method="include")
+            >>>
+            >>> # Extract pressing intensity for frame 1000
+            >>> frame_data = pi.output.filter(pl.col("frame_id") == 1000)
+            >>> tti_matrix = np.array(frame_data["time_to_intercept"][0])
+            >>> pti_matrix = np.array(frame_data["probability_to_intercept"][0])
+            >>> print(f"Max pressing probability: {pti_matrix.max():.2f}")
+
+        Note:
+            - Time windows (start_time, end_time, period_id) must be specified together
+              or all set to None. Partial specification raises ValueError.
+            - The output DataFrame contains nested lists for TTI and PTI matrices.
+              Use `.to_numpy()` or indexing to extract arrays for analysis.
+            - Matrix dimensions depend on method and ball_method:
+              - "teams" + "max": 11×11
+              - "teams" + "include": 11×12
+              - "full" + "max": 22×22
+              - "full" + "include": 22×23
+            - Player IDs in "columns" and "rows" correspond to matrix dimensions and
+              indicate which player occupies each position.
+
+        See Also:
+            :class:`PressingIntensity`: Class documentation with conceptual overview.
+            :doc:`../tutorials/pressing_intensity`: Complete tutorial with visualizations.
         """
         if period_id is not None and not isinstance(period_id, int):
             raise TypeError("period_id should be of type integer")
