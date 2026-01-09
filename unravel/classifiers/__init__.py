@@ -14,6 +14,17 @@ except ImportError:
     __all__ = ["CrystalGraphClassifier"]
 
 
-from .crystal_graph_pyg import PyGLightningCrystalGraphClassifier
+try:
+    from .crystal_graph_pyg import PyGLightningCrystalGraphClassifier
 
-__all__.append("PyGLightningCrystalGraphClassifier")
+    __all__.append("PyGLightningCrystalGraphClassifier")
+except ImportError:
+
+    class PyGLightningCrystalGraphClassifier:
+        def __init__(self, *args, **kwargs):
+            raise ImportError(
+                "PyGLightningCrystalGraphClassifier requires PyTorch and PyTorch Geometric. "
+                "Install with: pip install torch torch-geometric pytorch-lightning torchmetrics"
+            )
+
+    __all__.append("PyGLightningCrystalGraphClassifier")
