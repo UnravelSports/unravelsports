@@ -44,12 +44,21 @@ body {
     color: #e0e0e0;
 }
 
-/* Code blocks */
+/* Inline code references */
 .rst-content code,
-.rst-content tt {
-    background: #2d2d2d;
-    color: #e0e0e0;
-    border: 1px solid #3d3d3d;
+.rst-content tt,
+.rst-content code.literal {
+    background: #2d2d2d !important;
+    color: #e0e0e0 !important;
+    border: 1px solid #3d3d3d !important;
+}
+
+/* Code references in text (like class names) */
+.rst-content code.xref,
+.rst-content a code {
+    background: #2d2d2d !important;
+    color: #4ec9b0 !important;
+    border: 1px solid #3d3d3d !important;
 }
 
 .highlight {
@@ -75,11 +84,109 @@ body {
     color: #80d4ff;
 }
 
-/* Admonitions */
+/* Admonitions - proper dark mode styling */
+.rst-content .admonition,
 .rst-content .note,
 .rst-content .warning,
-.rst-content .tip {
+.rst-content .tip,
+.rst-content .seealso,
+.rst-content .admonition-example {
     background: #2d2d2d;
+    border: 1px solid #3d3d3d;
+    color: #e0e0e0;
+}
+
+.rst-content .admonition-title,
+.rst-content .note .admonition-title,
+.rst-content .warning .admonition-title,
+.rst-content .tip .admonition-title,
+.rst-content .seealso .admonition-title {
+    background: #3d3d3d;
+    color: #e0e0e0;
+}
+
+/* Fix "See also" blue background with dark text */
+.rst-content .seealso {
+    background: #2d2d2d;
+}
+
+.rst-content .seealso .admonition-title {
+    background: rgba(77, 184, 255, 0.2);
+    color: #e0e0e0;
+}
+
+/* Citation blocks - dark mode styling */
+.rst-content .highlight-default .highlight,
+.rst-content .highlight-python .highlight,
+.rst-content .highlight pre {
+    background: #2d2d2d;
+    color: #e0e0e0;
+    border: 1px solid #3d3d3d;
+}
+
+/* Softer syntax highlighting colors */
+.highlight .k,  /* keywords */
+.highlight .kn, /* keyword namespace */
+.highlight .kd  /* keyword declaration */ {
+    color: #9cdcfe;
+}
+
+.highlight .s,  /* strings */
+.highlight .s1, /* single quoted strings */
+.highlight .s2  /* double quoted strings */ {
+    color: #ce9178;
+}
+
+.highlight .n,  /* names */
+.highlight .nb, /* builtin names */
+.highlight .nc  /* class names */ {
+    color: #dcdcaa;
+}
+
+.highlight .nn  /* namespace (import paths like unravel.classifiers) */ {
+    color: #4ec9b0;
+}
+
+.highlight .nf  /* function names */ {
+    color: #dcdcaa;
+}
+
+.highlight .c,  /* comments */
+.highlight .c1, /* single line comments */
+.highlight .cm  /* multi-line comments */ {
+    color: #6a9955;
+}
+
+.highlight .o   /* operators */ {
+    color: #d4d4d4;
+}
+
+.highlight .p   /* punctuation */ {
+    color: #d4d4d4;
+}
+
+.highlight .m,  /* numbers */
+.highlight .mi, /* integers */
+.highlight .mf  /* floats */ {
+    color: #b5cea8;
+}
+
+/* Class/function reference boxes (dl dt) */
+.rst-content dl dt {
+    background: #2d2d2d;
+    color: #dcdcaa;
+    border-left: 3px solid #4db8ff;
+}
+
+.rst-content dl dd {
+    background: #1e1e1e;
+    color: #e0e0e0;
+}
+
+/* Parameter/return type styling */
+.rst-content .field-list dt {
+    background: #2d2d2d;
+    color: #9cdcfe;
 }
 
 /* Logo styling - replace home icon and project name with just the logo */
