@@ -1,0 +1,131 @@
+/* Force dark mode by default */
+body {
+    --color-background-primary: #1e1e1e;
+    --color-background-secondary: #2d2d2d;
+    --color-foreground-primary: #e0e0e0;
+    --color-foreground-secondary: #b0b0b0;
+}
+
+/* Dark mode styles for RTD theme */
+.wy-nav-side {
+    background: #1e1e1e;
+}
+
+.wy-side-nav-search {
+    background: #1e1e1e;
+}
+
+.wy-menu-vertical a {
+    color: #b0b0b0;
+}
+
+.wy-menu-vertical a:hover {
+    background-color: #2d2d2d;
+    color: #e0e0e0;
+}
+
+.wy-menu-vertical li.current a {
+    color: #4db8ff;
+    border-right: 2px solid #4db8ff;
+}
+
+.wy-menu-vertical li.on a,
+.wy-menu-vertical li.current > a {
+    color: #e0e0e0;
+    background: #2d2d2d;
+}
+
+.wy-nav-content-wrap {
+    background: #2d2d2d;
+}
+
+.wy-nav-content {
+    background: #1e1e1e;
+    color: #e0e0e0;
+}
+
+/* Code blocks */
+.rst-content code,
+.rst-content tt {
+    background: #2d2d2d;
+    color: #e0e0e0;
+    border: 1px solid #3d3d3d;
+}
+
+.highlight {
+    background: #2d2d2d;
+}
+
+/* Tables */
+.rst-content table.docutils {
+    background: #2d2d2d;
+    color: #e0e0e0;
+}
+
+.rst-content table.docutils thead {
+    background: #3d3d3d;
+}
+
+/* Links */
+.rst-content a {
+    color: #4db8ff;
+}
+
+.rst-content a:hover {
+    color: #80d4ff;
+}
+
+/* Admonitions */
+.rst-content .note,
+.rst-content .warning,
+.rst-content .tip {
+    background: #2d2d2d;
+}
+
+/* Logo styling - replace home icon and project name with just the logo */
+.wy-side-nav-search > a img.logo,
+.wy-side-nav-search .wy-dropdown > a img.logo {
+    max-width: 100%;
+    height: auto;
+    margin: 0 0 1em 0;
+    padding: 0;
+    display: block;
+}
+
+.wy-side-nav-search > a {
+    padding: 0.809em;
+    display: block;
+}
+
+/* Hide the project name text next to logo */
+.wy-side-nav-search > a .icon {
+    display: none;
+}
+
+/* Make logo the only thing visible - hide text */
+.wy-side-nav-search .wy-dropdown > a,
+.wy-side-nav-search > a {
+    font-size: 0;
+    line-height: 0;
+}
+
+.wy-side-nav-search > a img.logo {
+    font-size: initial;
+}
+
+/* Fix the right content area background to match */
+.wy-nav-content-wrap {
+    background: #1e1e1e;
+}
+
+.wy-nav-content {
+    background: #1e1e1e;
+    color: #e0e0e0;
+    max-width: 100%;
+}
+
+/* Top nav bar should also be dark */
+.wy-nav-top {
+    background: #1e1e1e;
+    color: #e0e0e0;
+}

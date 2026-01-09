@@ -19,6 +19,111 @@ from ...dataset.kloppy_polars import (
 
 @dataclass
 class EFPI(FormationDetection):
+    """Detect soccer team formations using Expected Formation Positioning Inference (EFPI).
+
+    EFPI automatically identifies team formations (e.g., 4-3-3, 4-4-2, 3-5-2) from player
+    positions using optimal assignment between observed positions and canonical formation
+    templates. The algorithm uses the Hungarian algorithm (linear sum assignment) to
+    minimize the total distance between players and template positions, scaled to match
+    the team's spatial distribution.
+
+    The method works by:
+    1. Extracting player positions for each team (attack/defense separately)
+    2. Comparing positions to predefined formation templates (mplsoccer or Shaw-Glickman)
+    3. Finding the best-fit formation via optimal bipartite matching
+    4. Assigning positional labels (e.g., "LW", "CM", "RB") to each player
+    5. Tracking formation changes over time or possession segments
+
+    Key features:
+    - Automatic formation detection with no manual labeling
+    - Separate formations for attacking and defending phases
+    - Position-specific labels for each player
+    - Temporal aggregation (per-frame, per-possession, or custom windows)
+    - Substitution handling (merge or drop)
+    - Formation stability tracking via cost thresholds
+
+    The algorithm is based on research in formation detection and extends methods from
+    Decroos et al. and Shaw & Glickman's formation analysis work.
+
+    Args:
+        dataset (KloppyPolarsDataset): Soccer tracking dataset with player positions
+            and ball ownership information.
+        formations (Union[List[str], Literal["shaw-glickman"]], optional): Formation
+            templates to use. Either a list of formation names (e.g., ["4-3-3", "4-4-2"])
+            or "shaw-glickman" for the alternative template set. Defaults to None
+            (uses mplsoccer formations).
+
+    Attributes:
+        output (pl.DataFrame): Detected formations with columns:
+            - object_id: Player ID
+            - team_id: Team ID
+            - position: Assigned position label (e.g., "LW", "CM", "GK")
+            - formation: Formation name (e.g., "4-3-3")
+            - is_attacking: Boolean indicating attacking (True) or defending (False)
+            - frame_id (if every="frame"): Frame identifier
+            - [segment_id] (if every != "frame"): Possession or time window identifier
+        segments (pl.DataFrame, optional): When using temporal aggregation (every != "frame"),
+            contains segment metadata:
+            - segment_id: Unique segment identifier
+            - n_frames: Number of frames in segment
+            - start_timestamp / end_timestamp: Time bounds
+            - start_frame_id / end_frame_id: Frame bounds
+
+    Raises:
+        ValueError: If dataset is not of type KloppyPolarsDataset.
+        ImportError: If scipy is not installed (required for linear_sum_assignment).
+
+    Example:
+        >>> from unravel.soccer.dataset import KloppyPolarsDataset
+        >>> from unravel.soccer.models.formations import EFPI
+        >>> from kloppy import datasets
+        >>>
+        >>> # Load tracking data
+        >>> dataset = datasets.load(provider="skillcorner", match_id="123")
+        >>> soccer_data = KloppyPolarsDataset(kloppy_dataset=dataset)
+        >>>
+        >>> # Initialize EFPI detector
+        >>> efpi = EFPI(dataset=soccer_data)
+        >>>
+        >>> # Detect formations per frame
+        >>> efpi.fit(every="frame")
+        >>> print(efpi.output)
+        >>> # Shows: frame_id, object_id, position, formation, is_attacking
+        >>>
+        >>> # Detect formations per possession
+        >>> efpi.fit(
+        ...     every="possession",
+        ...     change_after_possession=True,  # Re-detect when possession changes
+        ...     change_threshold=0.2            # Re-detect if cost improves by 20%
+        ... )
+        >>> print(efpi.segments)
+        >>> # Shows possession segments with start/end times
+        >>>
+        >>> # Detect formations per 5-minute window
+        >>> efpi.fit(every="5m", substitutions="drop")
+        >>>
+        >>> # Use custom formation templates
+        >>> efpi_custom = EFPI(
+        ...     dataset=soccer_data,
+        ...     formations=["4-3-3", "4-2-3-1", "3-5-2"]
+        ... )
+        >>> efpi_custom.fit(every="possession")
+
+    Note:
+        - Formation detection requires at least 10 outfield players per team.
+          Frames with fewer players are automatically filtered out.
+        - The algorithm assigns positions based on spatial distribution, not player roles.
+          A player listed as a striker may be assigned "CM" if positioned centrally.
+        - For per-frame detection, formations can change every frame. Use temporal
+          aggregation (every="possession" or time windows) for more stable detection.
+        - The cost metric measures total euclidean distance between players and template
+          positions. Lower cost indicates better fit.
+
+    See Also:
+        :class:`~unravel.soccer.dataset.KloppyPolarsDataset`: Data loading and preprocessing.
+        :meth:`fit`: Configure and run formation detection.
+        :doc:`../tutorials/formation_detection`: Tutorial on formation analysis.
+    """
     _fit = False
 
     def __post_init__(self):
@@ -244,9 +349,120 @@ class EFPI(FormationDetection):
         change_after_possession: bool = True,
         change_threshold: float = None,
     ):
-        """
-        - Count number of players seen
-        - update_threshold: float: value between 0 and 1 indicating the minimum change in formation assignment cost to update the detected formation.
+        """Detect team formations from player positions.
+
+        Runs the EFPI formation detection algorithm on tracking data, identifying
+        formations for both attacking and defending teams. Supports temporal aggregation
+        to detect formations at different time scales (per-frame, per-possession, or
+        custom time windows).
+
+        The detection process:
+        1. Groups data by the specified temporal unit (every)
+        2. For each group, extracts attacking and defending team positions
+        3. Compares positions to formation templates using optimal assignment
+        4. Selects best-fit formation and assigns positional labels
+        5. Handles substitutions and formation changes based on thresholds
+
+        Args:
+            start_time (pl.duration, optional): Start time for analysis window.
+                Must be specified together with end_time and period_id. Defaults to None
+                (processes all data).
+            end_time (pl.duration, optional): End time for analysis window.
+                Defaults to None.
+            period_id (int, optional): Period ID to analyze (e.g., 1 for first half).
+                Defaults to None.
+            every (Optional[Union[str, Literal["frame", "period", "possession"]]], optional):
+                Temporal aggregation level:
+                - "frame": Detect formations every frame (no aggregation)
+                - "possession": Detect formations per possession phase
+                - "period": Detect formations per period (half)
+                - Time string (e.g., "5m", "30s"): Detect formations per time window
+                Defaults to "frame".
+            formations (Union[List[str], Literal["shaw-glickman"]], optional):
+                Formation templates to use. Either a list of formation names
+                (e.g., ["4-3-3", "4-4-2", "3-5-2"]) or "shaw-glickman" for alternative
+                templates. Defaults to None (uses all mplsoccer formations).
+            substitutions (Literal["merge", "drop"], optional): How to handle substitutions
+                within temporal windows:
+                - "drop": Exclude players with shortest appearance in window
+                - "merge": Average positions across substitution overlap (not yet implemented)
+                Defaults to "drop".
+            change_after_possession (bool, optional): Whether to re-detect formations
+                when possession changes (even within the same temporal window).
+                Defaults to True.
+            change_threshold (float, optional): Minimum relative cost improvement (0-1)
+                required to update the detected formation. For example, 0.2 means the new
+                formation must have 20% lower cost to replace the current one. Helps
+                stabilize detections. Defaults to None (always update).
+
+        Returns:
+            EFPI: Self, with detected formations stored in :attr:`output` and temporal
+                segments in :attr:`segments`.
+
+        Raises:
+            ValueError: If start_time, end_time, and period_id are partially specified
+                (must be all or none).
+
+        Example:
+            >>> # Per-frame detection (no temporal aggregation)
+            >>> efpi = EFPI(dataset=soccer_data)
+            >>> efpi.fit(every="frame")
+            >>> print(efpi.output.head())
+            >>> # Shows formation for each frame
+            >>>
+            >>> # Per-possession detection with stability threshold
+            >>> efpi.fit(
+            ...     every="possession",
+            ...     change_after_possession=True,
+            ...     change_threshold=0.15  # Only update if cost improves by 15%
+            ... )
+            >>> # Formation changes only when possession changes or cost improves significantly
+            >>>
+            >>> # Per-period detection (one formation per half)
+            >>> efpi.fit(every="period")
+            >>> # Single formation assignment for each period
+            >>>
+            >>> # 5-minute rolling window detection
+            >>> efpi.fit(every="5m", substitutions="drop")
+            >>> print(efpi.segments)
+            >>> # Shows 5-minute windows with start/end times
+            >>>
+            >>> # Custom formations with time window
+            >>> efpi.fit(
+            ...     start_time=pl.duration(minutes=10),
+            ...     end_time=pl.duration(minutes=20),
+            ...     period_id=1,
+            ...     every="possession",
+            ...     formations=["4-3-3", "4-2-3-1"]
+            ... )
+            >>>
+            >>> # Analyze formation changes during first half
+            >>> efpi.fit(every="possession", period_id=1)
+            >>> formation_changes = (
+            ...     efpi.output
+            ...     .group_by(["team_id", "possession_id"])
+            ...     .agg(pl.col("formation").first())
+            ... )
+            >>> print(formation_changes)
+
+        Note:
+            - Per-frame detection can be noisy due to player movements. Use temporal
+              aggregation (every="possession" or time windows) for more stable results.
+            - The change_threshold parameter only applies when using temporal aggregation
+              (every != "frame"). It prevents frequent formation updates within windows.
+            - When using time windows (e.g., every="5m"), player positions are averaged
+              across the window before formation detection.
+            - Substitutions within windows are handled by the substitutions parameter:
+              - "drop": Keeps the 11 players with longest appearances
+              - "merge": Not yet implemented (will raise NotImplementedError)
+            - The output DataFrame structure differs based on every:
+              - "frame": Contains frame_id
+              - "possession" / time windows: Contains segment_id and is_attacking
+              - Use segments attribute to map segment_id back to frame ranges
+
+        See Also:
+            :class:`EFPI`: Class documentation with algorithm overview.
+            :doc:`../tutorials/formation_detection`: Complete tutorial with examples.
         """
         self._substitutions = substitutions
         self._change_threshold = change_threshold

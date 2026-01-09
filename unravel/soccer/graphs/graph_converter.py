@@ -33,29 +33,107 @@ logger.addHandler(stdout_handler)
 
 @dataclass(repr=True)
 class SoccerGraphConverter(DefaultGraphConverter):
-    """
-    Converts our dataset TrackingDataset into an internal structure
+    """Convert soccer tracking data from Polars DataFrame to graph structures for GNN training.
+
+    This class transforms soccer tracking data into graph representations suitable for
+    Graph Neural Networks. Each frame of tracking data becomes a graph with players and
+    the ball as nodes, with edges representing spatial relationships or team affiliations.
+
+    The converter supports two GNN frameworks:
+    - PyTorch Geometric (recommended) via :meth:`to_pytorch_graphs`
+    - Spektral (deprecated, Python 3.11 only) via :meth:`to_spektral_graphs`
+
+    Graph Structure:
+        - **Nodes**: Players (home team, away team) and ball
+        - **Node Features**: Position, velocity, acceleration, distances, angles (12 default features)
+        - **Edges**: Defined by adjacency_matrix_type (team-based, spatial, or dense)
+        - **Edge Features**: Distances, angles, relative velocities (6-7 default features)
+        - **Global Features**: Optional match-level features attached to ball node
+
+    Key Features:
+        - Configurable node and edge feature engineering
+        - Multiple adjacency matrix types (split_by_team, delaunay, dense)
+        - Custom feature functions via decorators
+        - Automatic padding for fixed-size graphs
+        - Ball connection strategies (all players, carrier only, none)
+        - Permutation invariance via random node ordering
+
+    Args:
+        dataset (KloppyPolarsDataset): Polars dataset with tracking data. Must have
+            been processed with :meth:`~unravel.soccer.KloppyPolarsDataset.add_graph_ids`
+            and optionally :meth:`~unravel.soccer.KloppyPolarsDataset.add_dummy_labels`.
+        chunk_size (int, optional): Number of graphs to process simultaneously. Higher
+            values use more memory but may be faster. Defaults to 20000.
+        non_potential_receiver_node_value (float, optional): Node feature value (0-1)
+            assigned to defending team players. Used to distinguish attackers from
+            defenders. Defaults to 0.1.
+        edge_feature_funcs (List[Callable], optional): Custom edge feature functions
+            decorated with ``@graph_feature(type="edge")``. If None, uses defaults.
+            Defaults to None.
+        node_feature_funcs (List[Callable], optional): Custom node feature functions
+            decorated with ``@graph_feature(type="node")``. If None, uses defaults.
+            Defaults to None.
+        global_feature_cols (List[str], optional): Column names from the dataset to use
+            as graph-level features (e.g., match score, team ratings). Must be constant
+            within each graph_id group. Defaults to empty list.
+        global_feature_type (Literal["ball", "all"], optional): Where to attach global
+            features. "ball" attaches to ball node only, "all" attaches to all nodes.
+            Defaults to "ball".
+        additional_feature_cols (List[str], optional): Extra columns from dataset to
+            make available to custom feature functions (e.g., player height, position).
+            Defaults to empty list.
 
     Attributes:
-        dataset (KloppyPolarsDataset): KloppyPolarsDataset created from a Kloppy dataset.
-        chunk_size (int): Determines how many Graphs get processed simultanously.
-        non_potential_receiver_node_value (float): Value between 0 and 1 to assign to the defing team players
-        global_feature_cols (list[str]): List of columns in the dataset that are Graph level features (e.g. team strength rating, win probabilities etc)
-            we want to add to our model. A list of column names corresponding to the Polars dataframe within KloppyPolarsDataset.data
-            that are graph level features. They should be joined to the KloppyPolarsDataset.data dataframe such that
-            each Group in the group_by has the same value per column. We take the first value of the group, and assign this as a
-            "graph level feature" to the ball node.
-        global_feature_type: A literal of type "ball" or "all". When set to "ball" the global features will be assigned to only the ball node, if set to "all"
-            the they will be assigned to every player and ball in the node features.
-        edge_feature_funcs: A list of functions (decorated with @graph_feature(is_custom, feature_type="edge"))
-            that take **kwargs as input and return a numpy array (dimensions should match expected (N,N) shape or tuple with multipe (N, N) numpy arrays).
-        node_feature_funcs: A list of functions (decorated with @graph_feature(is_custom, feature_type="node"))
-            that take **kwargs as input and return a numpy array (dimensions should match expected (N,) shape or (N, k) )
-        additional_feature_cols: Column the user has added to the 'KloppyPolarsDataset.data' that are not to be added as global features,
-            but can now be accessed by edge_feature_funcs and node_feature_funcs through kwargs.
-            (e.g. if the user adds "height" for each player, as a column to the 'KloppyPolarsDataset.data' and
-            they want to use it to compute the height difference between all players as an edge feature they would
-            pass additional_feature_cols=["height"] and their custom edge feature function can now access kwargs['height'])
+        settings (GraphSettingsPolars): Configuration for graph conversion including
+            adjacency matrix type, padding, and feature settings.
+        n_node_features (int): Total number of node features per node.
+        n_edge_features (int): Total number of edge features per edge.
+        n_graph_features (int): Total number of global/graph-level features.
+
+    Raises:
+        ValueError: If dataset is not a KloppyPolarsDataset.
+        ValueError: If required columns (graph_id, label) are missing.
+        ValueError: If custom feature functions are not properly decorated.
+
+    Example:
+        >>> from unravel.soccer import KloppyPolarsDataset, SoccerGraphConverter
+        >>> from kloppy import sportec
+        >>>
+        >>> # Load and prepare data
+        >>> kloppy_dataset = sportec.load_open_tracking_data(only_alive=True)
+        >>> polars_dataset = KloppyPolarsDataset(kloppy_dataset=kloppy_dataset)
+        >>> polars_dataset.add_dummy_labels(by=["frame_id"])
+        >>> polars_dataset.add_graph_ids(by=["frame_id"])
+        >>>
+        >>> # Create converter
+        >>> converter = SoccerGraphConverter(
+        ...     dataset=polars_dataset,
+        ...     self_loop_ball=True,
+        ...     adjacency_matrix_connect_type="ball",
+        ...     adjacency_matrix_type="split_by_team",
+        ...     label_type="binary",
+        ... )
+        >>>
+        >>> # Convert to PyTorch Geometric format
+        >>> graphs = converter.to_pytorch_graphs()
+        >>> print(f"Created {len(graphs)} graphs")
+        >>> print(f"Node features: {converter.n_node_features}")
+        >>> print(f"Edge features: {converter.n_edge_features}")
+
+    Note:
+        For detailed configuration options, see :class:`~unravel.soccer.GraphSettingsPolars`.
+        For custom features, see :func:`~unravel.utils.features.graph_feature` decorator.
+
+    Warning:
+        If not using padding (``pad=False``), graphs with incomplete player data
+        (< 22 players) will be dropped. Use ``pad=True`` for variable-sized teams.
+
+    See Also:
+        :class:`~unravel.soccer.KloppyPolarsDataset`: Prepare tracking data.
+        :class:`~unravel.utils.GraphDataset`: Wrap graphs for training.
+        :func:`~unravel.utils.features.graph_feature`: Create custom features.
+        :doc:`../tutorials/soccer_gnn`: Complete GNN training tutorial.
+        `Graph FAQ <https://github.com/unravelsports/unravelsports/blob/main/examples/graphs_faq.md>`_: Detailed configuration guide.
     """
 
     dataset: KloppyPolarsDataset = None
