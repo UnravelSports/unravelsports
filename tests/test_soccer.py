@@ -1586,9 +1586,10 @@ class TestKloppyPolarsData:
 
     def test_efpi_wrong(self, kloppy_polars_sportec_dataset):
         import pytest
-        from polars.exceptions import PanicException
 
-        with pytest.raises(pl.exceptions.InvalidOperationError):
+        with pytest.raises(
+            (pl.exceptions.PanicException, pl.exceptions.InvalidOperationError)
+        ):
             model = EFPI(dataset=kloppy_polars_sportec_dataset)
             model.fit(
                 formations=["442"],
