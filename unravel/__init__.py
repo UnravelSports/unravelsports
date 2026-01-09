@@ -1,4 +1,4 @@
-__version__ = "2.0.0"
+__version__ = "1.2.0"
 
 from .soccer import *
 from .american_football import *

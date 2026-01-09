@@ -1,3 +1,7 @@
+import matplotlib
+
+matplotlib.use("Agg")  # Use non-interactive backend for tests
+
 from pathlib import Path
 from unravel.soccer import (
     SoccerGraphConverter,

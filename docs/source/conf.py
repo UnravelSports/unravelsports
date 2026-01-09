@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.abspath("../.."))
 project = "unravelsports"
 copyright = "2024, Joris Bekkers"
 author = "Joris Bekkers"
-release = "2.0.0"
+release = "1.2.0"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
