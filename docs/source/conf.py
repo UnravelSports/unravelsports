@@ -60,6 +60,17 @@ autodoc_default_options = {
 autodoc_typehints = "description"
 autodoc_class_signature = "separated"
 
+# Mock imports for heavy dependencies that aren't needed for building docs
+autodoc_mock_imports = [
+    "torch",
+    "torch_geometric",
+    "pytorch_lightning",
+    "torchmetrics",
+    "tensorflow",
+    "keras",
+    "spektral",
+]
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
 
