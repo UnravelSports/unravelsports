@@ -124,6 +124,7 @@ class EFPI(FormationDetection):
         :meth:`fit`: Configure and run formation detection.
         :doc:`../tutorials/formation_detection`: Tutorial on formation analysis.
     """
+
     _fit = False
 
     def __post_init__(self):

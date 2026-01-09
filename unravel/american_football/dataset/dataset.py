@@ -130,6 +130,7 @@ class BigDataBowlDataset(DefaultDataset):
         :meth:`add_graph_ids`: Add graph identifiers for batching.
         :doc:`../tutorials/american_football`: Tutorial on NFL tracking data analysis.
     """
+
     def __init__(
         self,
         tracking_file_path: str,

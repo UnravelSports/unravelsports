@@ -50,6 +50,7 @@ class SoccerObject:
         is_home: Whether the player is on the home team. Defaults to None.
         object_type: Type of object, either 'ball' or 'player'. Defaults to 'player'.
     """
+
     id: Union[str, int]
     team_id: Union[str, int]
     position_name: str
@@ -151,6 +152,7 @@ class KloppyPolarsDataset(DefaultDataset):
         :func:`~unravel.utils.add_dummy_label_column`: Add labels for training.
         :func:`~unravel.utils.add_graph_id_column`: Add graph IDs for grouping.
     """
+
     def __init__(
         self,
         kloppy_dataset: TrackingDataset,

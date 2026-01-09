@@ -107,6 +107,7 @@ class PressingIntensity:
         :meth:`fit`: Configure and compute pressing intensity metrics.
         :doc:`../tutorials/pressing_intensity`: Tutorial on pressing intensity analysis.
     """
+
     dataset: KloppyPolarsDataset
     chunk_size: int = field(init=True, repr=False, default=2_0000)
 
