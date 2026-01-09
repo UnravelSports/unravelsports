@@ -17,9 +17,8 @@ PyTorch Geometric
    :show-inheritance:
 
 .. autoclass:: PyGLightningCrystalGraphClassifier
-   :members:
-   :undoc-members:
    :show-inheritance:
+   :no-index:
 
 Spektral
 --------

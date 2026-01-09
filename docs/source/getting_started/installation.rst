@@ -66,45 +66,8 @@ Development Installation
    # OR
    pip install -e .[test]  # For Python 3.11 (includes Spektral)
 
-Verifying Installation
-----------------------
-
-You can verify your installation by importing the package:
-
-.. code-block:: python
-
-   import unravel
-   print(unravel.__version__)
-
-Troubleshooting
----------------
-
-Common Issues
-~~~~~~~~~~~~~
-
-**ImportError: No module named 'unravel'**
-
-Make sure you installed the package correctly. Try reinstalling:
-
-.. code-block:: bash
-
-   pip install --upgrade unravelsports
-
-**PyTorch Geometric Installation Issues**
-
-PyTorch Geometric can be tricky to install. Follow the official installation guide at
-https://pytorch-geometric.readthedocs.io/en/latest/install/installation.html
-
-**Spektral/TensorFlow Issues on Apple Silicon**
-
-Make sure you're using ``tensorflow-macos`` instead of ``tensorflow`` on Apple Silicon:
-
-.. code-block:: bash
-
-   pip install tensorflow-macos
-
 Getting Help
-~~~~~~~~~~~~
+------------
 
 If you encounter any issues:
 

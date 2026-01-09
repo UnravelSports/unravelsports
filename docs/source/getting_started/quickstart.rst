@@ -3,8 +3,8 @@ Quick Start
 
 This guide will walk you through the basic workflow of using unravelsports.
 
-Soccer: Loading and Converting Tracking Data
----------------------------------------------
+Soccer: Train a GNN
+-------------------
 
 Step 1: Load Data with Kloppy
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
