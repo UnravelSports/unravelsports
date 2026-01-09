@@ -69,6 +69,7 @@ autodoc_mock_imports = [
     "tensorflow",
     "keras",
     "spektral",
+    "IPython",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
