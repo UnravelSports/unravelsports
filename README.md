@@ -22,12 +22,9 @@ The **unravelsports** package aims to aid researchers, analysts and enthusiasts 
 This package currently supports:
 
 - ⚽ 🏈 [**Polars DataFrame Conversion**](#polars-dataframes)
-- ⚽ 🏈 [**Graph Neural Network**](#graph-neural-networks) Training, Graph Conversion and Prediction `<small>`
-  [[🔗 Bekkers &amp; Sahasrabudhe (2023)](https://arxiv.org/pdf/2411.17450)]`</small>`
-- ⚽ [**Pressing Intensity**](#pressing-intensity)
-  `<small>`[[🔗 Bekkers (2024)](https://arxiv.org/pdf/2501.04712)]`</small>`
-- ⚽ [**Formation and Position Identification (EFPI)**](#formation-and-position-identification)
-  `<small>`[[🔗 Bekkers (2025)](https://arxiv.org/pdf/2506.23843)]`</small>`
+- ⚽ 🏈 [**Graph Neural Network**](#graph-neural-networks) Training, Graph Conversion and Prediction [[🔗 Bekkers & Sahasrabudhe (2023)](https://arxiv.org/pdf/2411.17450)]
+- ⚽ [**Pressing Intensity**](#pressing-intensity) [[🔗 Bekkers (2024)](https://arxiv.org/pdf/2501.04712)]
+- ⚽ [**Formation and Position Identification (EFPI)**](#formation-and-position-identification) [[🔗 Bekkers (2025)](https://arxiv.org/pdf/2506.23843)]
 
 🌀 Features
 -----------
@@ -158,14 +155,10 @@ model.fit(
 
 📖 ⚽ The [**Pressing Intensity Tutorial Jupyter Notebook**](examples/pressing_intensity.ipynb) gives a description on how to create Pressing Intensity videos.
 
-🌀 Documentation
-----------------
+🌀 Additional Reading
+---------------------
 
-For now, follow the [**Graph Converter Tutorial**](examples/1_kloppy_gnn_train.ipynb) and check the [**Graph FAQ**](examples/graphs_faq.md), more documentation will follow!
-
-Additional reading:
-
-📖 [A Graph Neural Network Deep-dive into Successful Counterattacks {A. Sahasrabudhe &amp; J. Bekkers, 2023}](https://github.com/USSoccerFederation/ussf_ssac_23_soccer_gnn/tree/main)
+📖 [A Graph Neural Network Deep-dive into Successful Counterattacks {A. Sahasrabudhe  J. Bekkers, 2023}](https://github.com/USSoccerFederation/ussf_ssac_23_soccer_gnn/tree/main)
 
 🎤 [**Cutting Edge Football Analytics:** _using `polars`, `keras` and `spektral`_ (PyData London, 2025)](https://rawcdn.githack.com/UnravelSports/keynotes/main/html/20250607-PyData-London.html)
 
@@ -255,5 +248,5 @@ If you use this repository for any educational purposes, research, project etc.,
 🌀 Social Media
 ---------------
 
-[`<img alt="alt_text" width="40px" src="https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png"/>`](https://www.linkedin.com/in/joris-bekkers-33138288/)
-[`<img alt="alt_text" width="40px" src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Bluesky_Logo.svg/2319px-Bluesky_Logo.svg.png"/>`](https://bsky.app/profile/unravelsports.com)
+[<img alt="LinkedIn" width="40px" src="https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png"/>](https://www.linkedin.com/in/joris-bekkers-33138288/)
+[<img alt="Bluesky" width="40px" src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Bluesky_Logo.svg/2319px-Bluesky_Logo.svg.png"/>](https://bsky.app/profile/unravelsports.com)
