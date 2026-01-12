@@ -12,7 +12,8 @@
 🌀 Documentation
 ----------------
 
-[unravelsports.readthedocs.io](https://unravelsports.readthedocs.io "https://unravelsports.readthedocs.io")
+Finally, we have documentation! Checko out:[
+    👉 unravelsports.readthedocs.io](https://unravelsports.readthedocs.io "https://unravelsports.readthedocs.io")
 
 🌀 What is it?
 --------------
@@ -22,7 +23,7 @@ The **unravelsports** package aims to aid researchers, analysts and enthusiasts 
 This package currently supports:
 
 - ⚽ 🏈 [**Polars DataFrame Conversion**](#polars-dataframes)
-- ⚽ 🏈 [**Graph Neural Network**](#graph-neural-networks) Training, Graph Conversion and Prediction [[🔗 Bekkers & Sahasrabudhe (2023)](https://arxiv.org/pdf/2411.17450)]
+- ⚽ 🏈 [**Graph Neural Network**](#graph-neural-networks) Training, Graph Conversion and Prediction [[🔗 Bekkers &amp; Sahasrabudhe (2023)](https://arxiv.org/pdf/2411.17450)]
 - ⚽ [**Pressing Intensity**](#pressing-intensity) [[🔗 Bekkers (2024)](https://arxiv.org/pdf/2501.04712)]
 - ⚽ [**Formation and Position Identification (EFPI)**](#formation-and-position-identification) [[🔗 Bekkers (2025)](https://arxiv.org/pdf/2506.23843)]
 
@@ -248,5 +249,5 @@ If you use this repository for any educational purposes, research, project etc.,
 🌀 Social Media
 ---------------
 
-[<img alt="LinkedIn" width="40px" src="https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png"/>](https://www.linkedin.com/in/joris-bekkers-33138288/)
-[<img alt="Bluesky" width="40px" src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Bluesky_Logo.svg/2319px-Bluesky_Logo.svg.png"/>](https://bsky.app/profile/unravelsports.com)
+[`<img alt="LinkedIn" width="40px" src="https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png"/>`](https://www.linkedin.com/in/joris-bekkers-33138288/)
+[`<img alt="Bluesky" width="40px" src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Bluesky_Logo.svg/2319px-Bluesky_Logo.svg.png"/>`](https://bsky.app/profile/unravelsports.com)
