@@ -12,7 +12,9 @@
 🌀 Documentation
 ----------------
 
-Finally, we have documentation! Checko out:[
+Finally, we have documentation! Check out:
+
+[
     👉 unravelsports.readthedocs.io](https://unravelsports.readthedocs.io "https://unravelsports.readthedocs.io")
 
 🌀 What is it?
