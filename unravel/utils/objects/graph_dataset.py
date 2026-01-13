@@ -614,29 +614,24 @@ def GraphDataset(
     format: Optional[Literal["spektral", "pyg"]] = "spektral", **kwargs
 ) -> Union[SpektralGraphDataset, PyGGraphDataset]:
     """
-    Factory function that automatically detects and creates the appropriate dataset.
+    Factory function that creates the appropriate dataset based on format.
 
     Args:
-        format: Optional format specification ('spektral' or 'pyg').
-                Only required when passing dict format graphs or pickle files.
-                For Spektral Graph or PyG Data objects, format is auto-detected.
+        format: Format specification ('spektral' or 'pyg'). Defaults to 'spektral'.
         **kwargs: Arguments passed to the dataset constructor
 
     Returns:
         SpektralGraphDataset or PyGGraphDataset depending on format
 
     Examples:
-        # Auto-detect from Spektral graphs
-        dataset = GraphDataset(graphs=spektral_graph_list)
+        # Spektral format (default)
+        dataset = GraphDataset(graphs=spektral_graph_list, format='spektral')
 
-        # Auto-detect from PyG graphs
-        dataset = GraphDataset(graphs=pyg_data_list)
+        # PyG format
+        dataset = GraphDataset(graphs=pyg_data_list, format='pyg')
 
-        # Explicit format required for dicts
-        dataset = GraphDataset(graphs=dict_list, format='pyg')
-
-        # Explicit format required for pickle files
-        dataset = GraphDataset(pickle_file='graphs.pickle.gz', format='spektral')
+        # From pickle files
+        dataset = GraphDataset(pickle_file='graphs.pickle.gz', format='pyg')
     """
     import warnings
 
@@ -665,55 +660,18 @@ unravelsports now supports PyTorch Geometric. The default "format" will change f
         else:
             raise ValueError(f"format must be 'spektral' or 'pyg', got '{fmt}'")
 
-    # Auto-detect from graphs if provided
-    if kwargs.get("graphs", None) is not None:
-        graphs = kwargs["graphs"]
-
-        if not isinstance(graphs, list) or len(graphs) == 0:
-            raise ValueError("graphs must be a non-empty list")
-
-        first_item = graphs[0]
-
-        # Check if it's a dict - require explicit format
-        if isinstance(first_item, dict):
-            if format is None:
-                raise ValueError(
-                    "When passing dict format graphs, you must explicitly specify format='spektral' or format='pyg'"
-                )
-            return _create_dataset(format)
-
-        # Check if it's a Spektral Graph
-        if _HAS_SPEKTRAL:
-            from spektral.data import Graph
-
-            if isinstance(first_item, Graph):
-                return SpektralGraphDataset(**kwargs)
-
-        # Check if it's a PyG Data object
-        if _HAS_TORCH_GEOMETRIC:
-            from torch_geometric.data import Data
-
-            if isinstance(first_item, Data):
-                return PyGGraphDataset(**kwargs)
-
-        # If we can't detect, raise error
-        raise ValueError(
-            f"Cannot auto-detect format for type {type(first_item)}. "
-            "Please specify format='spektral' or format='pyg' explicitly."
-        )
-
-    # For pickle files, require explicit format
-    elif (
-        kwargs.get("pickle_file", None) is not None
-        or kwargs.get("pickle_folder", None) is not None
+    if (
+        kwargs.get("graphs") is None
+        and kwargs.get("pickle_file") is None
+        and kwargs.get("pickle_folder") is None
     ):
-        if format is None:
-            raise ValueError(
-                "When loading from pickle files, you must explicitly specify format='spektral' or format='pyg'"
-            )
-        return _create_dataset(format)
-
-    else:
         raise ValueError(
             "Must provide either 'graphs', 'pickle_file', or 'pickle_folder'"
         )
+
+    if kwargs.get("graphs") is not None:
+        graphs = kwargs["graphs"]
+        if not isinstance(graphs, list) or len(graphs) == 0:
+            raise ValueError("graphs must be a non-empty list")
+
+    return _create_dataset(format)

@@ -416,7 +416,7 @@ class TestAmericanFootballDataset:
 
         pyg_graphs = gnnc.to_pytorch_graphs()
 
-        dataset = GraphDataset(graphs=pyg_graphs)
+        dataset = GraphDataset(graphs=pyg_graphs, format="pyg")
         N, F, S, n_out, n = dataset.dimensions()
         assert N == 23
         assert F == len(node_feature_assert_values.keys())
