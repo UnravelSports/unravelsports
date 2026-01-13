@@ -324,6 +324,7 @@ class TestGraphDatasetEdgeCases:
         with pytest.raises(ValueError):
             GraphDataset()
 
+    @pytest.mark.spektral
     def test_unknown_graph_type_raises_error(self):
         """Test that unknown graph type raises an error"""
 
