@@ -198,3 +198,4 @@ examples/models/*
 diffs/
 
 lightning_logs/
+tests/files/plot/*

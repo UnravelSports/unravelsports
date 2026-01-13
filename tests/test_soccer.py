@@ -1006,7 +1006,7 @@ class TestKloppyPolarsData:
         assert data[0].frame_id == 1524
         assert data[-1].frame_id == 2097
 
-        dataset = GraphDataset(graphs=pyg_graphs)
+        dataset = GraphDataset(graphs=pyg_graphs, format="pyg")
         N, F, S, n_out, n = dataset.dimensions()
         assert N == 20
         assert F == 15

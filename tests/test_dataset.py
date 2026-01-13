@@ -7,8 +7,8 @@ from unravel.utils import GraphDataset
 from unravel.utils.objects.graph_dataset import SpektralGraphDataset, PyGGraphDataset
 
 
-class TestGraphDatasetAutoDetection:
-    """Test auto-detection of graph types"""
+class TestGraphDatasetFormats:
+    """Test graph dataset format specification"""
 
     @pytest.fixture
     def spektral_graphs(self):
@@ -65,18 +65,18 @@ class TestGraphDatasetAutoDetection:
         return graphs
 
     @pytest.mark.spektral
-    def test_auto_detect_spektral_graphs(self, spektral_graphs):
-        """Test that Spektral graphs are auto-detected"""
+    def test_spektral_graphs(self, spektral_graphs):
+        """Test creating SpektralGraphDataset with format='spektral'"""
 
-        dataset = GraphDataset(graphs=spektral_graphs)
+        dataset = GraphDataset(graphs=spektral_graphs, format="spektral")
 
         assert isinstance(dataset, SpektralGraphDataset)
         assert len(dataset) == 10
 
-    def test_auto_detect_pyg_graphs(self, pyg_graphs):
-        """Test that PyG Data objects are auto-detected"""
+    def test_pyg_graphs(self, pyg_graphs):
+        """Test creating PyGGraphDataset with format='pyg'"""
 
-        dataset = GraphDataset(graphs=pyg_graphs)
+        dataset = GraphDataset(graphs=pyg_graphs, format="pyg")
 
         assert isinstance(dataset, PyGGraphDataset)
         assert len(dataset) == 10
@@ -234,7 +234,7 @@ class TestGraphDatasetSplitting:
             )
             graphs[-1].id = f"graph_{i}"
 
-        return GraphDataset(graphs=graphs)
+        return GraphDataset(graphs=graphs, format="pyg")
 
     @pytest.fixture
     def spektral_dataset(self):
@@ -371,5 +371,5 @@ class TestGraphDatasetRepr:
             )
         ]
 
-        dataset = GraphDataset(graphs=graphs)
+        dataset = GraphDataset(graphs=graphs, format="pyg")
         assert repr(dataset) == "PyGGraphDataset(n_graphs=1)"
