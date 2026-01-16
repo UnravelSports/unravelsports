@@ -88,9 +88,9 @@ Use Kloppy to load tracking data from various providers:
    )
 
    # SkillCorner
-   kloppy_dataset = skillcorner.load(
-       ...
-       include_empty_frames=False  # IMPORTANT for non-Sportec data
+   kloppy_dataset = skillcorner.load_open_data(
+        only_alive=True,
+       include_empty_frames=False 
    )
 
    # Convert to Polars
@@ -105,7 +105,7 @@ For supervised learning, add a ``label`` column:
    from unravel.utils import add_dummy_label_column
 
    # Option 1: Dummy labels (for testing)
-   polars_dataset.dataset = add_dummy_label_column(polars_dataset.dataset)
+   polars_dataset.add_dummy_labels()
 
    # Option 2: Join real labels from your data
    import polars as pl
@@ -124,32 +124,10 @@ For supervised learning, add a ``label`` column:
 
 **Adding Graph IDs**
 
-Group frames into graph samples:
+Group frames into graph samples along which `polars_dataset.split_train_test()` is split.
 
 .. code-block:: python
-
-   from unravel.utils import add_graph_id_column
-
-   # Each frame is a separate graph
-   polars_dataset.dataset = add_graph_id_column(
-       polars_dataset.dataset,
-       by=["frame_id"]
-   )
-
-   # Or group by possession
-   polars_dataset.dataset = add_graph_id_column(
-       polars_dataset.dataset,
-       by=["ball_owning_team_id", "period_id"]  # Changes when possession changes
-   )
-
-   # Or by sequences (e.g., 10-frame sequences)
-   polars_dataset.dataset = polars_dataset.dataset.with_columns(
-       (pl.col("frame_id") // 10).alias("sequence_id")
-   )
-   polars_dataset.dataset = add_graph_id_column(
-       polars_dataset.dataset,
-       by=["sequence_id"]
-   )
+   polars_dataset.add_graph_ids(by=["frame_id"])
 
 Graph Conversion
 ~~~~~~~~~~~~~~~~
@@ -171,7 +149,7 @@ Graph Conversion
        adjacency_matrix_type="split_by_team",  # Team-based connections
 
        # Labels
-       label_type="binary",  # Or "continuous", "multiclass"
+       label_type="binary",  # Only supported option 
 
        # Node values for specific roles
        defending_team_node_value=0.1,
@@ -182,36 +160,54 @@ Graph Conversion
        pad=False,  # Padding for fixed-size graphs
 
        verbose=False,
+
+       chunk_size=2000, # Number of graphs to process at a time
+       
+       # Add custom features or a subset of built in features
+       # If none are passed, defaults to Sahasrabudhe & Bekkers (2023) 
+       node_feature_funcs=[is_gk, etc..], 
+       edge_feature_funcs=[distances_between_players_normed, etc..], #
+       # Specifiy column you have added to polars_dataset.data 
+       # These global features should be the _same_ value for every player 
+       # for a given frame.
+       global_feature_cols=['goal_diff'],
+       # Do we attach the global features to all players+ball or only ball
+       global_feature_type="all", # or ball 
+       # Extra columns from dataset to
+       # make available to custom feature functions (e.g., player height, position).
+       # Defaults to empty list.
+       additional_feature_cols=None
    )
 
-**Node Features**
+**Built-in Node Features & Edge Features**
 
-Available node features for soccer (12 total):
+[Available node features that are built-in.](https://github.com/UnravelSports/unravelsports/blob/main/unravel/utils/features/builtin.py)
 
-* ``x_normed``: Normalized x-coordinate
-* ``y_normed``: Normalized y-coordinate
-* ``vx_normed``: Normalized x-velocity
-* ``vy_normed``: Normalized y-velocity
-* ``speed_normed``: Normalized speed magnitude
-* ``ax_normed``: Normalized x-acceleration
-* ``ay_normed``: Normalized y-acceleration
-* ``acceleration_normed``: Normalized acceleration magnitude
-* ``sin_direction``: Sine of movement direction
-* ``cos_direction``: Cosine of movement direction
-* ``distance_to_goal_normed``: Distance to opponent's goal
-* ``angle_to_goal_normed``: Angle to opponent's goal
+**Custom Features**
 
-**Edge Features**
+Add custom node or edge features.
 
-Available edge features (6-7 total):
+Kwargs contains all built-in polars_dataset.data columns (e.g. `vx`, `x` etc.) + `additional_feature_cols` that you've added.
 
-* ``distance_normed``: Distance between nodes
-* ``sin_angle``: Sine of angle between nodes
-* ``cos_angle``: Cosine of angle between nodes
-* ``relative_speed_normed``: Relative speed
-* ``relative_vx_normed``: Relative x-velocity
-* ``relative_vy_normed``: Relative y-velocity
-* (Optionally) edge type indicators
+.. code-block:: python
+
+   from unravel.utils.features import graph_feature
+
+   @graph_feature(is_custom=True, feature_type="node")
+    def distances_between_players_normed(**kwargs):
+        distances_between_players = np.linalg.norm(
+            kwargs["position"][:, None, :] - kwargs["position"][None, :, :], axis=-1
+        )
+        return normalize_distance(
+            distances_between_players, max_distance=kwargs["settings"].max_distance
+        )
+
+   # Use in converter
+   converter = SoccerGraphConverter(
+       dataset=polars_dataset,
+       node_feature_cols=[distances_between_players_normed],
+       ...
+   )
 
 **Adjacency Matrix Types**
 
@@ -220,30 +216,6 @@ Available edge features (6-7 total):
 * ``dense``: Fully connected graph
 * ``dense_ap``: Dense for attacking team, proximity for defending
 * ``dense_dp``: Dense for defending team, proximity for attacking
-
-**Custom Features**
-
-Add custom node or edge features:
-
-.. code-block:: python
-
-   from unravel.utils.features import graph_feature
-
-   @graph_feature(
-       cols=["x", "y"],
-       returns=["distance_from_center"],
-       type="node"
-   )
-   def distance_from_center(x, y):
-       import polars as pl
-       return [pl.sqrt(x**2 + y**2)]
-
-   # Use in converter
-   converter = SoccerGraphConverter(
-       dataset=polars_dataset,
-       node_feature_cols=[distance_from_center],
-       ...
-   )
 
 Converting to Graph Format
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -274,65 +246,66 @@ Model Training
 
 .. code-block:: python
 
-   from unravel.utils import GraphDataset
-   from unravel.classifiers import PyGLightningCrystalGraphClassifier
-   import pytorch_lightning as pyl
-   from torch_geometric.loader import DataLoader
+    from unravel.utils import GraphDataset
+    from unravel.classifiers import PyGLightningCrystalGraphClassifier
+    import pytorch_lightning as pyl
+    from torch_geometric.loader import DataLoader
 
-   # Create dataset
-   dataset = GraphDataset(graphs=graphs, format="pyg")
+    # Create dataset
+    dataset = GraphDataset(graphs=graphs, format="pyg")
 
-   # Split data (4:1:1 ratio for train:test:val)
-   train_graphs, test_graphs, val_graphs = dataset.split_test_train_validation(4, 1, 1)
+    # Split data (4:1:1 ratio for train:test:val)
+    train_graphs, test_graphs, val_graphs = dataset.split_test_train_validation(4, 1, 1)
 
-   # Create data loaders
-   train_loader = DataLoader(train_graphs, batch_size=32, shuffle=True)
-   val_loader = DataLoader(val_graphs, batch_size=32, shuffle=False)
-   test_loader = DataLoader(test_graphs, batch_size=32, shuffle=False)
+    # Create data loaders
+    train_loader = DataLoader(train_graphs, batch_size=32, shuffle=True)
+    val_loader = DataLoader(val_graphs, batch_size=32, shuffle=False)
+    test_loader = DataLoader(test_graphs, batch_size=32, shuffle=False)
 
-   # Initialize model
-   model = PyGLightningCrystalGraphClassifier(
-       node_features=converter.n_node_features,
-       edge_features=converter.n_edge_features,
-       global_features=converter.n_graph_features,
-       output_features=1,  # Binary classification
-       learning_rate=0.001,
-   )
+    # Initialize model
+    model = PyGLightningCrystalGraphClassifier(
+    )
 
-   # Train
-   trainer = pyl.Trainer(
-       max_epochs=50,
-       accelerator="auto",  # Use GPU if available
-       devices=1,
-       log_every_n_steps=10,
-   )
-   trainer.fit(model, train_loader, val_loader)
+    # Train
+    trainer = pyl.Trainer(
+        max_epochs=10,
+        accelerator="auto",  # Use GPU if available
+        devices=1,
+        log_every_n_steps=10,
+    )
+    trainer.fit(model, train_loader, val_loader)
 
-   # Test
-   test_results = trainer.test(model, test_loader)
+    # Test
+    test_results = trainer.test(model, test_loader)
 
-   # Save model
-   trainer.save_checkpoint("model.ckpt")
+    # Save model
+    trainer.save_checkpoint("model.ckpt")
 
-   # Load model
-   model = PyGLightningCrystalGraphClassifier.load_from_checkpoint("model.ckpt")
+    # Load model
+    model = PyGLightningCrystalGraphClassifier.load_from_checkpoint("model.ckpt")
 
 Making Predictions
 ~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
-   # Set converter to prediction mode (no labels needed)
-   converter_pred = SoccerGraphConverter(
-       dataset=new_data,
-       prediction=True,  # Important!
-       **same_settings_as_training
-   )
+   # Note, this is the same data as we trained on, it's just an example
+    kloppy_dataset = sportec.load_open_tracking_data(
+        only_alive=True, limit=500, coordinates="sportec")
+    new_data = KloppyPolarsDataset(kloppy_dataset=kloppy_dataset)
+    new_data.add_graph_ids(by=["frame_id"])
 
-   # Convert new data
-   new_graphs = converter_pred.to_pytorch_graphs()
-   new_dataset = GraphDataset(graphs=new_graphs, format="pyg")
-   pred_loader = DataLoader(new_dataset, batch_size=32)
+    # Set converter to prediction mode (no labels needed)
+    converter_pred = SoccerGraphConverter(
+        dataset=new_data,
+        prediction=True,  # Important!
+        # **same_settings_as_training
+    )
 
-   # Predict
-   predictions = trainer.predict(model, pred_loader)
+    # Convert new data
+    new_graphs = converter_pred.to_pytorch_graphs()
+    new_dataset = GraphDataset(graphs=new_graphs, format="pyg")
+    pred_loader = DataLoader(new_dataset, batch_size=32)
+
+    # Predict
+    predictions = trainer.predict(model, pred_loader)

@@ -41,13 +41,7 @@ PyTorch Geometric
    from torch_geometric.loader import DataLoader
 
    # Initialize model
-   model = PyGLightningCrystalGraphClassifier(
-       node_features=12,
-       edge_features=6,
-       global_features=0,
-       output_features=1,
-       learning_rate=0.001,
-   )
+   model = PyGLightningCrystalGraphClassifier()
 
    # Train
    trainer = pyl.Trainer(max_epochs=50)
@@ -56,9 +50,6 @@ PyTorch Geometric
    # Test
    trainer.test(model, test_loader)
 
-   # Predict
-   predictions = trainer.predict(model, pred_loader)
-
 Spektral
 ~~~~~~~~
 
@@ -66,19 +57,31 @@ Spektral
 
    from unravel.classifiers import CrystalGraphClassifier
 
-   # Initialize model
-   model = CrystalGraphClassifier(
-       node_features=12,
-       edge_features=6,
-       output_features=1,
-   )
+   from tensorflow.keras.metrics import AUC, BinaryAccuracy
+   from tensorflow.keras.losses import BinaryCrossentropy
+   from tensorflow.keras.optimizers import Adam
+   from tensorflow.keras.callbacks import EarlyStopping
 
-   # Compile
+   model = CrystalGraphClassifier()
+
    model.compile(
-       optimizer='adam',
-       loss='binary_crossentropy',
-       metrics=['accuracy']
+      loss=BinaryCrossentropy(), optimizer=Adam(), metrics=[AUC(), BinaryAccuracy()]
    )
 
-   # Train
-   model.fit(x=train_data, y=train_labels, epochs=50, validation_data=(val_data, val_labels))
+   model.fit(
+      loader_tr.load(),
+      steps_per_epoch=loader_tr.steps_per_epoch,
+      epochs=5,
+      use_multiprocessing=True,
+      validation_data=loader_va.load(),
+      callbacks=[EarlyStopping(monitor="loss", patience=5, restore_best_weights=True)],
+   )
+
+   from tensorflow.keras.models import load_model
+
+   model_path = "models/my-first-graph-classifier"
+   model.save(model_path)
+   loaded_model = load_model(model_path)
+
+   loader_te = DisjointLoader(test, epochs=1, shuffle=False, batch_size=batch_size)
+   results = model.evaluate(loader_te.load())
