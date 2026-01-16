@@ -1,4 +1,4 @@
-American Football (NFL)
+American Football
 =======================
 
 This tutorial covers how to work with NFL tracking data from the Big Data Bowl using the
@@ -93,16 +93,10 @@ For supervised learning, add labels and graph IDs:
 
 .. code-block:: python
 
-   from unravel.utils import add_dummy_label_column, add_graph_id_column
-
-   # Add labels (use your own labels for real tasks)
-   bdb_dataset.dataset = add_dummy_label_column(bdb_dataset.dataset)
+   bdb_dataset.add_dummy_labels()
 
    # Create graph ID for each play
-   bdb_dataset.dataset = add_graph_id_column(
-       bdb_dataset.dataset,
-       by=["gameId", "playId"]
-   )
+   bdb_dataset.add_graph_ids(by=["playId", "gameId"])
 
 Step 3: Convert to Graphs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -146,11 +140,7 @@ Train a Graph Neural Network:
    test_loader = DataLoader(test, batch_size=32)
 
    # Initialize and train model
-   model = PyGLightningCrystalGraphClassifier(
-       node_features=converter.n_node_features,
-       edge_features=converter.n_edge_features,
-       global_features=converter.n_graph_features,
-   )
+   model = PyGLightningCrystalGraphClassifier()
 
    trainer = pyl.Trainer(max_epochs=10)
    trainer.fit(model, train_loader, val_loader)

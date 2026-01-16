@@ -23,6 +23,8 @@ The **unravelsports** package aims to aid researchers, analysts and enthusiasts 
 intermediary steps in the complex process of converting raw sports data into meaningful
 information and actionable insights.
 
+.. youtube:: PUXU3SokbW0
+
 Installation
 ------------
 

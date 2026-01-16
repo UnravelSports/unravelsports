@@ -135,14 +135,11 @@ Labels
 For supervised learning, you need labels for each graph:
 
 .. code-block:: python
-
-   from unravel.utils import add_dummy_label_column
-
    # Add random binary labels (for demonstration)
-   dataset.dataset = add_dummy_label_column(dataset.dataset)
+   dataset.add_dummy_labels()
 
    # Or join real labels from your own data
-   # dataset.dataset = dataset.dataset.join(your_labels, on="some_key")
+   dataset.dataset = dataset.dataset.join(your_labels, on="some_key")
 
 Graph IDs
 ~~~~~~~~~
@@ -153,13 +150,10 @@ Graph IDs group frames that belong to the same "sample":
 
    from unravel.utils import add_graph_id_column
 
-   # Each frame is a separate graph
-   dataset.dataset = add_graph_id_column(dataset.dataset, by=["frame_id"])
+   # Each frame (graph) from the same game belongs to a subset
+   dataset.add_graph_ids(by=["game_id"])
 
-   # Or group by possession
-   dataset.dataset = add_graph_id_column(dataset.dataset, by=["possession_id"])
-
-**Important**: Always split data by graph_id to avoid data leakage!
+**Important**: Always split data by game_id to avoid data leakage!
 
 Soccer Analytics Models
 -----------------------

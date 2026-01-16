@@ -27,6 +27,7 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.mathjax",
     "myst_parser",
+    "sphinxcontrib.youtube",
 ]
 
 # Napoleon settings for Google/NumPy style docstrings

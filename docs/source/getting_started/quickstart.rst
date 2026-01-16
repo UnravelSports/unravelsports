@@ -57,9 +57,10 @@ Convert the tracking data to graph structures for training Graph Neural Networks
    from unravel.utils import add_dummy_label_column, add_graph_id_column
 
    # Add labels and graph IDs
-   polars_dataset.dataset = add_dummy_label_column(polars_dataset.dataset)
-   polars_dataset.dataset = add_graph_id_column(
-       polars_dataset.dataset,
+   polars_dataset.add_dummy_labels()
+   # We group by 'frame_id' instead of 'game_id' here because in this example all
+   # data comes from the same game.
+   polars_dataset.add_graph_id_column(
        by=["frame_id"]
    )
 
@@ -97,11 +98,7 @@ Split the data and train a model:
    test_loader = DataLoader(test, batch_size=32)
 
    # Initialize model
-   model = PyGLightningCrystalGraphClassifier(
-       node_features=converter.n_node_features,
-       edge_features=converter.n_edge_features,
-       global_features=converter.n_graph_features,
-   )
+   model = PyGLightningCrystalGraphClassifier()
 
    # Train
    trainer = pyl.Trainer(max_epochs=10)
